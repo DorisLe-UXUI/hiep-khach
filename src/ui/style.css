@@ -644,7 +644,7 @@ body:not(.cursor-free) .mi { opacity: .82; }
 .ware .ic { overflow: hidden; }
 
 /* ───────── phong cách tươi sáng ───────── */
-body.style-bright #game { filter: saturate(1.12) contrast(1.04); }
+
 
 /* ───────── HUD kiểu mobile (chế độ MMO) ───────── */
 #mhud { display: none; }

@@ -4,7 +4,7 @@ export const DEFAULTS = {
   sens: 1,            // độ nhạy chuột
   invertY: false,
   volume: 0.6,
-  quality: 'high',    // low | medium | high
+  quality: 'medium',  // low | medium | high
   fov: 55,
   difficulty: 'normal', // easy | normal | hard
   dmgNumbers: true,
@@ -19,9 +19,9 @@ export const DIFFICULTY = {
 };
 
 export const QUALITY = {
-  low: { label: 'Thấp', pixelRatio: 1, shadow: 1024, grass: 2 },
-  medium: { label: 'Vừa', pixelRatio: 1.25, shadow: 2048, grass: 3 },
-  high: { label: 'Cao', pixelRatio: 1.75, shadow: 4096, grass: 4 },
+  low: { label: 'Thấp', pixelRatio: 0.75, shadow: 1024, grass: 1 },
+  medium: { label: 'Vừa', pixelRatio: 1, shadow: 2048, grass: 2 },
+  high: { label: 'Cao', pixelRatio: 1.5, shadow: 2048, grass: 3 },
 };
 
 export function loadSettings() {

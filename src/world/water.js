@@ -36,9 +36,23 @@ function waveNormals(size = 256) {
   return t;
 }
 
-export function createWater(sun) {
+export function createWater(sun, stylized = false) {
   const L = PLACES.lake;
   const geo = new THREE.CircleGeometry(L.r * 1.7, 64);
+  if (stylized) {
+    // nước hoạt hình: không vẽ phản chiếu (rẻ), gợn sóng trôi bằng normal map
+    const nm = waveNormals();
+    nm.repeat.set(18, 18);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x3aa8d0, roughness: 0.12, metalness: 0.05, transparent: true, opacity: 0.88, normalMap: nm, normalScale: new THREE.Vector2(0.6, 0.6) });
+    const w = new THREE.Mesh(geo, mat);
+    w.rotation.x = -Math.PI / 2;
+    w.position.set(L.x, WATER_LEVEL, L.z);
+    w.name = 'water';
+    w.receiveShadow = true;
+    w.onBeforeRender = () => { nm.offset.x += 0.0004; nm.offset.y += 0.00025; };
+    w.userData.simple = true;
+    return w;
+  }
   const water = new Water(geo, {
     textureWidth: 1024,
     textureHeight: 1024,

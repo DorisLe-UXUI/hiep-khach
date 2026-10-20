@@ -167,7 +167,8 @@ export class Sky {
     this.hemi.groundColor.set(gnd);
     this.hemi.intensity = timeName === 'night' ? 0.35 : 0.8;
     for (const c of this.clouds) c.material.color.set(timeName === 'night' ? '#4a5a8a' : timeName.startsWith('dawn') || timeName === 'sunrise' ? '#ffe0d0' : '#ffffff');
-    if (this.water) {
+    if (this.water?.userData.simple) this.water.material.color.set(timeName === 'night' ? 0x123a5a : 0x3aa8d0);
+    else if (this.water) {
       const w = this.water.material.uniforms;
       w.sunDirection.value.copy(this.sunDir);
       w.sunColor.value.set(sun);

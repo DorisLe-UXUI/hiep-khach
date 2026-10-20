@@ -191,6 +191,7 @@ export class Game {
       const [x, z] = PLACES.cages[i];
       const n = await add('captive' + i, i ? 'villagerM' : 'villagerF', { idleAnim: 'Sitting_Idle_Loop', talkAnim: 'Sitting_Talking_Loop' }, x, z, Math.PI * 0.2);
       n.speaker = 'captive';
+      n.hidden = true;
       n.root.visible = false;
     }
 
@@ -318,10 +319,13 @@ export class Game {
     // NPC theo chương
     const night = ch.time === 'night';
     for (const n of this.npcs) {
-      if (n.id.startsWith('villager')) n.root.visible = !night && ch.id !== 'c5';
-      if (n.id.startsWith('captive')) n.root.visible = false;
+      n.hidden = false;
+      if (n.id.startsWith('villager')) n.hidden = night || ch.id === 'c5';
+      if (n.id.startsWith('captive')) n.hidden = true;
+      n.root.visible = !n.hidden;
       if (n.home) n.placeAt(n.home[0], n.home[1], n.homeYaw);
     }
+    this.npcById.maiden.hidden = ch.id === 'c5';
     this.npcById.maiden.root.visible = ch.id !== 'c5';
     this.chestOpened = this.chapterIdx > 2;
     this.freedCages.clear();
@@ -487,7 +491,7 @@ export class Game {
   }
 
   showCaptives(v) {
-    PLACES.cages.forEach((_, i) => { this.npcById['captive' + i].root.visible = v && !this.freedCages.has(i); });
+    PLACES.cages.forEach((_, i) => { const n = this.npcById['captive' + i]; n.hidden = !(v && !this.freedCages.has(i)); n.root.visible = !n.hidden; });
   }
 
   freeCaptive(i) {
@@ -497,7 +501,7 @@ export class Game {
     this.fx.burst(this.npcById['captive' + i].pos.clone().setY(1), 0xffe2a0, 30);
     this.rpg.gainExp(40);
     this.dialog([['captive', 'Đa tạ đại hiệp cứu mạng! Bọn chúng định bắt chúng tôi lên Kiếm Mộ làm khổ sai...']], this.npcById['captive' + i])
-      .then(() => { this.npcById['captive' + i].root.visible = false; });
+      .then(() => { const n = this.npcById['captive' + i]; n.hidden = true; n.root.visible = false; });
   }
 
   // ─────────────────── chiến đấu, phần thưởng ───────────────────
@@ -809,8 +813,19 @@ export class Game {
     this.player.update(adt, frozen, this.camRig);
     const pp = this.player.pos;
     const actors = [this.player];
-    for (const e of this.enemies) if (e.pos.distanceTo(pp) < 140 || e.alerted) { e.update(adt); actors.push(e); }
-    for (const n of this.npcs) if (n.root.visible && n.pos.distanceTo(pp) < 120) { n.update(adt); actors.push(n); }
+    for (const e of this.enemies) {
+      const d = e.pos.distanceTo(pp);
+      const near = d < 75 || e.alerted;
+      // ở xa: ẩn hẳn (không vẽ, không cập nhật xương)
+      if (!e.dead || e.deadT < 12) e.root.visible = near;
+      if (near) { e.update(adt); actors.push(e); }
+    }
+    for (const n of this.npcs) {
+      if (n.hidden) { n.root.visible = false; continue; }
+      const near = n.pos.distanceTo(pp) < 70;
+      n.root.visible = near;
+      if (near) { n.update(adt); actors.push(n); }
+    }
     for (const a of actors) if (!a.dead) a.separate(actors);
     this.combat.update(adt);
     this.fx.update(dt);

@@ -268,7 +268,8 @@ export class HUD {
       n.el.style.top = s.y + 'px';
       n.el.style.opacity = String(1 - Math.max(0, n.t - 0.6) / 0.4);
     }
-    this.drawMinimap();
+    this.miniT = (this.miniT || 0) - dt;
+    if (this.miniT <= 0) { this.miniT = 0.1; this.drawMinimap(); }
   }
 
   drawMinimap() {

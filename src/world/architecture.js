@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { pbr } from '../engine/assets.js';
 import { PLACES, HOUSES } from './layout.js';
+import { mergeStatic } from './optimize.js';
 
 let M = null;
 export const ARCH = { stylized: false };
@@ -540,6 +541,7 @@ function cage(colliders, terrain, x, z) {
     for (const [bx, bz] of [[t, -s / 2], [t, s / 2], [-s / 2, t], [s / 2, t]]) bars.add(cyl(0.05, h, m.log, bx, 0, bz, 6));
   }
   g.add(bars);
+  bars.traverse((o) => { o.userData.keep = true; });
   g.userData.bars = bars;
   colliders.box(x, z, s / 2, s / 2, 0, g.position.y + h);
   return g;
@@ -593,5 +595,8 @@ export function buildArchitecture(terrain, colliders) {
   spots.bossHall = { x: C.x, z: C.z - 17, y: bossHall.floorY };
   spots.cages = PLACES.cages.map(([x, z]) => { const c = cage(colliders, terrain, x, z); root.add(c); return c; });
   root.add(swordTomb(colliders, terrain));
+  // gộp hàng nghìn khối gạch/cột/xà thành vài chục mesh theo vật liệu
+  const stat = mergeStatic(root);
+  console.info('Kiến trúc: gộp', stat.meshes, 'mesh ->', stat.merged);
   return { group: root, spots };
 }

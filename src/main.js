@@ -47,13 +47,13 @@ const preview = { char: null, token: 0, angle: 0 };
 async function boot() {
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0xb7c0c2, 0.003);
-  const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeight, 0.1, 1600);
+  const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeight, 0.3, 1500);
   const sunDir = new THREE.Vector3(-0.55, 0.42, 0.35).normalize();
   const sun = new THREE.DirectionalLight(0xffe2bd, 2.6);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(4096, 4096);
+  sun.shadow.mapSize.set(2048, 2048);
   const sc = sun.shadow.camera;
-  sc.left = sc.bottom = -55; sc.right = sc.top = 55; sc.near = 1; sc.far = 300;
+  sc.left = sc.bottom = -38; sc.right = sc.top = 38; sc.near = 1; sc.far = 300;
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.04;
   const hemi = new THREE.HemisphereLight(0xcfd8e6, 0x4b4232, 0.35);
@@ -64,7 +64,7 @@ async function boot() {
   const terrain = new Terrain();
   scene.add(terrain.mesh);
   const colliders = new Colliders();
-  const water = createWater(sunDir);
+  const water = createWater(sunDir, Character.chibi);
   scene.add(water);
 
   step('Viết câu đối, treo biển hiệu...', 14);
@@ -102,8 +102,21 @@ async function boot() {
   });
 
   const clock = new THREE.Clock();
+  // độ phân giải tự động: giữ khoảng 50+ khung hình/giây
+  let avg = 16, adjT = 0;
+  const maxPR = () => Math.min(devicePixelRatio, ({ low: 0.75, medium: 1, high: 1.5 })[game.settings.quality] || 1);
   renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 1 / 20);
+    const raw = clock.getDelta();
+    const dt = Math.min(raw, 1 / 20);
+    avg = avg * 0.95 + raw * 1000 * 0.05;
+    adjT += raw;
+    if (adjT > 1.5 && document.visibilityState === 'visible') {
+      adjT = 0;
+      const pr = renderer.getPixelRatio();
+      if (avg > 22 && pr > 0.55) renderer.setPixelRatio(Math.max(0.55, pr - 0.15));
+      else if (avg < 14 && pr < maxPR()) renderer.setPixelRatio(Math.min(maxPR(), pr + 0.1));
+    }
+    window.__fps = Math.round(1000 / avg);
     if (mode === 'create') updatePreview(dt, camera);
     else game.update(dt, clock.elapsedTime);
     renderer.render(scene, camera);
