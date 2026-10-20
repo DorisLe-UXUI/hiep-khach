@@ -157,7 +157,7 @@ function bambooGrove(terrain, colliders) {
 }
 
 // ---------- Cỏ lá mọc quanh người chơi ----------
-class GrassField {
+export class GrassField {
   constructor(terrain) {
     this.terrain = terrain;
     this.tile = 10;
@@ -193,11 +193,18 @@ class GrassField {
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', '#include <common>\nvarying float vH;\nvarying float vTint;')
         .replace('#include <map_fragment>', `
+#ifdef STYLIZED
+  vec3 base = mix(vec3(0.20, 0.45, 0.10), vec3(0.30, 0.55, 0.12), vTint);
+  vec3 tip = mix(vec3(0.55, 0.85, 0.25), vec3(0.75, 0.90, 0.35), vTint);
+  diffuseColor.rgb = mix(base, tip, vH);
+#else
   vec3 base = mix(vec3(0.06, 0.12, 0.03), vec3(0.18, 0.27, 0.07), vTint);
   vec3 tip = mix(vec3(0.30, 0.44, 0.12), vec3(0.45, 0.50, 0.20), vTint);
   diffuseColor.rgb = mix(base, tip, vH) * mix(0.55, 1.0, vH);
+#endif
 `);
     };
+    if (GrassField.stylized) { mat.defines = { STYLIZED: '' }; this.heightK = 0.55; } else this.heightK = 1;
     this.tiles = new Map();
     this.excl = [];
     this.pool = [];
@@ -228,7 +235,7 @@ class GrassField {
       if (this.excl.some((e) => (x - e.x) ** 2 + (z - e.z) ** 2 < e.r * e.r)) continue;
       m.makeTranslation(x, h - 0.03, z);
       im.setMatrixAt(n, m);
-      attr.setXYZW(n, a, b, c * 6.28, 0.35 + b * 0.45 + a * 0.25);
+      attr.setXYZW(n, a, b, c * 6.28, (0.35 + b * 0.45 + a * 0.25) * this.heightK);
       n++;
     }
     im.count = n;
@@ -259,6 +266,19 @@ class GrassField {
 }
 
 export async function buildVegetation(terrain, colliders, renderer, onProgress = () => {}) {
+  if (GrassField.stylized) {
+    const { buildStylizedVegetation } = await import('./stylized.js');
+    const st = await buildStylizedVegetation(terrain, colliders, onProgress);
+    st.group.add(bambooGrove(terrain, colliders));
+    const grass = new GrassField(terrain);
+    grass.perTile = 900;
+    st.group.add(grass.group);
+    return { group: st.group, grass: {
+      setRadius(r) { grass.radius = Math.min(r, 3); },
+      exclude(x, z, r) { grass.excl.push({ x, z, r }); for (const [k, im] of grass.tiles) { grass.group.remove(im); grass.pool.push(im); grass.tiles.delete(k); } },
+      update(x, z, t) { grass.update(x, z, t); st.update(x, z); },
+    } };
+  }
   const root = new THREE.Group();
   root.name = 'vegetation';
 

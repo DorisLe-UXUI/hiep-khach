@@ -644,7 +644,7 @@ body:not(.cursor-free) .mi { opacity: .82; }
 .ware .ic { overflow: hidden; }
 
 /* ───────── phong cách tươi sáng ───────── */
-body.style-bright #game { filter: saturate(1.32) contrast(1.06) brightness(1.03); }
+body.style-bright #game { filter: saturate(1.12) contrast(1.04); }
 
 /* ───────── HUD kiểu mobile (chế độ MMO) ───────── */
 #mhud { display: none; }
@@ -763,3 +763,6 @@ body.mmo .dmg.heal { color: #6aff8a !important; }
   #m-joy { left: 290px; bottom: 30px; }
   #m-quick { right: 250px; bottom: 175px; }
 }
+
+.plate.elite .nm { color: #ffb84a; font-size: 13px; }
+.elite-tag { padding: 0 4px; font-size: 10px; color: #fff; background: linear-gradient(#e2463a, #8a1a14); border-radius: 3px; }

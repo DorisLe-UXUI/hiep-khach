@@ -4,8 +4,8 @@ import { Input } from './engine/input.js';
 import { Terrain } from './world/terrain.js';
 import { Colliders } from './world/colliders.js';
 import { createWater } from './world/water.js';
-import { buildArchitecture } from './world/architecture.js';
-import { buildVegetation } from './world/vegetation.js';
+import { buildArchitecture, ARCH } from './world/architecture.js';
+import { buildVegetation, GrassField } from './world/vegetation.js';
 import { buildProps } from './world/props.js';
 import { Sky } from './world/sky.js';
 import { Game, createHeroCharacter } from './game/game.js';
@@ -21,6 +21,8 @@ const ui = new UI();
 ui.decorate();
 const settings = loadSettings();
 Character.chibi = settings.style !== 'realistic';
+// phong cách hoạt hình cho toàn bộ cảnh vật
+Terrain.stylized = GrassField.stylized = Sky.stylized = ARCH.stylized = Character.chibi;
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });

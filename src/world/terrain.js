@@ -132,6 +132,7 @@ export class Terrain {
 
     const splat = new THREE.CanvasTexture(this.splatCanvas);
     splat.colorSpace = THREE.NoColorSpace;
+    splat.flipY = false; // hàng 0 của canvas = z nhỏ nhất, khớp với UV (z+HALF)/WORLD
     const T = (name) => [rawTex(name, 'diff'), rawTex(name, 'nor')];
     const sets = { grass: T('leafy_grass'), forest: T('forest_leaves_02'), rock: T('rock_face_03'), path: T('stony_dirt_path'), paved: T('grey_stone_path'), mud: T('brown_mud_leaves_01') };
 
@@ -201,6 +202,30 @@ void addLayer(vec3 c, vec3 n, float r, float w){ tB += c*w; tN += n*w; tR += r*w
   c = mix(c, paved_c, fV); nn = mix(nn, paved_n, fV); rr = mix(rr, paved_r, fV);
   c = mix(c, rock_c, fR); nn = mix(nn, rock_n, fR); rr = mix(rr, rock_r, fR);
   tB = c; tN = normalize(nn); tR = rr;
+#ifdef STYLIZED
+  {
+    // phong cách hoạt hình: màu phẳng tươi + vân nhẹ từ texture gốc
+    float lum = dot(tB, vec3(0.299, 0.587, 0.114));
+    float detail = clamp(lum * 2.0, 0.82, 1.06);
+    vec3 sGrass = mix(vec3(0.33, 0.66, 0.16), vec3(0.55, 0.80, 0.22), smoothstep(0.3, 0.8, big));
+    vec3 sForest = vec3(0.28, 0.52, 0.17);
+    vec3 sMud = vec3(0.88, 0.78, 0.55);
+    vec3 sPath = vec3(0.78, 0.58, 0.34);
+    vec3 sPaved = vec3(0.70, 0.64, 0.54);
+    vec3 sRock = mix(vec3(0.55, 0.53, 0.60), vec3(0.72, 0.70, 0.76), smoothstep(40.0, 90.0, vWPos.y));
+    vec3 sc = sGrass;
+    sc = mix(sc, sForest, fF * 0.8);
+    sc = mix(sc, sMud, fS);
+    sc = mix(sc, sPath, fP);
+    sc = mix(sc, sPaved, fV);
+    sc = mix(sc, sRock, fR);
+    // tuyết trên đỉnh núi
+    sc = mix(sc, vec3(0.95, 0.97, 1.0), smoothstep(95.0, 120.0, vWPos.y + vnoise(wuv * 0.05) * 12.0));
+    tB = sc * detail;
+    tN = normalize(mix(vec3(0.0, 0.0, 1.0), tN, 0.35));
+    tR = 0.9;
+  }
+#endif
   diffuseColor.rgb *= tB;
 `)
         .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(tR, 0.35, 1.0);')
@@ -215,6 +240,7 @@ void addLayer(vec3 c, vec3 n, float r, float w){ tB += c*w; tN += n*w; tR += r*w
 `);
     };
 
+    if (Terrain.stylized) mat.defines = { STYLIZED: '' };
     const mesh = new THREE.Mesh(geo, mat);
     mesh.receiveShadow = true;
     mesh.name = 'terrain';

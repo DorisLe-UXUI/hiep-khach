@@ -4,9 +4,47 @@ import { pbr } from '../engine/assets.js';
 import { PLACES, HOUSES } from './layout.js';
 
 let M = null;
+export const ARCH = { stylized: false };
+
+/** Vật liệu hoạt hình: màu phẳng tươi, giữ normal map để còn vân ngói/gỗ. */
+function toon(src, color, rough = 0.7) {
+  const m = src.clone();
+  m.map = null;
+  m.roughnessMap = null;
+  m.color = new THREE.Color(color);
+  m.roughness = rough;
+  if (m.normalScale) m.normalScale.set(0.6, 0.6);
+  return m;
+}
+
 /** Vật liệu dùng chung, tạo khi cần (texture đã tải xong). */
 function mats() {
   if (M) return M;
+  if (ARCH.stylized) {
+    const base = {
+      roof: pbr('grey_roof_tiles', [1, 1]), plaster: pbr('white_plaster_rough_01', [2, 1]), wood: pbr('weathered_brown_planks', [1, 1]),
+      lacquer: pbr('dark_wooden_planks', [0.5, 2]), stone: pbr('japanese_stone_wall', [3, 1]), paving: pbr('stone_tiles', [4, 4]),
+      floor: pbr('hinoki_planks', [3, 3]), thatch: pbr('thatch_roof_angled', [1, 1]), beam: pbr('japanese_cedar_planks', [2, 0.5]),
+    };
+    M = {
+      roof: toon(base.roof, 0x2f86a8, 0.55),
+      roofDark: toon(base.roof, 0x1f5a78, 0.5),
+      thatch: toon(base.thatch, 0xe0b050, 0.85),
+      under: toon(base.lacquer, 0xb04a2a, 0.7),
+      lacquer: toon(base.lacquer, 0xd8342a, 0.45),
+      wood: toon(base.wood, 0xa8683a, 0.75),
+      beam: toon(base.beam, 0x7a3e20, 0.6),
+      plaster: toon(base.plaster, 0xfff4e0, 0.85),
+      stone: toon(base.stone, 0xcfc6b4, 0.85),
+      paving: toon(base.paving, 0xe0d8c8, 0.8),
+      floor: toon(base.floor, 0xd09a5e, 0.7),
+      log: toon(base.wood, 0x9a6a40, 0.8),
+      cloth: new THREE.MeshStandardMaterial({ color: 0xe8d8b0, roughness: 0.9, side: THREE.DoubleSide }),
+      gold: new THREE.MeshStandardMaterial({ color: 0xffc83a, roughness: 0.3, metalness: 0.6 }),
+    };
+    M.under.side = THREE.BackSide;
+    return M;
+  }
   M = {
     roof: pbr('grey_roof_tiles', [1, 1], { color: 0x8c8f94 }),
     roofDark: pbr('grey_roof_tiles', [1, 1], { color: 0x55585e }),

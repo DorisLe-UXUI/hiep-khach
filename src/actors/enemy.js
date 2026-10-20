@@ -27,6 +27,10 @@ export class Enemy extends Actor {
     this.gold = opts.gold ?? (this.boss ? 150 : 8);
     this.group = opts.group || null;
     this.phase2 = false;
+    this.monster = opts.monster || null;
+    this.reach = opts.reach || 2.0;
+    this.zone = opts.zone || null;
+    this.lv = opts.lv || null;
   }
 
   setState(s) { this.state = s; this.stateT = 0; this.hitDone = false; }
@@ -38,7 +42,7 @@ export class Enemy extends Actor {
     this.game.player.inCombat = 8;
     const away = new THREE.Vector3().subVectors(this.pos, from.pos).setY(0).normalize();
     // trùm không bị khựng bởi đòn thường
-    const stagger = !this.boss || knock;
+    const stagger = (!this.boss && !this.monster?.elite) || knock;
     if (this.hp <= 0) {
       this.hp = 0;
       this.dead = true;
@@ -98,7 +102,7 @@ export class Enemy extends Actor {
       case 'chase': {
         if (p.dead) { this.setState('return'); break; }
         if (this.pos.distanceTo(this.home) > 70) { this.setState('return'); this.alerted = false; break; }
-        const reach = this.boss ? 2.4 : 2.0;
+        const reach = this.monster ? this.reach : this.boss ? 2.4 : 2.0;
         if (this.caster && dist > reach && dist < 16 && this.cool <= 0 && Math.random() < 0.02) { this.startAttack(); break; }
         if (dist > reach) { moveDir = toP.clone().normalize(); speed = this.speed; }
         else {
@@ -157,13 +161,15 @@ export class Enemy extends Actor {
       const hs = Math.hypot(this.vel.x, this.vel.z);
       if (hs > 3) this.char.play('Jog_Fwd_Loop', { speed: hs / 5.2 });
       else if (hs > 0.5) this.char.play('Walk_Loop', { speed: Math.max(0.7, hs / 1.6) });
-      else this.char.play(this.state === 'chase' ? 'Sword_Idle' : this.idleAnim);
+      else this.char.play(this.state === 'chase' && !this.monster ? 'Sword_Idle' : this.idleAnim);
     }
     this.char.update(dt);
   }
 
   startAttack() {
-    const list = this.boss
+    const list = this.monster
+      ? [{ anim: 'Attack', hitAt: [0.42], dmg: this.dmg, range: this.reach + 0.6, arc: 1.6, lunge: 1.5, speed: 1, heavy: this.monster.elite }]
+      : this.boss
       ? [
           { anim: 'Sword_Regular_Combo', hitAt: [0.18, 0.42, 0.7], dmg: 16, range: 2.7, arc: 1.4, lunge: 3, speed: 1.0 },
           { anim: 'Sword_Heavy_Combo', hitAt: [0.3, 0.62], dmg: 26, range: 3.1, arc: 1.8, lunge: 4, heavy: true, speed: 1.05 },

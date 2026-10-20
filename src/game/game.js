@@ -22,6 +22,8 @@ import { Companions } from './companions.js';
 import { LOOK_OPTIONS } from './classes.js';
 import '../ui/panels.js';
 import { VFX } from './vfx.js';
+import { MonsterCharacter } from '../actors/monster.js';
+import { MONSTERS, Spawner, monsterStats } from './bestiary.js';
 import { AutoPilot } from './auto.js';
 import { MobileHUD } from '../ui/mobilehud.js';
 import { realmOf } from './rpg.js';
@@ -113,6 +115,7 @@ export class Game {
     this.freedCages = new Set();
     this.sys = new Systems(this);
     this.vfx = new VFX(this.scene);
+    this.spawner = new Spawner(this);
     this.auto = new AutoPilot(this);
     this.chatT = 20;
     this.companions = new Companions(this);
@@ -307,6 +310,7 @@ export class Game {
     this.hud.show(false);
     await this.ui.fade(true);
     // dọn kẻ địch cũ
+    this.spawner.clear();
     for (const e of this.enemies) this.scene.remove(e.root);
     this.enemies = [];
     this.clearLoot();
@@ -716,6 +720,23 @@ export class Game {
     this.mhud.log(Math.random() < 0.6 ? 'world' : 'system', lines[Math.floor(Math.random() * lines.length)]);
   }
 
+  /** Sinh một con quái theo bách quái phổ. */
+  async spawnMonster(id, x, z, opts = {}) {
+    const m = MONSTERS[id];
+    const st = monsterStats(m);
+    const ch = await MonsterCharacter.create({ file: m.file, height: m.h * (opts.scale || 1), tint: m.tint });
+    const e = new Enemy(this, ch, {
+      name: m.name, hp: st.hp, dmg: st.dmg, x, z, boss: !!opts.boss, aggro: opts.aggro ?? (m.elite ? 14 : 10), speed: m.elite ? 4.2 : 3.6,
+      patrol: opts.patrol, idleAnim: 'Idle_Loop', caster: m.caster, exp: st.exp, gold: st.gold, group: opts.group || 'mob:' + id, tag: id,
+      monster: m, reach: Math.max(1.6, m.h * 0.75), zone: opts.zone, lv: m.lv,
+    });
+    e.radius = Math.max(0.35, m.h * 0.28);
+    e.placeAt(x, z, Math.random() * 6.28);
+    this.scene.add(ch.root);
+    this.enemies.push(e);
+    return e;
+  }
+
   toggleMount() { this.companions.toggleMount(); }
   spawnPet() { this.companions.spawnPet(); }
   ownedFashion() { return this.fashionOwned; }
@@ -788,7 +809,16 @@ export class Game {
     this.combat.update(adt);
     this.fx.update(dt);
     this.updateLoot(dt);
+    // dọn xác đã nằm lâu
+    if (this.enemies.length > 40) {
+      this.enemies = this.enemies.filter((e) => {
+        const gone = e.dead && e.deadT > 14;
+        if (gone) this.scene.remove(e.root);
+        return !gone;
+      });
+    }
     this.sys.update(dt);
+    if (!this.activity) this.spawner.update(dt);
     this.companions.update(dt);
     this.vfx.update(dt);
     this.mhudT = (this.mhudT || 0) - dt;

@@ -248,7 +248,9 @@ export class HUD {
       if (e.dead || e.boss || !e.root.visible) continue;
       const d = e.pos.distanceTo(p.pos);
       if (d > 32) continue;
-      tag(e, e.pos, 2.25, 'foe', `<div class="nm"><span class="lvl">Lv.${Math.max(1, Math.round(e.exp / 12))}</span>${e.name}</div><div class="tr"><div></div></div>`, e.hp / e.maxHp);
+      const lv = e.lv || Math.max(1, Math.round(e.exp / 12));
+      const h = e.monster ? e.monster.h + 0.45 : 2.25;
+      tag(e, e.pos, h, 'foe' + (e.monster?.elite ? ' elite' : ''), `<div class="nm"><span class="lvl">Lv.${lv}</span>${e.name}${e.monster?.elite ? ' <span class="elite-tag">Tinh anh</span>' : ''}</div><div class="tr"><div></div></div>`, e.hp / e.maxHp);
     }
     for (const [k, el] of this.plates) if (!seen.has(k)) { el.remove(); this.plates.delete(k); }
 
