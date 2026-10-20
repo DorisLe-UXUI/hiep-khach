@@ -36,6 +36,7 @@ export class Combat {
     const crit = Math.random() < this.game.rpg.crit();
     dmg = Math.round(dmg * (crit ? 1.8 : 1));
     e.takeDamage(dmg, p, opts);
+    if (p === this.game.player) this.game.fury?.hit(dmg);
     this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
     this.game.vfx.flash(e, crit ? 0xffe080 : 0xffffff);
     return dmg;
@@ -50,6 +51,7 @@ export class Combat {
       let dmg = Math.round(a.dmg);
       if (crit) dmg = Math.round(dmg * 1.8);
       e.takeDamage(dmg, p, { knock: a.knock, back: a.back ?? 2.5 });
+      if (p === this.game.player) this.game.fury?.hit(dmg);
       this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
       this.game.vfx.flash(e, crit ? 0xffe080 : 0xffffff);
       if (crit) this.game.vfx.shockwave(e.pos.clone(), 0xffd27a, 2);

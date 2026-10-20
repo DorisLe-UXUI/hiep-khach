@@ -182,7 +182,7 @@ export class UI {
       ['mouse', 'Xoay góc nhìn', ['Chuột']], ['dash', 'Di chuyển', ['W', 'A', 'S', 'D']], ['wave', 'Chạy nhanh / Lăng Ba Vi Bộ', ['Shift']],
       ['sword', 'Chém (liên chiêu 3 đòn)', ['Chuột trái']], ['shield', 'Đỡ đòn', ['Chuột phải']], ['roll', 'Lộn né', ['Ctrl']],
       ['cloud', 'Nhảy / Khinh công / Lượn', ['Space']], ['dash', 'Lướt Kiếm', ['Q']], ['palm', 'Chưởng Phong', ['F']],
-      ['potion', 'Kim sang dược', ['R']], ['user', 'Nói chuyện / Tương tác', ['E']], ['eye', 'Đổi góc nhìn sau lưng / trên cao', ['V']],
+      ['potion', 'Kim sang dược', ['R']], ['star', 'Bộc phát nộ khí', ['X']], ['user', 'Nói chuyện / Tương tác', ['E']], ['eye', 'Đổi góc nhìn sau lưng / trên cao', ['V']],
       ['scroll', 'Nhật ký giang hồ', ['J']], ['bag', 'Túi đồ & trang bị', ['I']], ['qi', 'Võ học', ['K']], ['map', 'Bản đồ giang hồ', ['M']], ['door', 'Tạm dừng', ['Esc']],
     ];
     this.openPanel('Điều khiển', `<div class="controls">${rows.map(([ic, t, keys]) => `<div class="ctl">${icon(ic)}<span>${t}</span><span class="k">${keys.map((k) => `<kbd>${k}</kbd>`).join('')}</span></div>`).join('')}</div>`);

@@ -40,7 +40,7 @@ export class Player extends Actor {
     const r = this.rpg;
     const lv = r.skills[skill] || 0;
     const per = { sword: 0.1, dash: 0.15, palm: 0.18 }[skill] || 0.1;
-    const base = r.atk() * this.cls.dmgMul * mul * (1 + lv * per) * this.game.diff.playerDmg;
+    const base = r.atk() * this.cls.dmgMul * mul * (1 + lv * per) * this.game.diff.playerDmg * (this.game.fury?.mult() || 1);
     return base * (0.9 + Math.random() * 0.2);
   }
 
@@ -198,6 +198,7 @@ export class Player extends Actor {
     this.game.vfx.flash(this, 0xff3020);
     this.game.camRig.shake = heavy ? 1 : 0.6;
     this.game.audio.hit();
+    this.game.fury?.hurt();
     if (this.hp <= 0) {
       this.hp = 0;
       this.dead = true;
@@ -299,7 +300,7 @@ export class Player extends Actor {
     const frac = (name) => { const a = s.char.action(name); return a ? a.time / a.getClip().duration : 1; };
     if (s.state === 'free' && !talking) {
       if (hasMove) {
-        speed = sprint && s.st > 1 ? 9 : 5.2;
+        speed = (sprint && s.st > 1 ? 9 : 5.2) * (1 + s.rpg.stat('spd'));
         if (s.mounted) speed = sprint ? 17 : 11;
         if (s.inWater) speed = sprint ? 4 : 2.6;
         if (sprint && !s.mounted) s.st = Math.max(0, s.st - dt * 14);

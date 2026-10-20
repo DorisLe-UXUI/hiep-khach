@@ -33,6 +33,10 @@ import { MONSTERS, Spawner, monsterStats } from './bestiary.js';
 import { AutoPilot } from './auto.js';
 import { MobileHUD } from '../ui/mobilehud.js';
 import { realmOf } from './rpg.js';
+import { Fury } from './fury.js';
+import { dropGear, RARITY } from './gear.js';
+import { TITLES } from './titles.js';
+import '../ui/panels3.js';
 
 export const LOOKS = {
   guard: { outfit: 'male_peasant', base: 'male', hair: ['hair_simpleparted', 'hair_beard'], brows: 'eyebrows_regular', outfitColor: '#6b5a44', hairColor: '#c9c4bb' },
@@ -144,6 +148,8 @@ export class Game {
     this.allies = [];
     this.life = new Life(this);
     this.social = new Social(this);
+    this.fury = new Fury(this);
+    this.titleT = 5;
     this.auto = new AutoPilot(this);
     this.chatT = 20;
     this.companions = new Companions(this);
@@ -569,6 +575,7 @@ export class Game {
     if (e.group === 'doba') this.dobaSpot = { x: e.pos.x, z: e.pos.z };
     this.rpg.gainExp(Math.round(e.exp * (this.sys.buff('exp') ? 1.1 : 1)));
     this.sys.progress('kill');
+    if (e.elite || e.monster?.elite) this.sys.s.stats.elites = (this.sys.s.stats.elites || 0) + 1;
     if (e.monster) {
       const b = (this.sys.s.bestiary ??= {});
       if (!b[e.tag]) this.toast(`Bách quái phổ: ghi chép <b>${e.name}</b>`, 2);
@@ -581,6 +588,16 @@ export class Game {
     if (e.boss) this.camRig.shake = 1.2;
   }
 
+  checkTitles() {
+    const s = this.sys.s, got = (s.titles ??= ['newbie']);
+    for (const t of TITLES) if (!got.includes(t.id) && t.cond(s, this)) {
+      got.push(t.id);
+      this.toast(`<span class="han">${t.han}</span> Mở khoá danh hiệu <b style="color:${t.color}">${t.name}</b>`, 4);
+      this.mhud.log('system', `Đạt danh hiệu <b style="color:${t.color}">${t.name}</b>`);
+      this.audio.chime();
+    }
+  }
+
   alertNearby(src) {
     for (const e of this.enemies) if (!e.dead && e !== src && e.pos.distanceTo(src.pos) < 16) e.alerted = true;
   }
@@ -591,9 +608,14 @@ export class Game {
     if (Math.random() < 0.35 && !e.boss) drops.push(['bounty', 1]);
     if (Math.random() < (e.boss ? 0.8 : 0.12)) drops.push(['qipill', 1]);
     if (e.tag === 'boss') drops.push(['dao', 1]);
+    const lv = e.lv || this.rpg.level;
+    const big = e.boss || e.elite || e.monster?.elite;
+    if (Math.random() < (big ? 1 : 0.14)) drops.push(['gear', dropGear(lv, big)]);
+    if (e.boss && Math.random() < 0.5) drops.push(['gear', dropGear(lv + 2, true)]);
     if (e.tag === 'hanbang') drops.push(['silk', 1]);
     for (const [kind, amount] of drops) {
       const model = { gold: 'coin_pile', potion: 'potion_1', qipill: 'potion_2', bounty: 'scroll_1' }[kind] || 'chest_wood';
+      if (kind === 'gear') this.vfx.pillar(e.pos.clone(), new THREE.Color(RARITY[amount.rarity].color).getHex(), 2 + amount.rarity);
       const m = (await loadKit(model)).clone(true);
       const box = new THREE.Box3().setFromObject(m), size = box.getSize(new THREE.Vector3());
       m.scale.setScalar(0.45 / Math.max(size.x, size.y, size.z));
@@ -601,7 +623,7 @@ export class Game {
       const pos = e.pos.clone().add(new THREE.Vector3(Math.cos(a) * 0.8, 0.3, Math.sin(a) * 0.8));
       m.position.copy(pos);
       this.scene.add(m);
-      this.loot.push({ mesh: m, kind, amount, t: 0, base: pos.y });
+      this.loot.push({ mesh: m, kind, amount, t: 0, base: pos.y, color: kind === 'gear' ? new THREE.Color(RARITY[amount.rarity].color).getHex() : null });
     }
   }
 
@@ -613,6 +635,14 @@ export class Game {
   collect(l) {
     const r = this.rpg;
     if (l.kind === 'gold') { r.addGold(l.amount); this.toast(`+${l.amount} lượng bạc`, 1.5); }
+    else if (l.kind === 'gear') {
+      const it = l.amount, R = RARITY[it.rarity];
+      r.addGear(it);
+      this.toast(`Nhặt được <b style="color:${R.color}">[${R.name}] ${it.name}</b> Lv.${it.lv}`, 2.2);
+      this.mhud.log('system', `Nhặt được <b style="color:${R.color}">[${R.name}] ${it.name}</b>`);
+      if (it.rarity >= 3) this.mhud.announce(`<b>${this.profile.name}</b> nhặt được <b style="color:${R.color}">${it.name}</b> phẩm ${R.name}!`);
+      this.hud.updateBadges?.();
+    }
     else if (ITEMS[l.kind]?.type === 'equip') r.giveEquip(l.kind);
     else { r.add(l.kind, l.amount); this.toast(`Nhặt được <b>${ITEMS[l.kind].name}</b> ×${l.amount}`, 1.8); this.mhud.log('system', `Nhặt được <b class="cp">${ITEMS[l.kind].name}</b> ×${l.amount}`); }
     this.audio.coin();
@@ -627,7 +657,7 @@ export class Game {
       const d = l.mesh.position.distanceTo(p);
       if (d < (this.companions.pet?.root.visible ? 12 : 4.5) && l.t > 0.6) l.mesh.position.lerp(p.clone().setY(p.y + 0.8), Math.min(1, dt * 8));
       else l.mesh.position.y = l.base + Math.sin(l.t * 3) * 0.12;
-      if (Math.random() < 0.1) this.fx.sparkle(l.mesh.position, l.kind === 'gold' ? 0xffd27a : 0xbfe6ff);
+      if (Math.random() < (l.color ? 0.4 : 0.1)) this.fx.sparkle(l.mesh.position, l.color || (l.kind === 'gold' ? 0xffd27a : 0xbfe6ff));
       if (d < 1 && l.t > 0.6) { this.collect(l); this.scene.remove(l.mesh); this.loot.splice(i, 1); }
     }
     for (const h of this.herbs) {
@@ -839,6 +869,16 @@ export class Game {
       monster: m, reach: Math.max(1.6, m.h * 0.75), zone: opts.zone, lv: m.lv,
     });
     e.radius = Math.max(0.35, m.h * 0.28);
+    // quái tinh anh ngẫu nhiên: to hơn, trâu hơn, chắc chắn rơi trang bị tốt
+    if (opts.zone && !opts.boss && !m.elite && Math.random() < 0.07) {
+      e.elite = true;
+      e.maxHp = e.hp = Math.round(e.maxHp * 3.2);
+      e.dmg = Math.round(e.dmg * 1.5);
+      e.exp *= 3; e.gold *= 3;
+      e.name = 'Hung ' + e.name;
+      ch.root.scale.multiplyScalar(1.3);
+      e.radius *= 1.3;
+    }
     e.placeAt(x, z, Math.random() * 6.28);
     this.scene.add(ch.root);
     this.enemies.push(e);
@@ -990,6 +1030,7 @@ export class Game {
       if (input.pressed('KeyL')) open(() => this.ui.openBestiary(this));
       if (input.pressed('Backslash') || input.pressed('KeyY')) open(() => this.ui.openHub(this));
       if (input.pressed('KeyH')) this.toggleMount();
+      if (input.pressed('KeyX') && !this.fury.activate() && this.fury.rage < 100) this.toast('Nộ khí chưa đầy', 1);
       if (input.pressed('AltLeft') || input.pressed('Backquote')) {
         if (this.input.locked) { this.cursorMode = true; this.input.unlock(); } else { this.cursorMode = false; this.input.lock(); }
       }
@@ -1022,6 +1063,8 @@ export class Game {
     for (const a of actors) if (!a.dead) a.separate(actors);
     this.combat.update(adt);
     this.fx.update(dt);
+    this.fury.update(dt);
+    if ((this.titleT -= dt) <= 0) { this.titleT = 4; this.checkTitles(); }
     this.updateLoot(dt);
     // dọn xác đã nằm lâu
     if (this.enemies.length > 40) {

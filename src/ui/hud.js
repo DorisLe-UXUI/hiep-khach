@@ -1,3 +1,4 @@
+import { TITLES } from '../game/titles.js';
 import * as THREE from 'three';
 import { WORLD_SIZE, PLACES } from '../world/layout.js';
 import { ZONES } from '../game/bestiary.js';
@@ -42,30 +43,33 @@ export class HUD {
 
   buildMenus() {
     const g = this.game;
+    // hàng chính: chức năng hay dùng; hàng phụ gom trong nút "Thêm" để HUD không rối
+    const rail = [
+      ['bag', 'Túi đồ', 'bag', 'I', () => g.ui.openBag(g)],
+      ['gear', 'Trang bị', 'crown', '', () => g.ui.openGear(g)],
+      ['skill', 'Võ học', 'meditation', 'K', () => g.ui.openSkills(g)],
+      ['quest', 'Nhiệm vụ', 'quill', 'J', () => g.ui.openQuests(g)],
+      ['map', 'Bản đồ', 'map', 'M', () => g.ui.openMap(g)],
+      ['hub', 'Chức năng', 'gear', 'Y', () => g.ui.openHub(g)],
+    ];
     const top = [
       ['welfare', 'Phúc lợi', 'present', 'O', () => g.ui.openWelfare(g)],
       ['events', 'Hoạt động', 'calendar', 'N', () => g.ui.openEvents(g)],
       ['rank', 'Xếp hạng', 'podium', 'P', () => g.ui.openRanking(g)],
       ['guild', 'Bang hội', 'pagoda', 'G', () => g.ui.openGuild(g)],
-      ['fashion', 'Thời trang', 'robe', 'U', () => g.ui.openFashion(g)],
       ['team', 'Tổ đội', 'team', '', () => g.ui.openParty(g)],
-      ['life', 'Sinh hoạt', 'rod', '', () => g.ui.openLife(g)],
-    ];
-    const rail = [
-      ['bag', 'Túi đồ', 'bag', 'I', () => g.ui.openBag(g)],
-      ['skill', 'Võ học', 'meditation', 'K', () => g.ui.openSkills(g)],
-      ['quest', 'Nhiệm vụ', 'quill', 'J', () => g.ui.openQuests(g)],
-      ['map', 'Bản đồ', 'map', 'M', () => g.ui.openMap(g)],
+      ['fashion', 'Thời trang', 'robe', 'U', () => g.ui.openFashion(g)],
       ['craft', 'Sản xuất', 'cauldron', 'T', () => g.ui.openCraft(g)],
       ['mount', 'Thú cưỡi', 'horse', 'B', () => g.ui.openCompanions(g)],
       ['bestiary', 'Bách quái', 'dragon', 'L', () => g.ui.openBestiary(g)],
-      ['hub', 'Chức năng', 'gear', 'Y', () => g.ui.openHub(g)],
+      ['life', 'Sinh hoạt', 'rod', '', () => g.ui.openLife(g)],
     ];
     const btn = ([id, n, ic, key]) => `<button class="mi" data-mi="${id}" title="${n} (${key})"><span class="mi-ic">${icon(ic)}</span><span class="mi-n">${n}</span><i class="badge"></i></button>`;
     $('topbar').innerHTML = top.map(btn).join('');
-    $('rail').innerHTML = rail.map(btn).join('');
+    $('rail').innerHTML = rail.map(btn).join('') + `<button class="mi more" data-mi="more" title="Thêm chức năng"><span class="mi-ic">${icon('plus')}</span><span class="mi-n">Thêm</span><i class="badge"></i></button>`;
+    document.querySelector('[data-mi="more"]').onclick = () => document.body.classList.toggle('menus-open');
     for (const [id, , , , fn] of [...top, ...rail]) {
-      document.querySelector(`[data-mi="${id}"]`).onclick = () => { g.input.unlock(); g.cursorMode = false; fn(); };
+      document.querySelector(`[data-mi="${id}"]`).onclick = () => { g.input.unlock(); g.cursorMode = false; document.body.classList.remove('menus-open'); fn(); };
     }
   }
 
@@ -77,6 +81,8 @@ export class HUD {
     set('skill', g.rpg.points > 0);
     set('events', Object.keys(sy.s.dungeonRuns).length === 0);
     set('guild', !sy.s.guild);
+    set('more', ['welfare', 'events', 'guild'].some((id) => document.querySelector(`[data-mi="${id}"] .badge.on`)));
+    set('gear', g.rpg.gearBag.some((it) => !g.rpg.gear[it.slot] || it.rarity > g.rpg.gear[it.slot].rarity));
   }
 
   buildMinimap() {
@@ -214,10 +220,11 @@ export class HUD {
       const w = new THREE.Vector3(mk.x, y, mk.z);
       const d = Math.hypot(mk.x - p.pos.x, mk.z - p.pos.z);
       let s = this.project(w);
-      const m = 48;
-      if (s.behind) { s.x = innerWidth - s.x; s.y = innerHeight - m; }
-      s.x = Math.min(innerWidth - m, Math.max(m, s.x));
-      s.y = Math.min(innerHeight - m, Math.max(m + 20, s.y));
+      // giữ dấu chỉ đường trong vùng giữa màn, không đè lên khung nhân vật, menu, minimap, nút kỹ năng
+      const mx = Math.min(250, innerWidth * 0.3), top = 130, bot = 170;
+      if (s.behind) { s.x = innerWidth - s.x; s.y = innerHeight - bot; }
+      s.x = Math.min(innerWidth - mx, Math.max(mx, s.x));
+      s.y = Math.min(innerHeight - bot, Math.max(top, s.y));
       mEl.style.display = 'flex';
       mEl.style.left = s.x + 'px';
       mEl.style.top = s.y + 'px';
@@ -241,7 +248,8 @@ export class HUD {
       if (hpK !== undefined) el.querySelector('.tr div').style.width = hpK * 100 + '%';
     };
     if (document.body.classList.contains('mmo') && !g.dialogOpen) {
-      tag(p, p.pos, 2.35, 'me', `<div class="title">${realmOf(g.rpg.level)}</div><div class="nm">${g.profile.name}</div>`);
+      const tt = TITLES.find((t) => t.id === g.rpg.title);
+      tag(p, p.pos, 2.35, 'me', `${tt ? `<div class="ptitle" style="--tc:${tt.color}">${tt.name}</div>` : ''}<div class="title">${realmOf(g.rpg.level)}</div><div class="nm">${g.profile.name}</div>`);
       for (const n of g.npcs) {
         if (!n.root.visible || n.pos.distanceTo(p.pos) > 30) continue;
         const role = ROLES[n.id] || ROLES[n.speaker] || 'Thôn dân';
@@ -254,7 +262,7 @@ export class HUD {
       if (d > 32) continue;
       const lv = e.lv || Math.max(1, Math.round(e.exp / 12));
       const h = e.monster ? e.monster.h + 0.45 : 2.25;
-      tag(e, e.pos, h, 'foe' + (e.monster?.elite ? ' elite' : ''), `<div class="nm"><span class="lvl">Lv.${lv}</span>${e.name}${e.monster?.elite ? ' <span class="elite-tag">Tinh anh</span>' : ''}</div><div class="tr"><div></div></div>`, e.hp / e.maxHp);
+      tag(e, e.pos, h, 'foe' + (e.monster?.elite || e.elite ? ' elite' : ''), `<div class="nm"><span class="lvl">Lv.${lv}</span>${e.name}${e.monster?.elite || e.elite ? ' <span class="elite-tag">Tinh anh</span>' : ''}</div><div class="tr"><div></div></div>`, e.hp / e.maxHp);
     }
     for (const [k, el] of this.plates) if (!seen.has(k)) { el.remove(); this.plates.delete(k); }
 
@@ -294,7 +302,7 @@ export class HUD {
       g.strokeStyle = 'rgba(180,50,40,.55)'; g.fillStyle = 'rgba(180,50,40,.12)'; g.lineWidth = 1.5; g.setLineDash([4, 3]);
       g.beginPath(); g.arc((z.x - p.pos.x) * k, (z.z - p.pos.z) * k, z.r * k, 0, Math.PI * 2); g.fill(); g.stroke(); g.setLineDash([]);
     }
-    for (const e of this.game.enemies) if (!e.dead) dot(e.pos.x, e.pos.z, e.boss || e.monster?.elite ? '#ff2a2a' : '#b8332b', e.boss || e.monster?.elite ? 5 : 2.5);
+    for (const e of this.game.enemies) if (!e.dead) dot(e.pos.x, e.pos.z, e.boss || e.monster?.elite || e.elite ? '#ff2a2a' : '#b8332b', e.boss || e.monster?.elite || e.elite ? 5 : 2.5);
     for (const n of this.game.npcs) if (n.root.visible) dot(n.pos.x, n.pos.z, '#2f6f5a', 3.2);
     const m = this.game.markerPos();
     if (m) {

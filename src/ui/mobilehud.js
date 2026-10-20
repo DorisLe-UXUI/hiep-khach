@@ -44,6 +44,7 @@ export class MobileHUD {
         <button class="m-sk s5" data-act="block"><span class="ico-wrap">${icon('shield')}</span></button>
         <button class="m-sk s6" data-act="u1"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
         <button class="m-sk s7" data-act="u2"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
+        <button class="m-rage" data-act="rage" title="Bộc phát nộ khí (X)"><i class="rg-fill"></i><span class="han">怒</span><b class="rg-t">0%</b></button>
         <button class="m-auto" data-act="auto"><span>Auto</span></button>
       </div>
       <div id="m-quick">
@@ -58,6 +59,7 @@ export class MobileHUD {
       </div>
       <div id="m-status"><span id="m-clock"></span> · EXP nhân vật <b id="m-exp-t">0%</b></div>
       <div id="m-ann"></div>
+      <div id="m-combo" class="hidden"><b>0</b><span>Liên kích</span><small></small></div>
       <div id="m-camhint">🖱 Kéo chuột / vuốt màn hình để xoay & nghiêng góc nhìn · Cuộn hoặc chụm 2 ngón để phóng to · Phím ← → ↑ ↓</div>`;
     document.getElementById('hud').appendChild(root);
 
@@ -107,6 +109,7 @@ export class MobileHUD {
     }
     if (!down) return;
     if (act === 'auto') { g.auto.toggle(); return; }
+    if (act === 'rage') { if (!g.fury.activate()) g.toast('Nộ khí chưa đầy — đánh trúng hoặc trúng đòn để tích nộ', 1.5); return; }
     if (act === 'mount') g.toggleMount();
     if (act === 'pet') { if (g.sys.s.pet) { g.sys.s.petOut = g.sys.s.petOut === false; g.spawnPet(); } else g.ui.openCompanions(g, 'pet'); }
     if (act === 'qipill') g.rpg.use('qipill');
@@ -199,6 +202,20 @@ export class MobileHUD {
       b.classList.toggle('locked', locked);
       b.querySelector('.lock b').textContent = locked ? `Cấp ${sk.lv}` : '';
     }
+    // nộ khí & liên kích
+    const fu = g.fury, rb = document.querySelector('.m-rage');
+    const rk = fu.burst > 0 ? fu.burst / 10 : fu.rage / 100;
+    rb.querySelector('.rg-fill').style.background = `conic-gradient(${fu.burst > 0 ? '#ffd27a' : '#ff5a2a'} ${rk * 360}deg, rgba(0,0,0,.55) 0)`;
+    rb.querySelector('.rg-t').textContent = fu.burst > 0 ? Math.ceil(fu.burst) + 's' : Math.floor(fu.rage) + '%';
+    rb.classList.toggle('full', fu.rage >= 100 && !fu.burst);
+    rb.classList.toggle('on', fu.burst > 0);
+    const cb = $('m-combo');
+    cb.classList.toggle('hidden', fu.combo < 3);
+    if (fu.combo >= 3) {
+      cb.querySelector('b').textContent = fu.combo;
+      cb.querySelector('small').textContent = fu.mult() > 1 ? `Sát thương +${Math.round((fu.mult() - 1) * 100)}%` : '';
+      cb.style.setProperty('--k', Math.max(0, fu.comboT / 3));
+    }
     // khung mục tiêu
     const tg = g.currentTarget();
     $('m-target').classList.toggle('hidden', !tg);
@@ -206,7 +223,7 @@ export class MobileHUD {
       const pct = Math.max(0, tg.hp / tg.maxHp);
       $('mt-img').src = tg.monster ? `/assets/thumbs/mon_${tg.tag}.png` : (g.portraits[tg.tag] || g.portraits.doba || '');
       $('mt-lv').textContent = 'C.' + (tg.lv || Math.max(1, Math.round(tg.exp / 12)));
-      $('mt-name').innerHTML = `${tg.name}${tg.monster?.elite || tg.boss ? ' <span class="elite-tag">Tinh anh</span>' : ''}`;
+      $('mt-name').innerHTML = `${tg.name}${tg.monster?.elite || tg.elite || tg.boss ? ' <span class="elite-tag">Tinh anh</span>' : ''}`;
       $('mt-hp').style.width = pct * 100 + '%';
       $('mt-hp-t').textContent = `${Math.ceil(tg.hp)} / ${tg.maxHp}`;
       $('mt-pct').textContent = Math.round(pct * 100) + '%';

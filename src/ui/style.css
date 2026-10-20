@@ -651,7 +651,10 @@ body:not(.cursor-free) .mi { opacity: .82; }
 body.mmo #mhud { display: block; }
 body.mmo #hero-frame, body.mmo #skills, body.mmo #objective, body.mmo #crosshair, body.mmo #cursor-hint, body.mmo #tip { display: none !important; }
 body.mmo #rail { top: 14px; left: auto; right: 240px; transform: none; flex-direction: row; }
-body.mmo #topbar { top: 76px; left: auto; right: 240px; }
+body.mmo #topbar { top: 80px; left: auto; right: 240px; display: none; flex-wrap: wrap; justify-content: flex-end; max-width: 290px; gap: 6px 4px; padding: 10px 8px 6px; background: linear-gradient(180deg, rgba(30,20,10,.92), rgba(12,8,4,.88)); border: 1px solid #9a7638; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.55); z-index: 5; }
+body.mmo.menus-open #topbar { display: flex; }
+body.mmo.menus-open [data-mi="more"] .mi-ic { transform: rotate(45deg); }
+.mi.more .mi-ic { transition: transform .2s; }
 body.mmo .mi { width: 50px; opacity: 1 !important; } body.mmo .mi-ic { width: 40px; height: 40px; } body.mmo .mi-n { font-size: 10px; }
 body.mmo .mi-ic .ico { width: 24px !important; height: 24px !important; }
 #mhud > * { pointer-events: auto; }
@@ -689,7 +692,8 @@ body.mmo .mi-ic .ico { width: 24px !important; height: 24px !important; }
 .joy-knob { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, rgba(255,255,255,.75), rgba(200,210,230,.4) 60%, rgba(120,130,150,.35)); border: 2px solid rgba(255,255,255,.6); box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: transform .08s; }
 #m-joy.active .joy-knob { transition: none; }
 
-#m-actions { position: absolute; right: 26px; bottom: 26px; width: 300px; height: 300px; }
+#m-actions { position: absolute; right: 22px; bottom: 22px; width: 320px; height: 320px; pointer-events: none; }
+#m-actions button { pointer-events: auto; }
 #m-actions button { position: absolute; display: grid; place-items: center; padding: 0; border-radius: 50%; touch-action: none; cursor: pointer; }
 #m-actions .ico-wrap { display: grid; place-items: center; position: relative; z-index: 1; }
 .m-atk { right: 10px; bottom: 10px; width: 118px; height: 118px; background: radial-gradient(circle at 50% 35%, #4a8ad0, #163a70 60%, #0a1a38); border: 4px solid #8ad0ff; box-shadow: 0 0 0 4px rgba(0,0,0,.5), 0 0 30px rgba(80,170,255,.5), inset 0 4px 12px rgba(255,255,255,.35); }
@@ -701,14 +705,26 @@ body.mmo .mi-ic .ico { width: 24px !important; height: 24px !important; }
 .m-sk .cd { position: absolute; inset: 0; border-radius: 50%; }
 .m-sk .nm { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font: 700 10px var(--serif); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000; white-space: nowrap; pointer-events: none; }
 .m-sk.nomp { filter: grayscale(.8) brightness(.7); }
-.m-sk.s1 { right: 150px; bottom: 6px; } .m-sk.s2 { right: 140px; bottom: 96px; } .m-sk.s3 { right: 72px; bottom: 156px; }
-.m-sk.s4 { right: 214px; bottom: 140px; width: 60px; height: 60px; } .m-sk.s5 { right: 0; bottom: 162px; width: 60px; height: 60px; }
+/* vòng kỹ năng: 4 chiêu trên cung trong (r=135), 5 nút nhỏ trên cung ngoài (r=215), tâm là nút đánh */
+.m-sk { width: 66px !important; height: 66px !important; }
+.m-sk .nm { display: none; }
+.m-sk.s1 { right: 171px; bottom: 36px; } .m-sk.s2 { right: 153px; bottom: 104px; }
+.m-sk.s6 { right: 104px !important; bottom: 153px !important; } .m-sk.s7 { right: 36px !important; bottom: 171px !important; }
+.m-sk.s3, .m-sk.s4, .m-sk.s5, .m-rage, .m-auto { width: 54px !important; height: 54px !important; }
+.m-auto { right: 257px !important; bottom: 42px !important; font-size: 13px !important; }
+.m-rage { right: 241px !important; bottom: 124px !important; }
+.m-sk.s3 { right: 194px !important; bottom: 194px !important; }
+.m-sk.s4 { right: 124px !important; bottom: 241px !important; }
+.m-sk.s5 { right: 42px !important; bottom: 257px !important; }
+.m-sk.s3 .ico, .m-sk.s4 .ico, .m-sk.s5 .ico { width: 28px !important; height: 28px !important; }
+.m-sk .ico { width: 36px !important; height: 36px !important; }
+
 .m-sk.s4 .ico, .m-sk.s5 .ico { width: 30px !important; height: 30px !important; }
 .m-auto { right: 236px; bottom: 34px; width: 62px; height: 62px; font: 800 15px var(--serif); color: #fff; background: radial-gradient(circle at 50% 35%, #5a4a30, #1a120a 70%); border: 3px solid #d8b062; text-shadow: 0 1px 2px #000; }
 .m-auto.on { background: radial-gradient(circle at 50% 35%, #ffb84a, #b85a10 70%); box-shadow: 0 0 20px #ffb84a; animation: pulse 1.4s infinite; }
 #m-actions button.down { transform: scale(.92); filter: brightness(1.25); }
 
-#m-quick { position: absolute; right: 340px; bottom: 210px; display: flex; gap: 8px; }
+#m-quick { position: absolute; right: 24px; bottom: 350px; display: flex; gap: 8px; }
 #m-quick button { position: relative; width: 50px; height: 50px; display: grid; place-items: center; padding: 4px; background: radial-gradient(circle at 50% 35%, #4a3a2a, #120c08 75%); border: 2px solid #9a7638; border-radius: 50%; }
 #m-quick .ico { width: 26px; height: 26px; }
 #m-quick .ico.gi svg path { fill: url(#gi-gold); }
@@ -749,19 +765,20 @@ body.mmo .dmg.heal { color: #6aff8a !important; }
   #m-actions { transform: scale(.82); transform-origin: bottom right; }
   #m-joy { left: 30px; bottom: 40px; transform: scale(.85); }
   #m-chat { width: 300px; transform: translateX(-40%); }
-  #m-quick { right: 270px; bottom: 180px; }
+  #m-quick { right: 18px; bottom: 296px; }
 }
 
 @media (max-width: 1100px) {
   body.mmo #rail, body.mmo #topbar { right: 228px; gap: 2px; }
   body.mmo .mi { width: 40px; } body.mmo .mi-ic { width: 34px; height: 34px; } body.mmo .mi-n { display: none; }
-  body.mmo #topbar { top: 56px; }
+  body.mmo #topbar { top: 60px; }
+  body.mmo.menus-open #topbar .mi-n { display: block; font-size: 9.5px; }
   .m-info { width: 170px; } .m-face { width: 70px; height: 70px; }
   #m-quest { top: 96px; width: 210px; }
   #m-chat { left: 10px; bottom: 26px; transform: none; width: 260px; }
   #mc-log { min-height: 70px; font-size: 11.5px; }
   #m-joy { left: 290px; bottom: 30px; }
-  #m-quick { right: 250px; bottom: 175px; }
+
 }
 
 .plate.elite .nm { color: #ffb84a; font-size: 13px; }
@@ -813,7 +830,7 @@ body.mmo .dmg.heal { color: #6aff8a !important; }
 .mq-item > .ico { width: 20px; height: 20px; flex: none; margin-top: 2px; }
 .mq-item > .ico.gi svg path { fill: url(#gi-gold); }
 .mq-item.zone b { color: #8fe08a !important; }
-#m-camhint { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); padding: 4px 14px; font-size: 12px; color: #fff; background: rgba(0,0,0,.45); border-radius: 999px; text-shadow: 0 1px 2px #000; pointer-events: none !important; animation: hintFade 14s forwards; }
+#m-camhint { position: absolute; left: 50%; top: 84px; max-width: 60vw; text-align: center; transform: translateX(-50%); padding: 4px 14px; font-size: 12px; color: #fff; background: rgba(0,0,0,.45); border-radius: 999px; text-shadow: 0 1px 2px #000; pointer-events: none !important; animation: hintFade 9s forwards; }
 @keyframes hintFade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 
 /* ───────── bản đồ giang hồ (mới) ───────── */
@@ -844,14 +861,14 @@ body.mmo .dmg.heal { color: #6aff8a !important; }
 .map-legend { font-size: 12px !important; }
 
 /* nút tuyệt kỹ khoá theo cấp */
-.m-sk.s6 { right: 230px; bottom: 110px; } .m-sk.s7 { right: 182px; bottom: 196px; width: 64px; height: 64px; }
+
 .m-sk.s7 { border-color: #ffb84a; box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 18px rgba(255,160,60,.45), inset 0 3px 10px rgba(255,255,255,.25); }
 .m-sk .lock { position: absolute; inset: 0; z-index: 3; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(10,14,20,.72); border-radius: 50%; }
 .m-sk .lock .ico { width: 24px !important; height: 24px !important; }
 .m-sk .lock .ico.gi svg path { fill: #c8d0dc !important; }
 .m-sk .lock b { font: 700 10px var(--serif); color: #e8eef6; }
 .m-sk.locked .lock { display: flex; }
-.m-auto { right: 268px !important; bottom: 20px !important; }
+
 /* khung mục tiêu */
 #m-target { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 0; z-index: 2; }
 .mt-face { position: relative; z-index: 2; width: 62px; height: 62px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 40%, #6a3a2a, #1a0c08); border: 3px solid #e8c070; box-shadow: 0 0 0 2px #4a1a10, 0 4px 12px rgba(0,0,0,.6); }
@@ -920,3 +937,59 @@ body.mmo #boss { top: 84px; }
 .hub-i .mi-ic { width: 52px; height: 52px; }
 .hub-i kbd { position: absolute; right: 6px; top: 6px; }
 @media (max-width: 760px) { .party-slots, .life-cards { grid-template-columns: 1fr 1fr; } .fam-row, .master-intro { grid-template-columns: 1fr; } }
+
+/* ───────── Trang bị ngẫu nhiên ───────── */
+.gear { display: grid; grid-template-columns: 300px 1fr; gap: 18px; margin-top: 14px; }
+.gear-doll { display: flex; flex-direction: column; gap: 12px; }
+.gp { padding: 8px 12px; border: 1px solid var(--edge-soft); border-radius: 8px; background: linear-gradient(90deg, rgba(255,200,90,.14), transparent); display: flex; align-items: center; gap: 6px; }
+.gp b { color: var(--gold-hi); font-size: 18px; } .gp.sm b { font-size: 14px; } .gp .ico { width: 18px; height: 18px; }
+.gslots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.gslot { display: flex; flex-direction: column; align-items: center; gap: 3px; } .gslot small { font-size: 10px; color: var(--ink-faint); }
+.gcell { position: relative; width: 58px; height: 58px; border-radius: 8px; border: 2px solid var(--rc, #555); background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--rc, #555) 35%, #1a1612), #0e0c0a 75%); display: grid; place-items: center; padding: 0; cursor: pointer; box-shadow: inset 0 0 12px color-mix(in srgb, var(--rc, #000) 40%, transparent); }
+.gcell .ico { width: 30px; height: 30px; opacity: .92; }
+.gcell.r3, .gcell.r4 { animation: gglow 2.2s ease-in-out infinite; }
+@keyframes gglow { 50% { box-shadow: 0 0 14px var(--rc), inset 0 0 14px color-mix(in srgb, var(--rc) 50%, transparent); } }
+.gcell.empty { border: 1px dashed var(--edge-soft); background: rgba(0,0,0,.25); cursor: default; }
+.gcell.sel { outline: 2px solid #fff; outline-offset: 2px; }
+.gcell .gh { position: absolute; left: 3px; top: 1px; font: 700 11px var(--serif); color: var(--rc); text-shadow: 0 1px 2px #000; }
+.gcell .ge { position: absolute; right: 3px; top: 1px; font: 800 10px sans-serif; color: #8aff8a; text-shadow: 0 1px 2px #000; }
+.gcell .gl { position: absolute; right: 3px; bottom: 1px; font: 700 10px sans-serif; color: #ddd; text-shadow: 0 1px 2px #000; }
+.ggrid { display: grid; grid-template-columns: repeat(auto-fill, 58px); gap: 8px; max-height: 210px; overflow-y: auto; padding: 4px; }
+.rleg { margin-left: auto; display: flex; gap: 8px; font-size: 11px; } .rleg i { font-style: normal; }
+.gsalv { display: flex; gap: 8px; align-items: center; margin: 10px 0; font-size: 13px; color: var(--ink-faint); }
+.gsalv select { background: #1a1612; color: var(--ink); border: 1px solid var(--edge-soft); border-radius: 6px; padding: 4px 6px; }
+.gd-cols { display: flex; gap: 12px; flex-wrap: wrap; }
+.gd { flex: 1; min-width: 220px; border: 1px solid color-mix(in srgb, var(--rc) 60%, transparent); border-radius: 8px; padding: 10px; background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 14%, transparent), transparent 60%); }
+.gd.cmp { opacity: .85; } .gd.cmp > b { display: block; margin: 2px 0 6px; }
+.gd-h { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; } .gd-h small { display: block; color: var(--ink-faint); font-size: 11px; } .gd-h em { color: #8aff8a; font-style: normal; }
+.gs { display: flex; gap: 8px; font-size: 13px; padding: 2px 0; } .gs span { color: var(--ink-faint); flex: 1; } .gs b { color: var(--ink); }
+.gs.score { border-top: 1px solid var(--edge-soft); margin-top: 6px; padding-top: 6px; } .gs.score b { color: var(--gold-hi); }
+.gs i { font-style: normal; font-size: 11px; } .gs i.up { color: #6fd86a; } .gs i.dn { color: #ff6a5a; }
+.acts small { opacity: .75; font-size: 10px; } button.danger { color: #ff8a7a; border-color: #8a3a32; }
+.titles { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.title-row { display: grid; grid-template-columns: 190px 1fr auto; gap: 12px; align-items: center; padding: 8px 12px; border: 1px solid var(--edge-soft); border-radius: 8px; background: rgba(0,0,0,.2); }
+.title-row.on { border-color: var(--gold); background: rgba(255,200,90,.1); } .title-row.locked { opacity: .55; }
+.tb { display: flex; flex-direction: column; align-items: center; padding: 6px; border-radius: 6px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tc) 30%, transparent), transparent); border-top: 1px solid var(--tc); border-bottom: 1px solid var(--tc); }
+.tb .han { color: var(--tc); font-size: 18px; } .tb b { font-size: 12px; color: #fff; }
+.ti small { display: block; color: var(--ink-faint); font-size: 11px; } .ti span { font-size: 13px; color: #9fe39a; }
+.plate .ptitle { white-space: nowrap; font: 700 11px var(--serif); color: var(--tc); text-shadow: 0 0 6px var(--tc), 0 1px 2px #000; letter-spacing: 1px; }
+@media (max-width: 900px) { .rleg { display: none !important; } }
+@media (max-width: 760px) { .gear { grid-template-columns: 1fr; } .title-row { grid-template-columns: 1fr auto; } .title-row .ti { grid-column: 1; } }
+
+/* ───────── Nộ khí & liên kích ───────── */
+.m-rage { position: absolute; right: 340px; bottom: 16px; width: 64px; height: 64px; border-radius: 50%; border: 3px solid #e8b080; background: #2a120c; overflow: hidden; display: grid; place-items: center; box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.6); pointer-events: auto; }
+.m-rage .rg-fill { position: absolute; inset: 0; border-radius: 50%; }
+.m-rage .han { position: relative; font-size: 20px; color: #fff; text-shadow: 0 0 8px #ff4a1a, 0 1px 2px #000; margin-top: -8px; }
+.m-rage .rg-t { position: absolute; bottom: 6px; font: 800 10px sans-serif; color: #fff; text-shadow: 0 1px 2px #000; }
+.m-rage.full { animation: ragepulse .8s ease-in-out infinite; border-color: #ffd27a; }
+.m-rage.on { border-color: #fff3c0; box-shadow: 0 0 22px #ff7a2a, 0 0 0 3px rgba(0,0,0,.5); }
+@keyframes ragepulse { 50% { box-shadow: 0 0 26px #ff5a1a, 0 0 0 3px rgba(0,0,0,.5); transform: scale(1.07); } }
+#m-combo { position: absolute; right: 26%; top: 34%; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; opacity: calc(.35 + var(--k, 1) * .65); }
+#m-combo b { font: italic 900 52px/1 var(--serif); color: #ffd27a; text-shadow: 0 0 12px #ff7a2a, 0 3px 0 #7a2a0a, 0 4px 8px #000; }
+#m-combo span { font: 700 14px var(--serif); color: #fff; text-shadow: 0 1px 3px #000; letter-spacing: 2px; }
+#m-combo small { font: 700 12px sans-serif; color: #ff9a6a; text-shadow: 0 1px 3px #000; }
+#m-combo.hidden { display: none; }
+body.mmo #topbar { display: none; grid-template-columns: repeat(5, 58px); max-width: none; }
+body.mmo.menus-open #topbar { display: grid; }
+body.mmo #topbar .mi { width: 58px; } body.mmo #topbar .mi-n { display: block; font-size: 10px; max-width: 58px; overflow: hidden; text-overflow: ellipsis; }
+body.mmo #topbar ~ #m-camhint, body.menus-open #m-camhint { display: none; }

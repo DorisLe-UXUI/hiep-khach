@@ -12,6 +12,7 @@ export const ITEMS = {
   potion: { name: 'Kim sang dược', han: '金創藥', icon: 'potion', type: 'consumable', price: 20, desc: 'Hồi 45% khí huyết. Phím R.' },
   qipill: { name: 'Hồi khí đan', han: '回氣丹', icon: 'flask', type: 'consumable', price: 25, desc: 'Hồi 60% nội lực.' },
   herb: { name: 'Linh chi thảo', han: '靈芝草', icon: 'herb', type: 'material', price: 12, sell: 8, desc: 'Thảo dược quý mọc trong rừng. Có thể bán hoặc dùng để hồi 20 khí huyết.' },
+  essence: { name: 'Tinh thạch', han: '精石', icon: 'nugget', type: 'material', sell: 3, desc: 'Phân giải trang bị mà có. Dùng để cường hoá và tẩy luyện trang bị.' },
   bounty: { name: 'Lệnh bài sơn tặc', han: '賊令', icon: 'skull', type: 'material', sell: 15, desc: 'Lệnh bài thu được từ sơn tặc. Bán cho chưởng quỹ lấy bạc.' },
   // vũ khí
   iron_sword: { name: 'Thiết kiếm', han: '鐵劍', icon: 'sword', type: 'equip', slot: 'weapon', atk: 0, model: 'sword', price: 0, desc: 'Thanh kiếm sắt sư phụ để lại. Bình thường nhưng bền bỉ.' },
@@ -37,6 +38,9 @@ export const SKILLS = {
   guard: { name: 'Hộ thể thần công', han: '護體神功', icon: 'shield', max: 5, desc: (l) => `Giảm thêm ${l * 4}% sát thương nhận vào.` },
 };
 
+import { makeGear, RARITY, gearScore } from './gear.js';
+import { TITLES } from './titles.js';
+
 export class RPG {
   constructor(game) {
     this.g = game;
@@ -49,6 +53,9 @@ export class RPG {
     this.owned = new Set(['iron_sword', 'cloth', 'jade']);
     this.skills = { sword: 0, dash: 0, palm: 0, qinggong: 0, guard: 0 };
     this.enh = {};
+    this.gear = {}; // trang bị ngẫu nhiên đang mặc: slot → món
+    this.gearBag = [];
+    this.title = 'newbie';
   }
 
   get potions() { return this.bag.potion || 0; }
@@ -57,7 +64,9 @@ export class RPG {
   stat(key) {
     let v = 0;
     for (const s of Object.values(this.equip)) v += ITEMS[s]?.[key] || 0;
-    return v;
+    for (const it of Object.values(this.gear)) if (it) v += (it.stats[key] || 0) * (1 + it.enh * 0.08);
+    v += TITLES.find((t) => t.id === this.title)?.stats[key] || 0;
+    return key === 'atk' || key === 'hp' || key === 'mp' ? Math.round(v) : v;
   }
 
   baseHp() { return 200 + (this.level - 1) * 22; }
@@ -174,8 +183,68 @@ export class RPG {
     return true;
   }
 
+  // ───── trang bị ngẫu nhiên ─────
+  addGear(it) {
+    if (this.gearBag.length >= 60) { this.essence(it); return false; }
+    this.gearBag.push(it);
+    if (it.rarity >= 4) { const st = this.g.sys.s.stats; st.legend = (st.legend || 0) + 1; }
+    return true;
+  }
+  equipGear(uid) {
+    const i = this.gearBag.findIndex((x) => x.uid === uid);
+    if (i < 0) return;
+    const it = this.gearBag.splice(i, 1)[0];
+    if (this.gear[it.slot]) this.gearBag.push(this.gear[it.slot]);
+    this.gear[it.slot] = it;
+    this.apply();
+    this.g.audio.clang();
+  }
+  unequipGear(slot) {
+    if (!this.gear[slot] || this.gearBag.length >= 60) return;
+    this.gearBag.push(this.gear[slot]);
+    delete this.gear[slot];
+    this.apply();
+  }
+  essence(it) {
+    const n = Math.round([1, 2, 5, 12, 30][it.rarity] * (1 + it.lv / 10));
+    this.add('essence', n);
+    return n;
+  }
+  salvage(uid) {
+    const i = this.gearBag.findIndex((x) => x.uid === uid);
+    if (i < 0) return 0;
+    return this.essence(this.gearBag.splice(i, 1)[0]);
+  }
+  salvageBelow(rarity) {
+    let n = 0;
+    this.gearBag = this.gearBag.filter((it) => { if (it.rarity < rarity) { n += this.essence(it); return false; } return true; });
+    return n;
+  }
+  reforgeCost(it) { return 6 * (it.rarity + 1); }
+  /** Tẩy luyện: đổ lại thuộc tính phụ, giữ phẩm cấp và cường hoá */
+  reforge(it) {
+    const c = this.reforgeCost(it);
+    if (!this.remove('essence', c)) return false;
+    const nu = makeGear(it.slot, it.lv, it.rarity);
+    it.stats = nu.stats;
+    this.apply();
+    return true;
+  }
+  gearEnhCost(it) { return { essence: 4 + it.enh * 3, gold: 30 + it.enh * 25 }; }
+  /** Cường hoá trang bị: tỉ lệ thành công giảm dần, thất bại không mất cấp */
+  enhanceGear(it) {
+    const c = this.gearEnhCost(it);
+    if (it.enh >= 15 || this.gold < c.gold || (this.bag.essence || 0) < c.essence) return null;
+    this.gold -= c.gold; this.remove('essence', c.essence);
+    const ok = Math.random() < Math.max(0.25, 1 - it.enh * 0.06);
+    if (ok) it.enh++;
+    this.apply();
+    return ok;
+  }
+  rarityOf(it) { return RARITY[it.rarity]; }
+
   toJSON() {
-    return { level: this.level, exp: this.exp, gold: this.gold, points: this.points, bag: this.bag, equip: this.equip, owned: [...this.owned], skills: this.skills, enh: this.enh || {} };
+    return { level: this.level, exp: this.exp, gold: this.gold, points: this.points, bag: this.bag, equip: this.equip, owned: [...this.owned], skills: this.skills, enh: this.enh || {}, gear: this.gear, gearBag: this.gearBag, title: this.title };
   }
 
   load(d) {
@@ -183,5 +252,8 @@ export class RPG {
     Object.assign(this, { level: d.level, exp: d.exp, gold: d.gold, points: d.points, bag: { ...d.bag }, equip: { ...d.equip }, skills: { ...this.skills, ...d.skills } });
     this.owned = new Set(d.owned);
     this.enh = { ...(d.enh || {}) };
+    this.gear = { ...(d.gear || {}) };
+    this.gearBag = [...(d.gearBag || [])];
+    this.title = d.title || 'newbie';
   }
 }
