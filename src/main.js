@@ -8,7 +8,7 @@ import { buildArchitecture } from './world/architecture.js';
 import { buildVegetation } from './world/vegetation.js';
 import { buildProps } from './world/props.js';
 import { Sky } from './world/sky.js';
-import { Game } from './game/game.js';
+import { Game, createHeroCharacter } from './game/game.js';
 import { UI } from './ui/ui.js';
 import './ui/screens.js';
 import { Character } from './actors/character.js';
@@ -149,9 +149,9 @@ async function createHero(initial, editOnly = false) {
 async function buildPreview(h) {
   const token = ++preview.token;
   const cls = CLASSES[h.cls];
-  const c = await Character.create(heroLook(h), cls.weapon);
+  const c = await createHeroCharacter(h);
   if (token !== preview.token) return;
-  c.model.traverse((o) => { if (o.isMesh && /hood/i.test(o.name)) o.visible = !!h.hood; });
+  if (!Character.chibi) c.model.traverse((o) => { if (o.isMesh && /hood/i.test(o.name)) o.visible = !!h.hood; });
   if (preview.char) game.scene.remove(preview.char.root);
   preview.char = c;
   const y = game.terrain.heightAt(STAGE.x, STAGE.z);

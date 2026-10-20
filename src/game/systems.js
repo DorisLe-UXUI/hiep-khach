@@ -37,7 +37,7 @@ export const SIGNIN = [
 export const DUNGEONS = [
   { id: 'luyenvo', name: 'Luyện Võ Trường', han: '練武場', lv: 1, desc: '3 đợt sơn tặc tràn vào bãi luyện võ.', waves: [['bandit', 3], ['bandit', 4], ['bandit2', 4]], at: 'camp', reward: { gold: 80, potion: 1 }, runs: 3 },
   { id: 'mattat', name: 'Huyết Ảnh Mật Thất', han: '血影密室', lv: 4, desc: 'Sát thủ Huyết Ảnh phục kích trong rừng trúc.', waves: [['assassin', 3], ['assassin', 4], ['hanbang', 1]], at: 'bamboo', reward: { gold: 180, qipill: 2 }, runs: 2 },
-  { id: 'kiemmo', name: 'Kiếm Mộ Thử Luyện', han: '劍冢試煉', lv: 7, desc: 'Hồn kiếm Kiếm Mộ thử thách kẻ dám xâm phạm.', waves: [['assassin', 5], ['boss', 1], ['villain', 1]], at: 'tomb', reward: { gold: 400, silk: 1 }, runs: 1 },
+  { id: 'kiemmo', name: 'Kiếm Mộ Thử Luyện', han: '劍冢試煉', lv: 7, desc: 'Hồn kiếm Kiếm Mộ thử thách kẻ dám xâm phạm.', waves: [[['skeleton', 3], ['skeletonMage', 2]], [['skeleton', 4], ['skeletonMage', 2]], ['villain', 1]], at: 'tomb', reward: { gold: 400, silk: 1 }, runs: 1 },
 ];
 
 export const WORLD_BOSSES = [

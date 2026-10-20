@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Character } from '../actors/character.js';
+import { ChibiCharacter, CHIBI_LOOKS, chibiHero } from '../actors/chibi.js';
 import { Player } from '../actors/player.js';
 import { Enemy } from '../actors/enemy.js';
 import { NPC } from '../actors/npc.js';
@@ -36,6 +37,9 @@ export const LOOKS = {
   boss: { outfit: 'male_ranger', base: 'male', hair: ['hair_long', 'hair_beard'], brows: 'eyebrows_regular', outfitColor: '#5a1c1c', hairColor: '#0e0b09', hideHood: true },
   assassin: { outfit: 'male_ranger', base: 'male', hair: [], brows: 'eyebrows_regular', outfitColor: '#18171b', hairColor: '#0e0b09' },
   hanbang: { outfit: 'female_ranger', base: 'female', hair: ['hair_long'], brows: 'eyebrows_female', outfitColor: '#1d2a3a', hairColor: '#0c0c10', hideHood: true },
+  skeleton: { outfit: 'male_ranger', base: 'male', hair: [], outfitColor: '#d8d0c0' },
+  skeletonMage: { outfit: 'male_ranger', base: 'male', hair: [], outfitColor: '#6a5a8a' },
+  skeletonKing: { outfit: 'male_ranger', base: 'male', hair: [], outfitColor: '#8a2a20' },
   villain: { outfit: 'male_ranger', base: 'male', hair: ['hair_long'], brows: 'eyebrows_regular', outfitColor: '#4a0d12', hairColor: '#d8d2c8', hideHood: true },
 };
 
@@ -45,11 +49,32 @@ const ENEMY_TYPES = {
   boss: { look: 'boss', name: 'Đồ Bá', hp: 520, dmg: 18, exp: 320, gold: 160, weapon: 'saber', scale: 1.12, idleAnim: 'Idle_FoldArms_Loop' },
   assassin: { look: 'assassin', name: 'Huyết Ảnh sát thủ', hp: 95, dmg: 13, exp: 55, gold: 14, weapon: 'sword', speed: 5.6 },
   hanbang: { look: 'hanbang', name: 'Hàn Băng', hp: 620, dmg: 17, exp: 480, gold: 220, weapon: 'sword', speed: 6.2 },
+  skeleton: { look: 'skeleton', name: 'Kiếm hồn binh', hp: 110, dmg: 14, exp: 60, gold: 16, weapon: 'axe' },
+  skeletonMage: { look: 'skeletonMage', name: 'Âm hồn pháp sư', hp: 90, dmg: 16, exp: 70, gold: 18, weapon: 'staff', caster: true },
+  skeletonKing: { look: 'skeletonKing', name: 'Kiếm Mộ Vương', hp: 3000, dmg: 24, exp: 900, gold: 600, weapon: 'axe' },
   villain: { look: 'villain', name: 'Mộ Dung Huyết', hp: 1100, dmg: 22, exp: 900, gold: 500, weapon: 'golden', scale: 1.08, caster: true },
 };
 
+for (const k in LOOKS) LOOKS[k]._role = k;
+
+/** Tạo nhân vật chính (dùng chung cho game và màn tạo nhân vật). */
+export function createHeroCharacter(h) {
+  const cls = CLASSES[h.cls] || CLASSES.kiem;
+  if (Character.chibi) {
+    const f = LOOK_OPTIONS.fashion.find((x) => x.id === h.fashion);
+    return ChibiCharacter.create({ ...chibiHero(h), tint: f?.color || null }, cls.weapon || 'staff');
+  }
+  return makeChar({ ...heroLook(h), hideHood: !h.hood }, cls.weapon);
+}
+
 async function makeChar(look, weapon) {
+  if (Character.chibi) {
+    const cl = look._hero ? chibiHero(look._hero) : CHIBI_LOOKS[look._role] || CHIBI_LOOKS.villagerM;
+    return ChibiCharacter.create(cl, cl.skeleton && weapon ? (weapon === 'staff' ? 'skelstaff' : 'skelaxe') : weapon);
+  }
   const l = { ...look };
+  delete l._role;
+  delete l._hero;
   const hideHood = l.hideHood;
   delete l.hideHood;
   const c = await Character.create(l, weapon);
@@ -186,8 +211,7 @@ export class Game {
   async buildHero(h) {
     this.ui.female = h.gender === 'female';
     const cls = CLASSES[h.cls] || CLASSES.kiem;
-    const weapon = ITEMS[this.rpg.equip.weapon]?.model && h.cls === 'kiem' ? ITEMS[this.rpg.equip.weapon].model : cls.weapon;
-    const ch = await makeChar({ ...heroLook(h), hideHood: !h.hood }, weapon);
+    const ch = await createHeroCharacter(h);
     const old = this.player;
     if (old) this.scene.remove(old.char.root);
     ch.model.traverse((o) => { if (o.isMesh && o.material) o.material = o.material.clone(); });
@@ -654,7 +678,8 @@ export class Game {
 
   startWorldBoss(id) {
     const b = WORLD_BOSSES.find((x) => x.id === id);
-    this.beginActivity({ title: b.name, han: b.han, waves: [[['villain', 1, { name: b.name, hp: b.hp, boss: true, scale: 1.9, dmg: 20 + b.lv }]]], onWin: () => {
+    const type = Character.chibi ? 'skeletonKing' : 'villain';
+    this.beginActivity({ title: b.name, han: b.han, waves: [[[type, 1, { name: b.name, hp: b.hp, boss: true, scale: Character.chibi ? undefined : 1.9, dmg: 20 + b.lv }]]], onWin: () => {
       this.sys.s.bossDone[id] = true;
       const r = this.sys.give({ gold: 400 + b.lv * 30, qipill: 2, points: 1 });
       this.toast(`Hạ boss thế giới <b>${b.name}</b><br><span class="sm">${r}</span>`, 5);
@@ -664,8 +689,9 @@ export class Game {
   startDuel(name) {
     const r = RIVALS.find((x) => x.name === name);
     const k = r.power / 10000;
-    const look = heroLook({ gender: r.gender, cls: r.cls, hair: r.gender === 'male' ? 'hair_long' : 'hair_buns', hairColor: '#1b1512', outfit: 'ranger', fashion: ['thanh', 'hac', 'bach', 'xich'][r.lv % 4] });
-    this.beginActivity({ title: `Luận kiếm · ${r.name}`, han: '論劍', waves: [[['bandit', 1, { name: `${r.name} · ${CLASSES[r.cls].name}`, hp: Math.round(300 * k + 150), dmg: Math.round(10 + 8 * k), boss: true, look, weapon: CLASSES[r.cls].weapon || 'sword', caster: r.cls === 'phap' || r.cls === 'cung', speed: 5.8 }]]], onWin: () => {
+    const rh = { gender: r.gender, cls: r.cls, hair: r.gender === 'male' ? 'hair_long' : 'hair_buns', hairColor: '#1b1512', outfit: 'ranger', fashion: ['thanh', 'hac', 'bach', 'xich'][r.lv % 4] };
+    const look = { ...heroLook(rh), _hero: rh };
+    this.beginActivity({ title: `Luận kiếm · ${r.name}`, han: '論劍', waves: [[['bandit', 1, { name: `${r.name} · ${CLASSES[r.cls].name}`, hp: Math.round(300 * k + 150), dmg: Math.round(10 + 8 * k), boss: true, look, weapon: CLASSES[r.cls].weapon || 'staff', caster: r.cls === 'phap' || r.cls === 'cung', speed: 5.8 }]]], onWin: () => {
       this.sys.s.stats.pvpWins++;
       this.sys.progress('pvp');
       r.power = Math.min(r.power, this.sys.power() - 50);

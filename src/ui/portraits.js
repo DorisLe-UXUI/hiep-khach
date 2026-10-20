@@ -25,8 +25,14 @@ export function renderPortrait(renderer, character, size = 256) {
   const head = new THREE.Vector3();
   character.bones.Head.getWorldPosition(head);
   const cam = new THREE.PerspectiveCamera(24, 1, 0.05, 10);
-  cam.position.set(head.x + 0.12, head.y + 0.02, head.z + 1.15);
-  cam.lookAt(head.x, head.y - 0.06, head.z);
+  const chibi = !character.bones.neck_01; // KayKit: xương đầu ở gáy, đầu to
+  if (chibi) {
+    cam.position.set(head.x + 0.2, head.y + 0.42, head.z + 1.9);
+    cam.lookAt(head.x, head.y + 0.32, head.z);
+  } else {
+    cam.position.set(head.x + 0.12, head.y + 0.02, head.z + 1.15);
+    cam.lookAt(head.x, head.y - 0.06, head.z);
+  }
 
   const rt = new THREE.WebGLRenderTarget(size, size, { colorSpace: THREE.SRGBColorSpace });
   const prevTarget = renderer.getRenderTarget();

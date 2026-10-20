@@ -3,6 +3,8 @@ import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { listProfiles, register, signIn, guest, saveProfile } from '../settings.js';
 import { CLASSES, LOOK_OPTIONS, defaultHero } from '../game/classes.js';
+import { CHIBI_MODELS } from '../actors/chibi.js';
+import { Character } from '../actors/character.js';
 import { ITEMS, SKILLS, expNeed, realmOf } from '../game/rpg.js';
 import { WORLD_SIZE, PLACES, PATHS } from '../world/layout.js';
 
@@ -74,7 +76,8 @@ Object.assign(UI.prototype, {
       $('cr-go').textContent = editOnly ? 'Lưu thay đổi' : 'Tạo nhân vật';
       $('cr-name').classList.toggle('hidden', editOnly);
       $('cr-name').value = initial?.name || '';
-      let tab = 'hair';
+      const chibi = Character.chibi;
+      let tab = chibi ? 'model' : 'hair';
       const refresh = () => { preview(h); renderInfo(); renderCustom(); };
       const renderClasses = () => {
         $('cr-classes').innerHTML = Object.entries(CLASSES).map(([id, c]) => `
@@ -92,15 +95,17 @@ Object.assign(UI.prototype, {
           <div>${icon('dash')}<b>Q</b>${c.q.name}</div><div>${icon('palm')}<b>F</b>${c.f.name}</div></div>`;
       };
       const renderCustom = () => {
-        const tabs = [['hair', 'Kiểu tóc', 'user'], ['color', 'Màu tóc', 'lotus'], ['outfit', 'Trang phục', 'shield'], ['fashion', 'Thời trang', 'star'], ['acc', 'Phụ kiện', 'bag']];
+        const tabs = chibi ? [['model', 'Hình tượng', 'user'], ['fashion', 'Thời trang', 'robe'], ['acc', 'Phụ kiện', 'hood']]
+          : [['hair', 'Kiểu tóc', 'user'], ['color', 'Màu tóc', 'lotus'], ['outfit', 'Trang phục', 'shield'], ['fashion', 'Thời trang', 'star'], ['acc', 'Phụ kiện', 'bag']];
         let body = '';
+        if (tab === 'model') body = `<button class="opt ${!h.model ? 'on' : ''}" data-k="model" data-v="">${icon(CLASSES[h.cls].icon)}<span>Theo môn phái</span></button>` + CHIBI_MODELS.map((m) => `<button class="opt ${h.model === m.id ? 'on' : ''}" data-k="model" data-v="${m.id}"><span class="han" style="font-size:22px">${m.han}</span><span>${m.name}</span></button>`).join('');
         if (tab === 'hair') body = LOOK_OPTIONS.hair[h.gender].map((x) => `<button class="opt ${h.hair === x ? 'on' : ''}" data-k="hair" data-v="${x}">${icon('user')}<span>${LOOK_OPTIONS.hairLabel[x]}</span></button>`).join('');
         if (tab === 'color') body = LOOK_OPTIONS.hairColors.map((x) => `<button class="swatch ${h.hairColor === x ? 'on' : ''}" data-k="hairColor" data-v="${x}" style="background:${x}"></button>`).join('');
         if (tab === 'outfit') body = LOOK_OPTIONS.outfits[h.gender].map((x) => `<button class="opt ${h.outfit === x ? 'on' : ''}" data-k="outfit" data-v="${x}">${icon('shield')}<span>${LOOK_OPTIONS.outfitLabel[x]}</span></button>`).join('');
         if (tab === 'fashion') body = LOOK_OPTIONS.fashion.map((f) => `<button class="opt fashion ${h.fashion === f.id ? 'on' : ''}" data-k="fashion" data-v="${f.id}"><i class="dot" style="background:${f.color || 'linear-gradient(135deg,#6b5a3a,#2d3b2a)'}"></i><span>${f.name}</span>${f.price ? `<small>${icon('star')}${f.price}</small>` : ''}</button>`).join('');
-        if (tab === 'acc') body = `<button class="opt ${h.hood ? 'on' : ''}" data-k="hood" data-v="${!h.hood}">${icon('shield')}<span>Mũ trùm</span></button>` + (h.gender === 'male' ? `<button class="opt ${h.beard ? 'on' : ''}" data-k="beard" data-v="${!h.beard}">${icon('user')}<span>Râu</span></button>` : '');
+        if (tab === 'acc') body = `<button class="opt ${h.hood ? 'on' : ''}" data-k="hood" data-v="${!h.hood}">${icon('hood')}<span>${chibi ? 'Mũ / mặt nạ' : 'Mũ trùm'}</span></button>` + (h.gender === 'male' && !chibi ? `<button class="opt ${h.beard ? 'on' : ''}" data-k="beard" data-v="${!h.beard}">${icon('user')}<span>Râu</span></button>` : '');
         $('cr-custom').innerHTML = `<div class="ctabs">${tabs.map(([id, n, ic]) => `<button class="${tab === id ? 'on' : ''}" data-t="${id}">${icon(ic)}<span>${n}</span></button>`).join('')}</div><div class="cbody">${body}</div>`;
-        $('cr-custom').querySelectorAll('.ctabs button').forEach((b) => (b.onclick = () => { tab = b.dataset.t; renderCustom(); }));
+        $('cr-custom').style.setProperty('--cols', tabs.length); $('cr-custom').querySelectorAll('.ctabs button').forEach((b) => (b.onclick = () => { tab = b.dataset.t; renderCustom(); }));
         $('cr-custom').querySelectorAll('.cbody button').forEach((b) => (b.onclick = () => {
           let v = b.dataset.v;
           if (v === 'true' || v === 'false') v = v === 'true';

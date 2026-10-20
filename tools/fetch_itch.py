@@ -41,7 +41,11 @@ def main(dev, slug, want, dest):
         if os.path.exists(out):
             print("có rồi:", out)
             continue
-        url = json.loads(req(f"{base}/file/{uid}?source=game_download", {"csrf_token": tok}))["url"]
+        try:
+            url = json.loads(req(f"{base}/file/{uid}?source=game_download", {"csrf_token": tok}))["url"]
+        except Exception as e:  # noqa: BLE001 - gói trả phí: bỏ qua
+            print("bỏ qua (không miễn phí):", name, e)
+            continue
         print("tải", name, "->", out, flush=True)
         with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=600) as r, open(out + ".part", "wb") as f:
             while chunk := r.read(1 << 16):
