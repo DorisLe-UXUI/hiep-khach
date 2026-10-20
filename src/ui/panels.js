@@ -3,6 +3,7 @@ import { icon, itemIcon } from './icons.js';
 import { ITEMS } from '../game/rpg.js';
 import { CLASSES, LOOK_OPTIONS } from '../game/classes.js';
 import { CHAPTERS } from '../story/chapters.js';
+import { MONSTERS, ZONES, monsterStats } from '../game/bestiary.js';
 import { DAILY, ACTIVITY_CHESTS, ACHIEVEMENTS, SIGNIN, DUNGEONS, WORLD_BOSSES, GUILD, RECIPES } from '../game/systems.js';
 
 const $ = (id) => document.getElementById(id);
@@ -183,6 +184,30 @@ Object.assign(UI.prototype, {
       await g.setFashion(f.id);
       this.openFashion(g);
     }));
+    this.relock(g);
+  },
+
+  // ───────────── BÁCH QUÁI PHỔ ─────────────
+  openBestiary(g, sel = null) {
+    const kills = g.sys.s.bestiary || {};
+    const ids = Object.keys(MONSTERS);
+    sel ??= ids[0];
+    const m = MONSTERS[sel], st = monsterStats(m), zone = ZONES.find((z) => z.mobs.includes(sel) || z.elite === sel);
+    const n = kills[sel] || 0, known = n > 0;
+    const body = this.openPanel('Bách quái phổ', `<div class="bestiary">
+      <div class="bq-grid">${ids.map((id) => { const mm = MONSTERS[id], k = kills[id] || 0; return `<button class="bq-cell ${id === sel ? 'on' : ''} ${k ? '' : 'unknown'} ${mm.elite ? 'elite' : ''}" data-m="${id}" title="${mm.name}"><img src="/assets/thumbs/mon_${id}.png" alt="" /><span class="lv">${mm.lv}</span></button>`; }).join('')}</div>
+      <div class="bq-detail">
+        <div class="bq-art"><img src="/assets/thumbs/mon_${sel}.png" alt="" class="${known ? '' : 'silhouette'}" /><span class="han huge">${m.han}</span></div>
+        <h3>${known ? m.name : '???'} ${m.elite ? '<span class="elite-tag">Tinh anh</span>' : ''}</h3>
+        <div class="bq-stats">
+          <span>Cấp</span><b>${m.lv}</b><span>Khí huyết</span><b>${known ? st.hp : '?'}</b>
+          <span>Công</span><b>${known ? st.dmg : '?'}</b><span>Kinh nghiệm</span><b>${known ? st.exp : '?'}</b>
+          <span>Thuộc tính</span><b>${m.caster ? 'Pháp thuật' : 'Cận chiến'}</b><span>Đã hạ</span><b>${n}</b>
+        </div>
+        <p class="muted">${zone ? `${icon('map')} Xuất hiện tại <b>${zone.name}</b> <span class="han">${zone.han}</span>` : 'Xuất hiện ở phó bản và sự kiện.'}</p>
+        <p class="muted sm">Hạ quái để mở khoá thông tin. Đã ghi chép ${Object.keys(kills).length}/${ids.length} loại.</p>
+      </div></div>`);
+    body.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => this.openBestiary(g, b.dataset.m)));
     this.relock(g);
   },
 

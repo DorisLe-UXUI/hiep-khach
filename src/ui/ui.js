@@ -296,6 +296,15 @@ export class UI {
     });
   }
 
+  /** Banner tên vùng đất khi bước vào khu mới. */
+  zoneBanner(z) {
+    let el = document.getElementById('zone-banner');
+    if (!el) { el = document.createElement('div'); el.id = 'zone-banner'; document.body.appendChild(el); }
+    const lv = z.mobs ? '' : '';
+    el.innerHTML = `<div class="zb-han">${z.han}</div><div class="zb-line"></div><div class="zb-name">${z.name}${lv}</div>`;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+
   hideDialog() { $('dialog').classList.add('hidden'); }
 
   showPause(chapterLabel) { $('pause-chapter').textContent = chapterLabel; $('pause').classList.remove('hidden'); }

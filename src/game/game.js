@@ -506,6 +506,11 @@ export class Game {
     if (e.group === 'doba') this.dobaSpot = { x: e.pos.x, z: e.pos.z };
     this.rpg.gainExp(Math.round(e.exp * (this.sys.buff('exp') ? 1.1 : 1)));
     this.sys.progress('kill');
+    if (e.monster) {
+      const b = (this.sys.s.bestiary ??= {});
+      if (!b[e.tag]) this.toast(`Bách quái phổ: ghi chép <b>${e.name}</b>`, 2);
+      b[e.tag] = (b[e.tag] || 0) + 1;
+    }
     this.mhud.log('system', `<b class="cy">${this.profile.name}</b> đã hạ <b class="cr">${e.name}</b>${e.boss ? ' sau một trận ác chiến!' : '.'}`);
     if (e.boss) this.mhud.announce(`Đại hiệp <b>${this.profile.name}</b> đã đánh bại <b>${e.name}</b>!`);
     if (this.activity && e.group === this.activity.group) this.activityKill();
@@ -787,6 +792,7 @@ export class Game {
       if (input.pressed('KeyY')) open(() => this.ui.openBond(this));
       if (input.pressed('KeyT')) open(() => this.ui.openCraft(this));
       if (input.pressed('KeyB')) open(() => this.ui.openCompanions(this));
+      if (input.pressed('KeyL')) open(() => this.ui.openBestiary(this));
       if (input.pressed('KeyH')) this.toggleMount();
       if (input.pressed('AltLeft') || input.pressed('Backquote')) {
         if (this.input.locked) { this.cursorMode = true; this.input.unlock(); } else { this.cursorMode = false; this.input.lock(); }
@@ -824,6 +830,11 @@ export class Game {
     this.mhudT = (this.mhudT || 0) - dt;
     if (this.mhudT <= 0) { this.mhudT = 0.1; this.mhud.update(); }
     this.worldChat(dt);
+    const zn = this.spawner.zoneAt(pp.x, pp.z);
+    if (zn?.id !== this.curZone) {
+      this.curZone = zn?.id;
+      if (zn) this.ui.zoneBanner(zn);
+    }
     this.saveT = (this.saveT ?? 20) - dt;
     if (this.saveT <= 0) { this.saveT = 20; this.save(); }
     this.camRig.update(dt, pp, frozen);

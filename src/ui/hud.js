@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { WORLD_SIZE, PLACES } from '../world/layout.js';
+import { ZONES } from '../game/bestiary.js';
 import { icon } from './icons.js';
 import { realmOf } from '../game/rpg.js';
 
@@ -56,6 +57,7 @@ export class HUD {
       ['map', 'Bản đồ', 'map', 'M', () => g.ui.openMap(g)],
       ['craft', 'Sản xuất', 'cauldron', 'T', () => g.ui.openCraft(g)],
       ['mount', 'Thú cưỡi', 'horse', 'B', () => g.ui.openCompanions(g)],
+      ['bestiary', 'Bách quái', 'dragon', 'L', () => g.ui.openBestiary(g)],
     ];
     const btn = ([id, n, ic, key]) => `<button class="mi" data-mi="${id}" title="${n} (${key})"><span class="mi-ic">${icon(ic)}</span><span class="mi-n">${n}</span><i class="badge"></i></button>`;
     $('topbar').innerHTML = top.map(btn).join('');
@@ -284,7 +286,12 @@ export class HUD {
       g.fillStyle = color; g.strokeStyle = 'rgba(0,0,0,.6)';
       g.beginPath(); g.arc((x - p.pos.x) * k, (z - p.pos.z) * k, r, 0, Math.PI * 2); g.fill(); g.stroke();
     };
-    for (const e of this.game.enemies) if (!e.dead) dot(e.pos.x, e.pos.z, e.boss ? '#ff2a2a' : '#b8332b', e.boss ? 5 : 3);
+    // khu săn quái: vòng tròn đỏ nhạt
+    for (const z of ZONES) {
+      g.strokeStyle = 'rgba(180,50,40,.55)'; g.fillStyle = 'rgba(180,50,40,.12)'; g.lineWidth = 1.5; g.setLineDash([4, 3]);
+      g.beginPath(); g.arc((z.x - p.pos.x) * k, (z.z - p.pos.z) * k, z.r * k, 0, Math.PI * 2); g.fill(); g.stroke(); g.setLineDash([]);
+    }
+    for (const e of this.game.enemies) if (!e.dead) dot(e.pos.x, e.pos.z, e.boss || e.monster?.elite ? '#ff2a2a' : '#b8332b', e.boss || e.monster?.elite ? 5 : 2.5);
     for (const n of this.game.npcs) if (n.root.visible) dot(n.pos.x, n.pos.z, '#2f6f5a', 3.2);
     const m = this.game.markerPos();
     if (m) {

@@ -51,20 +51,26 @@ export class CameraRig {
       this.pitch = THREE.MathUtils.clamp(this.pitch + dy * sens, -0.6, 1.2);
       this.dist = THREE.MathUtils.clamp(this.dist + input.wheel * 0.5, 2.2, 11);
     } else {
-      this.yaw -= input.mouseDX * sens * 0.6;
-      this.dist = THREE.MathUtils.clamp(this.dist + input.wheel * 1.2, 6, 26);
+      // MMO: kéo ngang = xoay, kéo dọc = nghiêng (thấp xuống để nhìn chân trời), cuộn = zoom
+      this.yaw -= input.mouseDX * sens * 1.1;
+      this.mmoPitch = THREE.MathUtils.clamp((this.mmoPitch ?? 0.78) + dy * sens * 0.9, 0.12, 1.3);
+      if (input.held?.('ArrowLeft')) this.yaw += dt * 1.8;
+      if (input.held?.('ArrowRight')) this.yaw -= dt * 1.8;
+      if (input.held?.('ArrowUp')) this.mmoPitch = Math.max(0.12, this.mmoPitch - dt * 0.8);
+      if (input.held?.('ArrowDown')) this.mmoPitch = Math.min(1.3, this.mmoPitch + dt * 0.8);
+      this.dist = THREE.MathUtils.clamp(this.dist + input.wheel * 1.1, 3.5, 30);
     }
     this.target.lerp(focus, 1 - Math.exp(-dt * 14));
-    const pitch = this.mode === 'third' ? this.pitch : 0.72 + (this.dist - 6) * 0.012;
+    const pitch = this.mode === 'third' ? this.pitch : (this.mmoPitch ?? 0.78);
     const dist = this.dist;
-    const head = this.target.clone().add(new THREE.Vector3(0, this.mode === 'third' ? 1.55 : 1.0, 0));
+    const head = this.target.clone().add(new THREE.Vector3(0, this.mode === 'third' ? 1.55 : 1.0 + Math.max(0, 0.6 - (this.mmoPitch ?? 0.78)) * 0.8, 0));
     const back = new THREE.Vector3(Math.sin(this.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.yaw) * Math.cos(pitch));
     // lệch vai phải một chút cho dễ nhìn trước mặt
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const shoulder = this.mode === 'third' ? 0.45 : 0;
     let d = dist;
     // camera không xuyên tường/đất: rút ngắn khoảng cách khi bị chặn
-    if (this.mode === 'third') {
+    {
       for (let k = 0.6; k <= dist; k += 0.3) {
         const p = head.clone().addScaledVector(back, k).addScaledVector(right, shoulder);
         if (p.y < this.terrain.heightAt(p.x, p.z) + 0.3 || this.colliders.blocked(head.x, head.z, p.x, p.z, p.y)) { d = Math.max(0.6, k - 0.3); break; }

@@ -769,3 +769,49 @@ body.mmo .dmg.heal { color: #6aff8a !important; }
 
 .map-lbl.zone .pin { background: radial-gradient(circle at 35% 30%, #6a8a3a, #2a4a14); width: 30px; height: 30px; }
 .map-lbl.zone .hz { font-size: 18px; color: #1f3a10; }
+
+/* ───────── khung bảng hoa văn ───────── */
+.sheet { position: relative; background:
+  radial-gradient(ellipse 60% 40% at 50% 0%, rgba(214,176,98,.10), transparent 70%),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60'%3E%3Cpath d='M0 30 Q15 10 30 30 T60 30 T90 30 T120 30' fill='none' stroke='%23d6b062' stroke-opacity='.05' stroke-width='2'/%3E%3C/svg%3E"),
+  linear-gradient(180deg, #221a12, #120d0a) !important; }
+.sheet::before, .sheet::after { content: ""; position: absolute; width: 46px; height: 46px; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 46'%3E%3Cpath d='M2 44V12Q2 2 12 2h32' fill='none' stroke='%23e8c070' stroke-width='3'/%3E%3Cpath d='M8 44V16q0-8 8-8h28' fill='none' stroke='%23e8c070' stroke-opacity='.5' stroke-width='1.5'/%3E%3Ccircle cx='12' cy='12' r='3.5' fill='%23d8342a'/%3E%3C/svg%3E") no-repeat; }
+.sheet::before { left: -4px; top: -4px; } .sheet::after { right: -4px; bottom: -4px; transform: rotate(180deg); }
+.sheet header { position: relative; background: linear-gradient(90deg, rgba(179,42,38,.28), rgba(179,42,38,0) 60%); }
+.sheet header::after { content: ""; position: absolute; left: 24px; right: 24px; bottom: -1px; height: 2px; background: linear-gradient(90deg, var(--gold), transparent); }
+
+/* bách quái phổ */
+.sheet:has(.bestiary) { width: min(1000px, 96vw); }
+.bestiary { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
+.bq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; max-height: 60vh; overflow: auto; padding-right: 4px; }
+.bq-cell { position: relative; aspect-ratio: 1; padding: 4px; background: radial-gradient(circle at 50% 40%, #4a3a28, #140e0a 75%); border: 1px solid var(--edge-soft); border-radius: 8px; }
+.bq-cell img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+.bq-cell.unknown img { filter: brightness(0) drop-shadow(0 0 2px rgba(214,176,98,.4)); opacity: .7; }
+.bq-cell.on { border-color: var(--gold); box-shadow: 0 0 14px rgba(214,176,98,.4); }
+.bq-cell.elite { border-color: rgba(226,70,58,.6); }
+.bq-cell .lv { position: absolute; left: 4px; top: 3px; font: 700 10px var(--serif); color: #ffd27a; text-shadow: 0 1px 2px #000; }
+.bq-detail { padding: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--edge-soft); border-radius: 6px; }
+.bq-art { position: relative; display: grid; place-items: center; aspect-ratio: 1.2; background: radial-gradient(circle, rgba(255,160,80,.25), transparent 65%); }
+.bq-art img { width: 70%; filter: drop-shadow(0 6px 10px rgba(0,0,0,.7)); }
+.bq-art img.silhouette { filter: brightness(0) drop-shadow(0 0 6px rgba(214,176,98,.5)); }
+.bq-art .han.huge { position: absolute; bottom: 0; right: 6px; font-size: 40px; opacity: .6; }
+.bq-detail h3 { margin: 8px 0; font: 700 26px var(--title); color: var(--gold-hi); }
+.bq-stats { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 5px 10px; font-size: 13px; color: var(--ink-dim); }
+.bq-stats b { color: var(--ink); }
+
+/* banner vùng đất */
+#zone-banner { position: fixed; left: 50%; top: 22%; z-index: 15; transform: translateX(-50%); text-align: center; pointer-events: none; opacity: 0; }
+#zone-banner.show { animation: zb 4s ease forwards; }
+@keyframes zb { 0% { opacity: 0; transform: translate(-50%, 10px); } 15%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+.zb-han { font: 400 56px var(--han); color: #fff3d0; text-shadow: 0 3px 12px #000, 0 0 30px rgba(255,180,80,.5); letter-spacing: .15em; }
+.zb-line { width: 280px; height: 2px; margin: 4px auto; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+.zb-name { font: 700 22px var(--title); color: var(--gold-hi); text-shadow: 0 2px 8px #000; }
+
+/* bảng nhiệm vụ có icon */
+.mq-item { display: flex; gap: 8px; align-items: flex-start; }
+.mq-item > .ico { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.mq-item > .ico.gi svg path { fill: url(#gi-gold); }
+.mq-item.zone b { color: #8fe08a !important; }
+#m-camhint { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); padding: 4px 14px; font-size: 12px; color: #fff; background: rgba(0,0,0,.45); border-radius: 999px; text-shadow: 0 1px 2px #000; pointer-events: none !important; animation: hintFade 14s forwards; }
+@keyframes hintFade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }

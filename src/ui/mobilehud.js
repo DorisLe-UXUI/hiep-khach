@@ -50,7 +50,8 @@ export class MobileHUD {
         <div id="mc-log"></div>
       </div>
       <div id="m-status"><span id="m-clock"></span> · EXP nhân vật <b id="m-exp-t">0%</b></div>
-      <div id="m-ann"></div>`;
+      <div id="m-ann"></div>
+      <div id="m-camhint">🖱 Kéo chuột / vuốt màn hình để xoay & nghiêng góc nhìn · Cuộn hoặc chụm 2 ngón để phóng to · Phím ← → ↑ ↓</div>`;
     document.getElementById('hud').appendChild(root);
 
     // nút
@@ -188,9 +189,11 @@ export class MobileHUD {
     const st = g.step, a = g.activity, ch = g.chapter;
     const main = a ? `<div class="mq-item act"><b>[Hoạt động] ${a.title}</b><span>${a.waves.length > 1 ? `Đợt ${a.wave + 1}/${a.waves.length}` : 'Đánh bại đối thủ'}</span></div>` : '';
     const daily = g.sys.s.daily, kills = daily.kill || 0;
+    const zn = g.spawner.zoneAt(g.player.pos.x, g.player.pos.z);
     $('mq-body').innerHTML = main + `
-      <div class="mq-item main"><b>[Chính] ${ch.subtitle}</b><span>${st ? g.ui.nh(st.objective(g)) : 'Đã hoàn thành'}</span></div>
-      <div class="mq-item"><b>[Ngày] Diệt trừ ác đồ</b><span>(${kills}/20)</span></div>
-      <div class="mq-item"><b>[Ngày] Hái Linh chi thảo</b><span>(${daily.herb || 0}/5)</span></div>`;
+      <div class="mq-item main">${icon('scroll')}<div><b>[Chính] ${ch.subtitle}</b><span>${st ? g.ui.nh(st.objective(g)) : 'Đã hoàn thành'}</span></div></div>
+      <div class="mq-item">${icon('skull')}<div><b>[Ngày] Diệt trừ ác đồ</b><span>(${kills}/20)</span></div></div>
+      <div class="mq-item">${icon('herb')}<div><b>[Ngày] Hái Linh chi thảo</b><span>(${daily.herb || 0}/5)</span></div></div>
+      ${zn ? `<div class="mq-item zone">${icon('dragon')}<div><b>[Khu vực] ${zn.name}</b><span>Đang săn quái · Bách quái phổ (L)</span></div></div>` : ''}`;
   }
 }
