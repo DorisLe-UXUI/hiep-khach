@@ -1,0 +1,24 @@
+{
+  "name": "hiep-khach",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "assets": "python3 -I tools/fetch_polyhaven.py"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.2.1",
+    "vite": "^7.1.12"
+  },
+  "allowScripts": {
+    "sharp@0.35.5": true,
+    "sharp@0.34.4": true,
+    "esbuild@0.25.12": true
+  }
+}

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8" /><title>Bake impostor</title></head>
+<body style="background:#222;color:#ddd;font:14px monospace">
+  <pre id="log">Đang bake...</pre>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+    import { bakeImpostor } from '/src/world/impostor.js';
+
+    // Chụp cây từ model gốc (đủ lá) trong vendor_dl -> public/assets/impostors/<tên>_{color,normal}.png
+    const TREES = new URLSearchParams(location.search).get('trees')?.split(',') || ['fir_sapling', 'island_tree_02', 'tree_small_02', 'jacaranda_tree', 'fir_tree_01'];
+    const log = (s) => (document.getElementById('log').textContent += '\n' + s);
+    const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    const loader = new GLTFLoader();
+
+    function toPng(rt, srgb) {
+      const w = rt.width, h = rt.height, px = new Uint8Array(w * h * 4);
+      renderer.readRenderTargetPixels(rt, 0, 0, w, h, px);
+      // lật dọc + (màu) chuyển sang sRGB
+      const out = new Uint8ClampedArray(w * h * 4);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const s = ((h - 1 - y) * w + x) * 4, d = (y * w + x) * 4;
+        for (let k = 0; k < 3; k++) out[d + k] = srgb ? Math.pow(px[s + k] / 255, 1 / 2.2) * 255 : px[s + k];
+        out[d + 3] = px[s + 3] > 100 ? 255 : 0;
+      }
+      // loang màu ra vùng trong suốt để mipmap không bị viền đen
+      for (let pass = 0; pass < 6; pass++) {
+        const src = out.slice();
+        for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+          const d = (y * w + x) * 4;
+          if (src[d + 3] || src[d] || src[d + 1] || src[d + 2]) continue;
+          for (const o of [-4, 4, -w * 4, w * 4]) {
+            if (src[d + o + 3] || src[d + o] || src[d + o + 1]) { out[d] = src[d + o]; out[d + 1] = src[d + o + 1]; out[d + 2] = src[d + o + 2]; break; }
+          }
+        }
+      }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').putImageData(new ImageData(out, w, h), 0, 0);
+      return new Promise((r) => c.toBlob(r, 'image/png'));
+    }
+
+    const save = (name, body) => fetch('/__save?name=' + name, { method: 'POST', body });
+
+    for (const name of TREES) {
+      const t0 = performance.now();
+      const gltf = await loader.loadAsync(`/vendor_dl/polyhaven/models/${name}/${name}.gltf`);
+      gltf.scene.traverse((o) => {
+        if (o.isMesh && o.material) {
+          // lá Poly Haven dùng alpha: ép về alphaTest để chụp rõ nét
+          o.material.transparent = false;
+          o.material.alphaTest = Math.max(o.material.alphaTest || 0, 0.4);
+          o.material.side = THREE.DoubleSide;
+        }
+      });
+      const b = bakeImpostor(renderer, gltf.scene, 512);
+      await save(`${name}_color.png`, await toPng(b.rt, true));
+      await save(`${name}_normal.png`, await toPng(b.rtN, false));
+      await save(`${name}.json`, JSON.stringify({ width: b.width, height: b.height }));
+      log(`${name}: xong (${((performance.now() - t0) / 1000).toFixed(1)}s)`);
+    }
+    log('HOÀN TẤT');
+  </script>
+</body>
+</html>

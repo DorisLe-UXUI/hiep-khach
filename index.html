@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hiệp Khách Giang Hồ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/ui/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="title" class="screen">
+    <div class="title-box">
+      <h1>Hiệp Khách Giang Hồ</h1>
+      <p class="sub">Thanh Phong trấn · Hắc Phong trại</p>
+      <div id="load-bar"><div id="load-fill"></div></div>
+      <p id="load-text">Đang tải giang hồ...</p>
+      <button id="start" disabled>Nhập giang hồ</button>
+      <div class="keys">
+        <div><b>WASD</b> di chuyển · <b>Shift</b> chạy nhanh · <b>Chuột</b> xoay góc nhìn</div>
+        <div><b>Chuột trái</b> chém (bấm liên tiếp ra liên chiêu) · <b>Chuột phải</b> đỡ đòn</div>
+        <div><b>Space</b> nhảy, bấm lần nữa trên không để <b>khinh công</b> · <b>Ctrl</b> lộn né</div>
+        <div><b>Q</b> Lướt Kiếm · <b>F</b> Chưởng Phong (tốn nội lực) · <b>E</b> nói chuyện / nhặt đồ</div>
+        <div><b>V</b> đổi góc nhìn (sau lưng ↔ từ trên cao) · <b>Tab</b> nhật ký nhiệm vụ · <b>Esc</b> tạm dừng</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div id="bars">
+      <div class="bar"><span>Khí huyết</span><div class="track"><div id="hp" class="fill hp"></div></div></div>
+      <div class="bar"><span>Nội lực</span><div class="track"><div id="mp" class="fill mp"></div></div></div>
+      <div class="bar"><span>Thể lực</span><div class="track"><div id="st" class="fill st"></div></div></div>
+    </div>
+    <div id="boss" class="hidden"><div id="boss-name"></div><div class="track"><div id="boss-hp" class="fill hp"></div></div></div>
+    <div id="tracker"></div>
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div id="prompt" class="hidden"></div>
+    <div id="toast"></div>
+    <div id="dialog" class="hidden"><div id="dialog-name"></div><div id="dialog-text"></div><div id="dialog-hint">E / Space để tiếp</div></div>
+    <div id="journal" class="hidden"></div>
+    <div id="crosshair"></div>
+    <div id="dmg-layer"></div>
+  </div>
+
+  <div id="death" class="screen hidden"><div class="title-box"><h1>Trọng thương</h1><p class="sub">Ngươi được người qua đường cứu về khách điếm...</p><button id="respawn">Tỉnh lại</button></div></div>
+  <div id="pause" class="screen hidden"><div class="title-box"><h1>Tạm dừng</h1><button id="resume">Tiếp tục</button></div></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
