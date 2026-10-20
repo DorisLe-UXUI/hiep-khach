@@ -198,6 +198,7 @@ function updatePreview(dt, camera) {
 }
 
 function showMenu(profile) {
+  game.audio.music('menu');
   const save = loadSave(profile);
   ui.showMenu(profile, save, CHAPTERS, {
     className: CLASSES[profile.hero.cls]?.name,

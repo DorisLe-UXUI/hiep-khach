@@ -739,7 +739,7 @@ body.mmo .mi-ic .ico { width: 24px !important; height: 24px !important; }
 .ctag { font-weight: 700; } .ctag.sys { color: #ffd84a; } .ctag.world { color: #ff9a6a; } .ctag.area { color: #8ad0ff; } .ctag.guild { color: #8fe08a; } .ctag.team { color: #4ad8ff; }
 .cy { color: #ffe86a; } .cr { color: #ff6a5a; } .cg { color: #8fe08a; } .cp { color: #d8a0ff; }
 
-#m-ann { position: absolute; top: 66px; left: 50%; transform: translateX(-50%); width: min(620px, 56vw); height: 28px; overflow: hidden; background: linear-gradient(90deg, transparent, rgba(0,0,0,.6) 10%, rgba(0,0,0,.6) 90%, transparent); pointer-events: none; opacity: 0; }
+#m-ann { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: max(240px, min(620px, calc(100vw - 500px))); height: 28px; overflow: hidden; background: linear-gradient(90deg, transparent, rgba(0,0,0,.6) 10%, rgba(0,0,0,.6) 90%, transparent); pointer-events: none; opacity: 0; }
 #m-ann.run { opacity: 1; animation: annFade 9s forwards; }
 #m-ann span { position: absolute; white-space: nowrap; top: 3px; left: 100%; font: 700 16px var(--serif); color: #ffe86a; text-shadow: 0 1px 2px #000; }
 #m-ann.run span { animation: marquee 9s linear forwards; }
@@ -993,3 +993,25 @@ body.mmo #topbar { display: none; grid-template-columns: repeat(5, 58px); max-wi
 body.mmo.menus-open #topbar { display: grid; }
 body.mmo #topbar .mi { width: 58px; } body.mmo #topbar .mi-n { display: block; font-size: 10px; max-width: 58px; overflow: hidden; text-overflow: ellipsis; }
 body.mmo #topbar ~ #m-camhint, body.menus-open #m-camhint { display: none; }
+
+/* ───────── Ngự thú ───────── */
+.bst { display: grid; grid-template-columns: 1fr 320px; gap: 16px; margin-top: 14px; }
+.bst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; align-content: start; max-height: 56vh; overflow-y: auto; padding: 2px; }
+.bst-cell { position: relative; aspect-ratio: 1; border-radius: 10px; border: 2px solid var(--edge-soft); background: radial-gradient(circle at 50% 35%, #3a4a2a, #12160c 75%); padding: 0; display: grid; place-items: center; cursor: pointer; overflow: hidden; }
+.bst-cell img { width: 92%; height: 92%; object-fit: contain; }
+.bst-cell .han { position: absolute; left: 4px; bottom: 2px; font-size: 12px; color: #ffe8b0; text-shadow: 0 1px 2px #000; }
+.bst-cell .lv { position: absolute; right: 4px; top: 3px; font: 800 11px sans-serif; font-style: normal; color: #8affc0; text-shadow: 0 1px 2px #000; }
+.bst-cell .eq { position: absolute; left: 4px; top: 2px; font-style: normal; color: #ffd27a; font-weight: 900; }
+.bst-cell.on { border-color: var(--gold); box-shadow: 0 0 12px rgba(255,200,90,.5); }
+.bst-cell.locked img { filter: brightness(.25) saturate(0); }
+.bst-cell.rare { border-color: #c070ff; }
+.bst-detail { display: flex; flex-direction: column; gap: 8px; }
+.bst-art { position: relative; height: 130px; border-radius: 12px; background: radial-gradient(circle at 50% 60%, rgba(140,255,190,.18), transparent 70%), linear-gradient(180deg, #1e2a18, #0e120a); display: grid; place-items: center; overflow: hidden; }
+.bst-art img { height: 120px; position: relative; z-index: 1; } .bst-art img.silhouette { filter: brightness(0) drop-shadow(0 0 6px #8affc0); opacity: .6; }
+.bst-art .han { position: absolute; opacity: .18; font-size: 84px; }
+.bst-detail h3 { margin: 0; } .bst-detail h3 small { font-size: 12px; color: #8affc0; margin-left: 6px; }
+.bst-exp { display: flex; align-items: center; gap: 8px; } .bst-exp .statbar { flex: 1; } .bst-exp small { font-size: 11px; color: var(--ink-faint); }
+.bst-stats { display: grid; grid-template-columns: 70px 1fr 50px; gap: 6px; align-items: center; font-size: 13px; } .bst-stats b { text-align: right; color: var(--gold-hi); }
+.bst-skill { color: #9fe39a; font-size: 13px; display: flex; gap: 6px; align-items: center; margin: 0; } .bst-skill .ico { width: 16px; height: 16px; }
+.bst-wild { font-size: 13px; background: rgba(140,255,190,.08); border: 1px dashed #4a8a5a; padding: 8px 10px; border-radius: 8px; }
+@media (max-width: 760px) { .bst { grid-template-columns: 1fr; } .bst-grid { max-height: 30vh; } }

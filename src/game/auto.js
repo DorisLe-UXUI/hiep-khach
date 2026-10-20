@@ -53,7 +53,7 @@ export class AutoPilot {
         this.lastPos.copy(p.pos);
         if (this.stuckT > 0.6) out.move.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(performance.now() / 700) > 0 ? 1.2 : -1.2);
         if (this.stuckT > 2.5) { out.press.push('Space'); this.stuckT = 0; }
-        if (!g.player.mounted && g.sys.s.mountOwned && d > 60 && !this.mountTried) { this.mountTried = true; g.toggleMount(); }
+        if (!g.player.mounted && g.beasts.s.mount && d > 60 && !this.mountTried) { this.mountTried = true; g.toggleMount(); }
         return out;
       }
     } else this.mountTried = false;

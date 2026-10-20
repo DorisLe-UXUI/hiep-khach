@@ -9,5 +9,7 @@ export const TITLES = [
   { id: 'fisher', name: 'Ngư ông', han: '漁翁', color: '#6fd86a', cond: (s) => (s.stats.life || 0) >= 20, req: 'Thu hoạch 20 lần sinh hoạt', stats: { mp: 40 } },
   { id: 'rich', name: 'Phú giáp nhất phương', han: '富甲一方', color: '#ffd27a', cond: (s, g) => g.rpg.gold >= 3000, req: 'Có 3000 lượng bạc', stats: { hp: 60, mp: 30 } },
   { id: 'master', name: 'Chân truyền đệ tử', han: '真傳弟子', color: '#c070ff', cond: (s) => s.master && s.master.done.length >= 4, req: 'Xuất sư', stats: { atk: 6, mp: 30 } },
+  { id: 'tamer', name: 'Ngự thú sư', han: '御獸師', color: '#6fd86a', cond: (s) => (s.stats.tamed || 0) >= 3, req: 'Thu phục 3 thú hoang', stats: { hp: 50, atk: 3 } },
+  { id: 'beastking', name: 'Bách thú vương', han: '百獸王', color: '#ffa030', cond: (s) => (s.stats.beasts || 0) >= 10, req: 'Sở hữu 10 thú', stats: { atk: 10, spd: 0.04, hp: 100 } },
   { id: 'fury', name: 'Nộ hải cuồng đao', han: '怒海狂刀', color: '#ff6a5a', cond: (s) => (s.stats.bursts || 0) >= 20, req: 'Bộc phát nộ khí 20 lần', stats: { atk: 8, spd: 0.03 } },
 ];

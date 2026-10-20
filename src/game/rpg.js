@@ -12,6 +12,9 @@ export const ITEMS = {
   potion: { name: 'Kim sang dược', han: '金創藥', icon: 'potion', type: 'consumable', price: 20, desc: 'Hồi 45% khí huyết. Phím R.' },
   qipill: { name: 'Hồi khí đan', han: '回氣丹', icon: 'flask', type: 'consumable', price: 25, desc: 'Hồi 60% nội lực.' },
   herb: { name: 'Linh chi thảo', han: '靈芝草', icon: 'herb', type: 'material', price: 12, sell: 8, desc: 'Thảo dược quý mọc trong rừng. Có thể bán hoặc dùng để hồi 20 khí huyết.' },
+  tame_charm: { name: 'Ngự thú phù', han: '御獸符', icon: 'scroll', type: 'material', price: 30, sell: 5, desc: 'Bùa thu phục thú hoang. Đánh thú còn dưới 35% khí huyết rồi đến gần bấm E.' },
+  beast_pill: { name: 'Linh thú đan', han: '靈獸丹', icon: 'flask', type: 'material', price: 45, sell: 8, desc: 'Cho linh thú ăn: +120 kinh nghiệm linh thú.' },
+  fodder: { name: 'Thảo liệu', han: '草料', icon: 'herb', type: 'material', price: 12, sell: 3, desc: 'Cỏ khô cho thú cưỡi: +90 kinh nghiệm thú cưỡi.' },
   essence: { name: 'Tinh thạch', han: '精石', icon: 'nugget', type: 'material', sell: 3, desc: 'Phân giải trang bị mà có. Dùng để cường hoá và tẩy luyện trang bị.' },
   bounty: { name: 'Lệnh bài sơn tặc', han: '賊令', icon: 'skull', type: 'material', sell: 15, desc: 'Lệnh bài thu được từ sơn tặc. Bán cho chưởng quỹ lấy bạc.' },
   // vũ khí
@@ -71,17 +74,17 @@ export class RPG {
 
   baseHp() { return 200 + (this.level - 1) * 22; }
   baseMp() { return 90 + (this.level - 1) * 8; }
-  atk() { return Math.round((this.g.sys?.buff('atk') ? 1.05 : 1) * this.atkRaw()); }
-  atkRaw() { return 18 + (this.level - 1) * 2 + this.stat('atk') + (this.enh?.[this.equip.weapon] || 0) * 3 + (this.g.player?.attackBonus || 0); }
-  crit() { return 0.08 + this.stat('crit') + (this.g.companions?.pet?.root.visible ? 0.05 : 0); }
-  def() { return Math.min(0.6, this.stat('def') + this.skills.guard * 0.04); }
+  atk() { return Math.round((this.g.sys?.buff('atk') ? 1.05 : 1) * (1 + (this.g.beasts?.bonus('atkMul') || 0)) * this.atkRaw()); }
+  atkRaw() { return 18 + (this.level - 1) * 2 + this.stat('atk') + (this.g.beasts?.bonus('atk') || 0) + (this.enh?.[this.equip.weapon] || 0) * 3 + (this.g.player?.attackBonus || 0); }
+  crit() { return 0.08 + this.stat('crit') + (this.g.beasts?.bonus('crit') || 0); }
+  def() { return Math.min(0.65, this.stat('def') + this.skills.guard * 0.04 + (this.g.beasts?.bonus('def') || 0)); }
 
   /** Áp chỉ số vào người chơi (khi lên cấp, đổi trang bị, tải game). */
   apply(heal = false) {
     const p = this.g.player;
     if (!p) return;
     const bonusHp = p.storyHp || 0, bonusMp = p.storyMp || 0;
-    p.maxHp = Math.round((this.baseHp() + this.stat('hp') + bonusHp) * (this.g.sys?.buff('hp') ? 1.08 : 1));
+    p.maxHp = Math.round((this.baseHp() + this.stat('hp') + bonusHp) * (this.g.sys?.buff('hp') ? 1.08 : 1) * (1 + (this.g.beasts?.bonus('hpMul') || 0)));
     p.maxMp = this.baseMp() + this.stat('mp') + bonusMp;
     if (heal) { p.hp = p.maxHp; p.mp = p.maxMp; }
     p.hp = Math.min(p.hp, p.maxHp);

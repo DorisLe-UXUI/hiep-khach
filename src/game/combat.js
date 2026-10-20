@@ -59,7 +59,7 @@ export class Combat {
       hits++;
     }
     if (hits) {
-      this.game.audio.hit();
+      this.game.audio.hit(a.knock);
       this.hitStop = a.knock ? 0.09 : 0.05;
       this.game.camRig.shake = a.knock ? 0.7 : 0.35;
       p.inCombat = 8;

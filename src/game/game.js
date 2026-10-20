@@ -34,6 +34,7 @@ import { AutoPilot } from './auto.js';
 import { MobileHUD } from '../ui/mobilehud.js';
 import { realmOf } from './rpg.js';
 import { Fury } from './fury.js';
+import { Beasts, BEASTS } from './beasts.js';
 import { dropGear, RARITY } from './gear.js';
 import { TITLES } from './titles.js';
 import '../ui/panels3.js';
@@ -152,6 +153,9 @@ export class Game {
     this.titleT = 5;
     this.auto = new AutoPilot(this);
     this.chatT = 20;
+    this.beasts = new Beasts(this);
+    this.ui.sound = (n) => this.audio.ui(n);
+    document.addEventListener('pointerdown', (e) => { if (e.target.closest?.('button')) this.audio.ui('click'); }, true);
     this.companions = new Companions(this);
     this.activity = null;
     this.fashionOwned = [];
@@ -179,6 +183,7 @@ export class Game {
     this.camRig.sens = s.sens;
     this.camRig.invertY = s.invertY;
     this.audio.setVolume(s.volume);
+    this.audio.setMusicVolume(s.music ?? 0.5);
     const mmo = s.controlMode !== 'action';
     this.input.noLock = mmo;
     if (mmo && this.input.locked) this.input.unlock();
@@ -575,6 +580,7 @@ export class Game {
     if (e.group === 'doba') this.dobaSpot = { x: e.pos.x, z: e.pos.z };
     this.rpg.gainExp(Math.round(e.exp * (this.sys.buff('exp') ? 1.1 : 1)));
     this.sys.progress('kill');
+    if (this.companions.pet?.root.visible) this.beasts.gainExp(this.companions.petId, Math.ceil(e.exp * 0.5));
     if (e.elite || e.monster?.elite) this.sys.s.stats.elites = (this.sys.s.stats.elites || 0) + 1;
     if (e.monster) {
       const b = (this.sys.s.bestiary ??= {});
@@ -586,6 +592,18 @@ export class Game {
     if (this.activity && e.group === this.activity.group) this.activityKill();
     this.dropLoot(e);
     if (e.boss) this.camRig.shake = 1.2;
+  }
+
+  /** Nhạc nền theo nơi đang đứng */
+  pickMusic() {
+    const p = this.player.pos;
+    if (this.activity) return this.audio.trackName || 'dungeon';
+    if (this.enemies.some((e) => (e.boss || e.monster?.elite) && e.alerted && !e.dead && e.pos.distanceTo(p) < 40)) return 'boss';
+    if (Math.hypot(p.x - this.spots.home.x, p.z - this.spots.home.z) < 40) return 'home';
+    const zn = this.spawner.zoneAt(p.x, p.z);
+    if (zn) return zn.id === 'bangho' ? 'lake' : zn.id === 'hangtuyet' || zn.id === 'thunglung' ? 'dungeon' : 'wild';
+    if (Math.hypot(p.x - PLACES.square.x, p.z - PLACES.square.z) < 95) return 'town';
+    return 'wild';
   }
 
   checkTitles() {
@@ -610,7 +628,9 @@ export class Game {
     if (e.tag === 'boss') drops.push(['dao', 1]);
     const lv = e.lv || this.rpg.level;
     const big = e.boss || e.elite || e.monster?.elite;
-    if (Math.random() < (big ? 1 : 0.14)) drops.push(['gear', dropGear(lv, big)]);
+    if (e.beast && Math.random() < 0.4) drops.push(['fodder', 1]);
+    if (Math.random() < 0.06) drops.push(['tame_charm', 1]);
+    if (Math.random() < (big ? 1 : 0.14 * (1 + this.beasts.bonus('drop')))) drops.push(['gear', dropGear(lv, big)]);
     if (e.boss && Math.random() < 0.5) drops.push(['gear', dropGear(lv + 2, true)]);
     if (e.tag === 'hanbang') drops.push(['silk', 1]);
     for (const [kind, amount] of drops) {
@@ -634,7 +654,7 @@ export class Game {
 
   collect(l) {
     const r = this.rpg;
-    if (l.kind === 'gold') { r.addGold(l.amount); this.toast(`+${l.amount} lượng bạc`, 1.5); }
+    if (l.kind === 'gold') { l.amount = Math.round(l.amount * (1 + this.beasts.bonus('gold'))); r.addGold(l.amount); this.toast(`+${l.amount} lượng bạc`, 1.5); }
     else if (l.kind === 'gear') {
       const it = l.amount, R = RARITY[it.rarity];
       r.addGear(it);
@@ -655,7 +675,7 @@ export class Game {
       l.t += dt;
       l.mesh.rotation.y += dt * 2;
       const d = l.mesh.position.distanceTo(p);
-      if (d < (this.companions.pet?.root.visible ? 12 : 4.5) && l.t > 0.6) l.mesh.position.lerp(p.clone().setY(p.y + 0.8), Math.min(1, dt * 8));
+      if (d < (this.beasts.bonus('magnet') && this.companions.pet?.root.visible ? 12 : 4.5) && l.t > 0.6) l.mesh.position.lerp(p.clone().setY(p.y + 0.8), Math.min(1, dt * 8));
       else l.mesh.position.y = l.base + Math.sin(l.t * 3) * 0.12;
       if (Math.random() < (l.color ? 0.4 : 0.1)) this.fx.sparkle(l.mesh.position, l.color || (l.kind === 'gold' ? 0xffd27a : 0xbfe6ff));
       if (d < 1 && l.t > 0.6) { this.collect(l); this.scene.remove(l.mesh); this.loot.splice(i, 1); }
@@ -707,6 +727,7 @@ export class Game {
       PLACES.cages.forEach(([x, z], i) => { if (!this.freedCages.has(i) && Math.hypot(p.x - x, p.z - z) < 2.8) best = { kind: 'cage', i, label: 'Phá lồng, cứu người' }; });
     }
     for (const h of this.herbs) if (!h.taken && Math.hypot(p.x - h.x, p.z - h.z) < 2) best = { kind: 'herb', herb: h, label: 'Hái Linh chi thảo' };
+    for (const e of this.enemies) if (this.beasts.canTame(e) && e.pos.distanceTo(p) < e.radius + 2.6) { best = { kind: 'tame', e, label: `Thu phục ${e.name} · Ngự thú phù ×${this.rpg.bag.tame_charm || 0}` }; break; }
     const ln = this.life.nearest(p);
     if (ln && !best) best = { kind: 'life', node: ln, label: this.life.label(ln) };
     if (!best && Math.hypot(p.x - this.spots.home.x, p.z - this.spots.home.z) < 3) best = { kind: 'home', label: 'Vào gia viên' };
@@ -718,6 +739,7 @@ export class Game {
     else if (it.kind === 'chest') this.step.interact.chest(this);
     else if (it.kind === 'cage') this.step.interact.cage(this, it.i);
     else if (it.kind === 'life') this.life.start(it.node);
+    else if (it.kind === 'tame') this.beasts.tame(it.e);
     else if (it.kind === 'home') this.ui.openHouse(this);
     else if (it.kind === 'herb') {
       it.herb.taken = true;
@@ -740,6 +762,7 @@ export class Game {
     this.player.revive(place.x, place.z, Math.PI);
     this.camRig.snap(this.player.pos);
     this.activity = { ...act, wave: 0, group: 'act' + Date.now(), left: 0 };
+    this.audio.music(/chiến trường/i.test(act.title) ? 'battle' : act.waves.flat().some((w) => w[2]?.boss) ? 'boss' : 'dungeon');
     await this.ui.fade(false);
     this.input.lock();
     this.ui.chapterCard(act.han, act.title, act.han);
@@ -864,13 +887,14 @@ export class Game {
     const st = monsterStats(m);
     const ch = await MonsterCharacter.create({ file: m.file, height: m.h * (opts.scale || 1), tint: m.tint });
     const e = new Enemy(this, ch, {
-      name: m.name, hp: st.hp, dmg: st.dmg, x, z, boss: !!opts.boss, aggro: opts.aggro ?? (m.elite ? 14 : 10), speed: m.elite ? 4.2 : 3.6,
+      name: m.name, hp: st.hp, dmg: st.dmg, x, z, boss: !!opts.boss, aggro: opts.aggro ?? (m.passive ? 0 : m.elite ? 14 : m.beast ? 7 : 10), speed: m.elite ? 4.2 : 3.6,
       patrol: opts.patrol, idleAnim: 'Idle_Loop', caster: m.caster, exp: st.exp, gold: st.gold, group: opts.group || 'mob:' + id, tag: id,
       monster: m, reach: Math.max(1.6, m.h * 0.75), zone: opts.zone, lv: m.lv,
     });
     e.radius = Math.max(0.35, m.h * 0.28);
+    if (m.beast) e.beast = m.beast;
     // quái tinh anh ngẫu nhiên: to hơn, trâu hơn, chắc chắn rơi trang bị tốt
-    if (opts.zone && !opts.boss && !m.elite && Math.random() < 0.07) {
+    if (opts.zone && !opts.boss && !m.elite && !m.beast && Math.random() < 0.07) {
       e.elite = true;
       e.maxHp = e.hp = Math.round(e.maxHp * 3.2);
       e.dmg = Math.round(e.dmg * 1.5);
@@ -1045,6 +1069,9 @@ export class Game {
     const frozen = this.dialogOpen ? { held: () => false, pressed: () => false, mouseDX: 0, mouseDY: 0, wheel: 0 } : input;
     this.player.update(adt, frozen, this.camRig);
     const pp = this.player.pos;
+    // tiếng bước chân
+    const hs = Math.hypot(this.player.vel.x, this.player.vel.z);
+    if (hs > 2 && this.player.onGround && !this.player.mounted && !this.player.inWater) { this.stepT = (this.stepT || 0) - dt * hs; if (this.stepT <= 0) { this.stepT = 2.3; this.audio.step(); } }
     const actors = [this.player];
     for (const e of this.enemies) {
       const d = e.pos.distanceTo(pp);
@@ -1064,6 +1091,7 @@ export class Game {
     this.combat.update(adt);
     this.fx.update(dt);
     this.fury.update(dt);
+    if ((this.musicT = (this.musicT || 0) - dt) <= 0) { this.musicT = 1.5; this.audio.music(this.pickMusic()); }
     if ((this.titleT -= dt) <= 0) { this.titleT = 4; this.checkTitles(); }
     this.updateLoot(dt);
     // dọn xác đã nằm lâu

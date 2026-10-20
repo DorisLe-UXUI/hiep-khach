@@ -2,6 +2,8 @@ import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { SLOTS, RARITY, STAT_NAME, fmtStat, gearScore } from '../game/gear.js';
 import { TITLES } from '../game/titles.js';
+import { BEASTS, SKILL_TEXT, MAX_LV, expNeedBeast, WILD } from '../game/beasts.js';
+import { ZONES } from '../game/bestiary.js';
 
 const $ = (id) => document.getElementById(id);
 const statLines = (it, cmp) => Object.entries(it.stats).map(([k, v]) => {
@@ -109,6 +111,56 @@ Object.assign(UI.prototype, {
         </div>`; }).join('')}</div>`);
     body.querySelector('[data-tab="gear"]').onclick = () => this.openGear(g);
     body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { r.title = b.dataset.t; r.apply(); g.audio.chime(); this.openTitles(g); }));
+    this.relock(g);
+  },
+
+  // ───────────── NGỰ THÚ: THÚ CƯỠI & LINH THÚ ─────────────
+  openCompanions(g, tab = 'mount', sel = null) {
+    const bs = g.beasts, r = g.rpg, st = bs.s;
+    const ids = Object.keys(BEASTS).filter((id) => (tab === 'mount' ? BEASTS[id].mount : BEASTS[id].pet));
+    sel = sel && ids.includes(sel) ? sel : (tab === 'mount' ? st.mount : st.pet) || ids[0];
+    const d = BEASTS[sel], o = st.owned[sel], cur = tab === 'mount' ? st.mount : st.pet;
+    const where = d.wild ? ZONES.filter((z) => WILD[z.id]?.includes(sel)).map((z) => z.name).join(', ') : '';
+    const thumb = (id) => `/assets/thumbs/mon_b_${id}.png`;
+    const bar = (v, max, c) => `<div class="statbar"><div style="width:${Math.min(100, (v / max) * 100)}%;${c ? 'background:' + c : ''}"></div></div>`;
+    const info = tab === 'mount'
+      ? `<div class="bst-stats"><span>Tốc độ</span>${bar(d.mount.speed * (1 + (o?.lv || 1) * 0.02), 2.6)}<b>×${(bs.lv(sel) ? (d.mount.speed / 1.6) * (1 + bs.lv(sel) * 0.02) : d.mount.speed / 1.6).toFixed(2)}</b>
+          ${d.mount.def ? `<span>Hộ thể</span>${bar(d.mount.def, 0.1)}<b>-${d.mount.def * 100}%</b>` : ''}</div><p class="muted sm">Cưỡi càng xa càng lên cấp (mỗi cấp +2% tốc độ). Cho ăn <b>Thảo liệu</b> để lên nhanh.</p>`
+      : `<div class="bst-stats"><span>Công</span>${bar(d.pet.atk, 2)}<b>${o ? g.companions.petAtk.call({ g, petId: sel }) : '—'}</b></div><p class="bst-skill">${icon('sparkles')} ${SKILL_TEXT[d.pet.skill]}</p><p class="muted sm">Linh thú cùng chủ đánh địch, lên cấp khi chủ diệt quái. Cho ăn <b>Linh thú đan</b> để lên nhanh.</p>`;
+    const act = o
+      ? `${cur === sel ? `<button class="ghost" disabled>${tab === 'mount' ? 'Đang dùng' : 'Đang theo'}</button>` : `<button class="primary" data-do="use">${tab === 'mount' ? 'Chọn làm thú cưỡi' : 'Cho xuất chiến'}</button>`}
+         ${tab === 'mount' && cur === sel ? `<button class="primary" data-do="ride">${g.companions.riding ? 'Xuống' : 'Cưỡi ngay'} <kbd>H</kbd></button>` : ''}
+         ${tab === 'pet' && cur === sel ? `<button class="ghost" data-do="rest">${g.sys.s.petOut === false ? 'Gọi ra' : 'Cho nghỉ'}</button>` : ''}
+         <button class="ghost" data-do="feed" ${o.lv >= MAX_LV ? 'disabled' : ''}>${itemIcon(tab === 'mount' ? 'fodder' : 'beast_pill', tab === 'mount' ? 'herb' : 'flask')} Cho ăn <small>(có ${r.bag[tab === 'mount' ? 'fodder' : 'beast_pill'] || 0})</small></button>`
+      : d.price ? `<button class="primary" data-do="buy" ${r.gold < d.price ? 'disabled' : ''}>${icon('coins')} Mua · ${d.price} lượng</button>`
+      : `<p class="bst-wild">${icon('map')} Thú hoang ở <b>${where || 'ngoài hoang dã'}</b>. Đánh còn dưới 35% khí huyết, đến gần bấm <kbd>E</kbd> với <b>Ngự thú phù</b> (có ${r.bag.tame_charm || 0}).</p>`;
+    const body = this.openPanel('Ngự thú', `
+      <div class="ctabs" style="--cols:2"><button data-tab="mount" class="${tab === 'mount' ? 'on' : ''}">${icon('horse')}Thú cưỡi</button><button data-tab="pet" class="${tab === 'pet' ? 'on' : ''}">${icon('dog')}Linh thú</button></div>
+      <div class="bst">
+        <div class="bst-grid">${ids.map((id) => { const b = BEASTS[id], has = st.owned[id]; return `<button class="bst-cell ${id === sel ? 'on' : ''} ${has ? '' : 'locked'} ${b.rare || (b.price || 0) >= 2000 ? 'rare' : ''}" data-b="${id}"><img src="${thumb(id)}" alt="" onerror="this.style.display='none'" /><span class="han">${b.han}</span>${has ? `<i class="lv">${has.lv}</i>` : ''}${(tab === 'mount' ? st.mount : st.pet) === id ? '<i class="eq">✓</i>' : ''}</button>`; }).join('')}</div>
+        <div class="bst-detail">
+          <div class="bst-art"><img src="${thumb(sel)}" alt="" class="${o ? '' : 'silhouette'}" onerror="this.style.display='none'" /><span class="han huge">${d.han}</span></div>
+          <h3>${d.name} ${o ? `<small>Cấp ${o.lv}/${MAX_LV}</small>` : ''}</h3>
+          ${o && o.lv < MAX_LV ? `<div class="bst-exp">${bar(o.exp, expNeedBeast(o.lv), '#8affc0')}<small>${o.exp}/${expNeedBeast(o.lv)}</small></div>` : ''}
+          <p class="muted">${d.desc}</p>
+          ${info}
+          <div class="acts">${act}</div>
+          <p class="muted sm">${icon('coins')} ${r.gold} lượng · Đã có ${Object.keys(st.owned).length}/${Object.keys(BEASTS).length} thú</p>
+        </div>
+      </div>`);
+    body.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => this.openCompanions(g, b.dataset.tab)));
+    body.querySelectorAll('[data-b]').forEach((b) => (b.onclick = () => this.openCompanions(g, tab, b.dataset.b)));
+    const on = (k, fn) => body.querySelector(`[data-do="${k}"]`)?.addEventListener('click', fn);
+    on('buy', () => { bs.buy(sel); this.openCompanions(g, tab, sel); });
+    on('use', async () => {
+      if (tab === 'mount') { const was = g.companions.riding; if (was) await g.companions.toggleMount(); st.mount = sel; if (was) await g.companions.toggleMount(); }
+      else { st.pet = sel; g.sys.s.petOut = true; await g.companions.spawnPet(); }
+      g.audio.chime();
+      this.openCompanions(g, tab, sel);
+    });
+    on('ride', () => { this.closePanel(); g.toggleMount(); });
+    on('rest', async () => { g.sys.s.petOut = g.sys.s.petOut === false; await g.companions.spawnPet(); this.openCompanions(g, tab, sel); });
+    on('feed', () => { const it = bs.feed(sel); if (!it) g.toast('Hết thức ăn — mua ở Tạp hoá', 1.5); else g.fx.burst(g.player.pos.clone().setY(g.player.pos.y + 1), 0x8affc0, 16); this.openCompanions(g, tab, sel); });
     this.relock(g);
   },
 });

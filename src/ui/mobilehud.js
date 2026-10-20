@@ -111,7 +111,7 @@ export class MobileHUD {
     if (act === 'auto') { g.auto.toggle(); return; }
     if (act === 'rage') { if (!g.fury.activate()) g.toast('Nộ khí chưa đầy — đánh trúng hoặc trúng đòn để tích nộ', 1.5); return; }
     if (act === 'mount') g.toggleMount();
-    if (act === 'pet') { if (g.sys.s.pet) { g.sys.s.petOut = g.sys.s.petOut === false; g.spawnPet(); } else g.ui.openCompanions(g, 'pet'); }
+    if (act === 'pet') { if (g.beasts.s.pet) { g.sys.s.petOut = g.sys.s.petOut === false; g.spawnPet(); } else g.ui.openCompanions(g, 'pet'); }
     if (act === 'qipill') g.rpg.use('qipill');
   }
 

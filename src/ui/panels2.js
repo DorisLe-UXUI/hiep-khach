@@ -16,7 +16,7 @@ Object.assign(UI.prototype, {
   // ───────────── TRUNG TÂM CHỨC NĂNG ─────────────
   openHub(g) {
     const F = [
-      ['Nhân vật', [['bag', 'Túi đồ', 'I', () => this.openBag(g)], ['meditation', 'Võ học', 'K', () => this.openSkills(g)], ['robe', 'Thời trang', 'U', () => this.openFashion(g)], ['horse', 'Thú cưỡi & pet', 'B', () => this.openCompanions(g)], ['crown', 'Trang bị & danh hiệu', '', () => this.openGear(g)], ['anvil', 'Cường hoá', '', () => this.openEnhance(g, g.rpg.equip.weapon)]]],
+      ['Nhân vật', [['bag', 'Túi đồ', 'I', () => this.openBag(g)], ['meditation', 'Võ học', 'K', () => this.openSkills(g)], ['robe', 'Thời trang', 'U', () => this.openFashion(g)], ['horse', 'Ngự thú', 'B', () => this.openCompanions(g)], ['crown', 'Trang bị & danh hiệu', '', () => this.openGear(g)], ['anvil', 'Cường hoá', '', () => this.openEnhance(g, g.rpg.equip.weapon)]]],
       ['Giang hồ', [['quill', 'Nhiệm vụ', 'J', () => this.openQuests(g)], ['map', 'Bản đồ', 'M', () => this.openMap(g)], ['dragon', 'Bách quái phổ', 'L', () => this.openBestiary(g)], ['scroll', 'Nhật ký', '', () => this.openJournal(CHAPTERS, g.chapterIdx, g.flags)]]],
       ['Hoạt động', [['calendar', 'Phó bản & boss', 'N', () => this.openEvents(g)], ['swords', 'Chiến trường', '', () => this.openBattlefield(g)], ['duel', 'Luận Kiếm Đài', '', () => this.openEvents(g, 'pvp')], ['present', 'Phúc lợi', 'O', () => this.openWelfare(g)], ['podium', 'Xếp hạng', 'P', () => this.openRanking(g)]]],
       ['Xã hội', [['team', 'Tổ đội', '', () => this.openParty(g)], ['pagoda', 'Bang hội', 'G', () => this.openGuild(g)], ['wizard', 'Sư đồ', '', () => this.openMaster(g)], ['rings', 'Kết duyên', '', () => this.openBond(g)], ['baby', 'Gia đình', '', () => this.openFamily(g)]]],

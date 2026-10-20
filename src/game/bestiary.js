@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BEASTS, WILD } from './beasts.js';
 
 /**
  * Bách quái phổ: quái vật theo khu vực, cấp độ, có hồi sinh như game online.
@@ -45,6 +46,13 @@ export const MONSTERS = {
   hoalong: { name: 'Hỏa Long Vương', han: '火龍王', file: 'flying_dragon_evolved.glb', h: 4.2, lv: 14, elite: true, caster: true },
   coctinh: { name: 'Cóc Vương', han: '蛤王', file: 'big_frog.glb', h: 2.4, lv: 6, elite: true },
 };
+
+// ── Thú hoang (thu phục được) ──
+const BEAST_LV = { donkey: 2, rabbit: 1, alpaca: 3, deer: 4, fox: 4, raccoon: 3, wolf: 7, bull: 7, stag: 9 };
+for (const [id, lv] of Object.entries(BEAST_LV)) {
+  const b = BEASTS[id];
+  MONSTERS['b_' + id] = { name: b.name, han: b.han, file: b.file, h: b.mount ? b.mount.h * 0.9 : b.pet.h * 1.3, lv, beast: id, passive: !!b.passive, rare: !!b.rare };
+}
 
 /** Khu vực săn quái. */
 export const ZONES = [
@@ -96,7 +104,9 @@ export class Spawner {
       if (living < zn.n && zn.cool <= 0) {
         zn.busy = true;
         zn.cool = living < zn.n / 2 ? 0 : 6;
-        const id = zn.mobs[Math.floor(Math.random() * zn.mobs.length)];
+        const wild = WILD[zn.id];
+        let id = zn.mobs[Math.floor(Math.random() * zn.mobs.length)];
+        if (wild && Math.random() < 0.28) { const b = wild[Math.floor(Math.random() * wild.length)]; if (!BEASTS[b].rare || Math.random() < 0.35) id = 'b_' + b; }
         const e = await this.spawnIn(zn, id);
         if (e) zn.alive.push(e);
         zn.busy = false;

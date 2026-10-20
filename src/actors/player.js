@@ -301,7 +301,7 @@ export class Player extends Actor {
     if (s.state === 'free' && !talking) {
       if (hasMove) {
         speed = (sprint && s.st > 1 ? 9 : 5.2) * (1 + s.rpg.stat('spd'));
-        if (s.mounted) speed = sprint ? 17 : 11;
+        if (s.mounted) speed = (sprint ? 17 : 11) * (s.game.beasts?.mountSpeed() || 1);
         if (s.inWater) speed = sprint ? 4 : 2.6;
         if (sprint && !s.mounted) s.st = Math.max(0, s.st - dt * 14);
         s.faceTowards(wantYaw, dt, 12);

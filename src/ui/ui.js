@@ -138,13 +138,14 @@ export class UI {
 
   // ───────── bảng phụ ─────────
   openPanel(title, html) {
+    if ($('panel').classList.contains('hidden')) this.sound?.('open');
     $('panel-title').textContent = title;
     $('panel-body').innerHTML = html;
     $('panel').classList.remove('hidden');
     return $('panel-body');
   }
 
-  closePanel() { $('panel').classList.add('hidden'); this.onPanelClose?.(); this.onPanelClose = null; }
+  closePanel() { if (!$('panel').classList.contains('hidden')) this.sound?.('close'); $('panel').classList.add('hidden'); this.onPanelClose?.(); this.onPanelClose = null; }
 
   openChapters(chapters, unlocked, pick) {
     const body = this.openPanel('Chọn chương', `<div class="chapters">${chapters.map((c, i) => `
@@ -165,6 +166,7 @@ export class UI {
       <div class="set-row">${icon('mouse')}<label>Đảo trục dọc</label><button class="toggle ${s.invertY ? 'on' : ''}" data-k="invertY"></button></div>
       <div class="set-row">${icon('eye')}<label>Góc nhìn (FOV)</label><input type="range" min="45" max="80" step="1" value="${s.fov}" data-k="fov"></div>
       <div class="set-row">${icon('volume')}<label>Âm lượng</label><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-k="volume"></div>
+      <div class="set-row">${icon('book')}<label>Nhạc nền</label><input type="range" min="0" max="1" step="0.05" value="${s.music ?? 0.5}" data-k="music"></div>
       <div class="set-row">${icon('sun')}<label>Chất lượng đồ hoạ<small>Bóng đổ, độ nét, mật độ cỏ</small></label>${seg('quality', QUALITY)}</div>
       <div class="set-row">${icon('skull')}<label>Độ khó</label>${seg('difficulty', DIFFICULTY)}</div>
       <div class="set-row">${icon('star')}<label>Hiện số sát thương</label><button class="toggle ${s.dmgNumbers ? 'on' : ''}" data-k="dmgNumbers"></button></div>`);

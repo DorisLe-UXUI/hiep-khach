@@ -114,7 +114,7 @@ export class Life {
     const f = this.fishing;
     if (f) {
       f.t += dt;
-      if (f.t > f.bite && !f.window) { f.window = 1.3; g.toast('<b style="color:#ff6a5a">Cá cắn câu!</b> Bấm <kbd>E</kbd>', 1.2); g.audio.chime(); g.fx.burst(f.node.mesh.position.clone(), 0xbfe6ff, 16); }
+      if (f.t > f.bite && !f.window) { f.window = 1.3; g.toast('<b style="color:#ff6a5a">Cá cắn câu!</b> Bấm <kbd>E</kbd>', 1.2); g.audio.sfx('pluck') || g.audio.chime(); g.fx.burst(f.node.mesh.position.clone(), 0xbfe6ff, 16); }
       if (f.window) {
         f.window -= dt;
         if (input.pressed('KeyE') || input.pressed('Mouse0')) {
@@ -134,6 +134,7 @@ export class Life {
     if (w) {
       w.t += dt;
       if (Math.random() < 0.15) g.fx.sparks(w.node.mesh.position.clone().setY(w.node.mesh.position.y + 0.8));
+      if ((w.snd = (w.snd || 0) - dt) <= 0) { w.snd = 0.7; g.audio.sfx(w.node.kind === 'wood' ? 'chop' : 'mine', { vol: 0.6 }); }
       if (w.t >= w.dur) {
         this.working = null;
         p.setState('free');

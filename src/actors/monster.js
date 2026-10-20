@@ -67,7 +67,10 @@ export class MonsterCharacter {
       });
       o.material = ms.length === 1 ? ms[0] : ms;
     });
-    const box = new THREE.Box3().setFromObject(model);
+    // model thú (poly.pizza) có khung xương ×100: đo theo hình đã gắn xương
+    const precise = /\/beasts\//.test(def.file);
+    if (precise) model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model, precise);
     const s = def.height / Math.max(0.01, box.max.y - box.min.y);
     model.scale.multiplyScalar(s);
     model.position.y -= box.min.y * s + (def.lift || 0);

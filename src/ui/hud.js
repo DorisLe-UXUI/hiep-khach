@@ -60,7 +60,7 @@ export class HUD {
       ['team', 'Tổ đội', 'team', '', () => g.ui.openParty(g)],
       ['fashion', 'Thời trang', 'robe', 'U', () => g.ui.openFashion(g)],
       ['craft', 'Sản xuất', 'cauldron', 'T', () => g.ui.openCraft(g)],
-      ['mount', 'Thú cưỡi', 'horse', 'B', () => g.ui.openCompanions(g)],
+      ['mount', 'Ngự thú', 'horse', 'B', () => g.ui.openCompanions(g)],
       ['bestiary', 'Bách quái', 'dragon', 'L', () => g.ui.openBestiary(g)],
       ['life', 'Sinh hoạt', 'rod', '', () => g.ui.openLife(g)],
     ];
@@ -221,7 +221,7 @@ export class HUD {
       const d = Math.hypot(mk.x - p.pos.x, mk.z - p.pos.z);
       let s = this.project(w);
       // giữ dấu chỉ đường trong vùng giữa màn, không đè lên khung nhân vật, menu, minimap, nút kỹ năng
-      const mx = Math.min(250, innerWidth * 0.3), top = 130, bot = 170;
+      const mx = Math.min(250, innerWidth * 0.3), top = 175, bot = 170;
       if (s.behind) { s.x = innerWidth - s.x; s.y = innerHeight - bot; }
       s.x = Math.min(innerWidth - mx, Math.max(mx, s.x));
       s.y = Math.min(innerHeight - bot, Math.max(top, s.y));

@@ -4,6 +4,7 @@ export const DEFAULTS = {
   sens: 1,            // độ nhạy chuột
   invertY: false,
   volume: 0.6,
+  music: 0.5,
   quality: 'medium',  // low | medium | high
   fov: 55,
   difficulty: 'normal', // easy | normal | hard

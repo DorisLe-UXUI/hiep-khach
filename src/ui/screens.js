@@ -316,7 +316,7 @@ Object.assign(UI.prototype, {
   // ───────────── TIỆM ─────────────
   openShop(g, tab = 'buy') {
     const r = g.rpg;
-    const stock = ['potion', 'qipill', 'steel_sword', 'dao', 'leather', 'silk', 'charm'];
+    const stock = ['potion', 'qipill', 'tame_charm', 'beast_pill', 'fodder', 'steel_sword', 'dao', 'leather', 'silk', 'charm'];
     const sellable = Object.entries(r.bag).filter(([id, n]) => n > 0 && ITEMS[id].sell);
     const body = this.openPanel('Tiệm Duyệt Lai', `
       <div class="subtabs">${[['buy', 'Mua'], ['sell', 'Bán']].map(([t, n]) => `<button class="${tab === t ? 'on' : ''}" data-t="${t}">${n}</button>`).join('')}<span class="gold">${icon('coins')} ${r.gold} lượng</span></div>
