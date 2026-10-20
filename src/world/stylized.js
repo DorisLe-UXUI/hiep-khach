@@ -7,13 +7,54 @@ import { PLACES, WATER_LEVEL } from './layout.js';
  * Cảnh vật phong cách hoạt hình (Quaternius Stylized Nature MegaKit, CC0):
  * cây, thông, cây cổ thụ, bụi, đá, cỏ, hoa, nấm. Instancing chia theo ô lưới để cắt khung nhìn.
  */
+/** Vị trí nhân vật để làm trong suốt cây che giữa camera và nhân vật (dùng chung mọi vật liệu cây). */
+export const REVEAL = { uReveal: { value: new THREE.Vector3(1e6, 0, 0) } };
+
+function addReveal(mat) {
+  if (mat.userData.reveal) return;
+  mat.userData.reveal = true;
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uReveal = REVEAL.uReveal;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vRevealW;')
+      .replace('#include <project_vertex>', `#include <project_vertex>
+  {
+    vec4 rw = vec4(transformed, 1.0);
+    #ifdef USE_INSTANCING
+      rw = instanceMatrix * rw;
+    #endif
+    vRevealW = (modelMatrix * rw).xyz;
+  }`);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vRevealW;\nuniform vec3 uReveal;')
+      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  {
+    // phần cây nằm giữa camera và nhân vật: đục lỗ kiểu dither để thấy nhân vật
+    vec3 a = cameraPosition, b = uReveal + vec3(0.0, 1.0, 0.0);
+    vec3 ab = b - a;
+    float t = clamp(dot(vRevealW - a, ab) / dot(ab, ab), 0.0, 1.0);
+    float d = length(vRevealW - (a + ab * t));
+    if (t < 0.97 && d < 3.2) {
+      float k = smoothstep(3.2, 1.2, d);
+      float dither = fract(dot(floor(gl_FragCoord.xy), vec2(0.5, 0.25)) * 2.0);
+      if (dither < k * 0.85) discard;
+    }
+  }`);
+  };
+}
+
 async function nature(name) {
   const g = await loadGLTF(`/assets/nature/${name}.glb`);
+  const tree = /tree|pine/.test(name);
   g.scene.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = true;
     o.receiveShadow = true;
-    if (o.material) { o.material.side = THREE.DoubleSide; if (o.material.map) o.material.alphaTest = Math.max(o.material.alphaTest || 0, 0.4); }
+    if (o.material) {
+      o.material.side = THREE.DoubleSide;
+      if (o.material.map) o.material.alphaTest = Math.max(o.material.alphaTest || 0, 0.4);
+      if (tree) addReveal(o.material);
+    }
   });
   return g.scene;
 }

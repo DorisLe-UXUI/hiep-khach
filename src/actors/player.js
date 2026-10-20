@@ -21,7 +21,7 @@ export class Player extends Actor {
     this.iframes = 0;
     this.airJumps = 0;
     this.gliding = false;
-    this.cooldowns = { dash: 0, cast: 0, potion: 0, atk: 0 };
+    this.cooldowns = { dash: 0, cast: 0, potion: 0, atk: 0, u1: 0, u2: 0 };
     this.attackBonus = 0;
     this.storyHp = 0;
     this.storyMp = 0;
@@ -108,10 +108,24 @@ export class Player extends Actor {
   useSkill(slot) {
     const sk = this.cls[slot];
     const r = this.rpg;
-    const cdKey = slot === 'q' ? 'dash' : 'cast';
+    const cdKey = { q: 'dash', f: 'cast', u1: 'u1', u2: 'u2' }[slot];
+    if (sk.lv && r.level < sk.lv) { this.game.toast(`<b>${sk.name}</b> mở khoá ở cấp ${sk.lv}`, 1.6); return; }
     let cost = sk.mp;
     if (sk.kind === 'orb' || sk.kind === 'bigorb') cost = Math.max(5, cost - (r.skills.palm || 0) * 2);
     if (this.cooldowns[cdKey] > 0 || this.mp < cost) { this.game.hud.flashSlot(slot === 'q' ? 'dash' : 'cast'); return; }
+    if (slot === 'u1' || slot === 'u2') {
+      this.mp -= cost;
+      this.cooldowns[cdKey] = sk.cd;
+      this.pendingSkill = sk;
+      this.aimNow();
+      this.setState('cast');
+      const ult = sk.kind === 'ult';
+      this.game.vfx.magicCircle(this.pos.clone(), sk.color, ult ? 4.5 : 2.4, ult ? 1.6 : 1);
+      this.char.play(ult ? 'Spell_Simple_Enter' : (this.cls.attack === 'melee' ? 'Sword_Regular_C' : 'Spell_Simple_Shoot'), { once: true, fade: 0.06, speed: ult ? 1 : 1.3, restart: true, onDone: () => this.state === 'cast' && this.setState('free') });
+      this.game.audio.whoosh();
+      if (ult) { this.game.camRig.shake = 0.6; this.iframes = 0.8; }
+      return;
+    }
     this.mp -= cost;
     this.cooldowns[cdKey] = sk.cd - (sk.kind === 'dash' ? (r.skills.dash || 0) * 0.3 : 0);
     this.pendingSkill = sk;
@@ -151,6 +165,18 @@ export class Player extends Actor {
     if (sk.kind === 'nova') { c.nova(this, 5, this.damage(2.2, 'palm'), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff); this.game.vfx.shockwave(this.pos.clone(), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff, 6); }
     if (sk.kind === 'heal') this.game.vfx.pillar(this.pos.clone(), 0x8fe0a8, 4);
     if (sk.kind === 'heal') this.heal(this.maxHp * 0.3);
+    if (sk.kind === 'wave') {
+      const dir = this.aimDir();
+      for (let k = -1; k <= 1; k++) c.fireOrb(this, this.handPos(), dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.22), { dmg: this.damage(1.6, 'palm'), size: 0.9, color: sk.color, speed: 30 });
+    }
+    if (sk.kind === 'volley7') c.fireArrows(this, this.handPos(), this.aimDir(), 7, this.damage(1.2));
+    if (sk.kind === 'ult') {
+      c.nova(this, 7.5, this.damage(4.2, 'palm'), sk.color);
+      this.game.vfx.shockwave(this.pos.clone(), sk.color, 9);
+      this.game.vfx.pillar(this.pos.clone(), sk.color, 8);
+      this.game.mhud?.announce(`${this.game.profile.name} thi triển tuyệt kỹ <b>${sk.name}</b>!`);
+      if (sk.heal) this.heal(this.maxHp * 0.35);
+    }
   }
 
   takeDamage(amount, from, { heavy = false } = {}) {
@@ -232,6 +258,8 @@ export class Player extends Actor {
       }
       if (input.pressed('KeyQ') && !busy && grounded) s.useSkill('q');
       if (input.pressed('KeyF') && !busy) s.useSkill('f');
+      if (input.pressed('Digit1') && !busy) s.useSkill('u1');
+      if (input.pressed('Digit2') && !busy) s.useSkill('u2');
       if (input.pressed('KeyR') && !busy && s.cooldowns.potion <= 0) {
         if (s.rpg.use('potion')) { s.cooldowns.potion = 6; s.setState('drink'); s.char.play('Consume', { once: true, fade: 0.08, speed: 1.8, restart: true, onDone: () => s.state === 'drink' && s.setState('free') }); }
         else s.game.hud.flashSlot('potion');

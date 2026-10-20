@@ -32,6 +32,7 @@ export class Combat {
 
   /** Gây sát thương lên kẻ địch (dùng chung cho mọi đòn của người chơi). */
   hurtEnemy(p, e, dmg, opts = {}) {
+    this.game.lastTarget = e;
     const crit = Math.random() < this.game.rpg.crit();
     dmg = Math.round(dmg * (crit ? 1.8 : 1));
     e.takeDamage(dmg, p, opts);
@@ -44,6 +45,7 @@ export class Combat {
     let hits = 0;
     for (const e of this.enemies()) {
       if (!this.inArc(p, e, a.range, a.arc)) continue;
+      this.game.lastTarget = e;
       const crit = Math.random() < this.game.rpg.crit();
       let dmg = Math.round(a.dmg);
       if (crit) dmg = Math.round(dmg * 1.8);

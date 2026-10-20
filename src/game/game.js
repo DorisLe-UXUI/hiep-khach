@@ -22,6 +22,7 @@ import { Companions } from './companions.js';
 import { LOOK_OPTIONS } from './classes.js';
 import '../ui/panels.js';
 import { VFX } from './vfx.js';
+import { REVEAL } from '../world/stylized.js';
 import { MonsterCharacter } from '../actors/monster.js';
 import { MONSTERS, Spawner, monsterStats } from './bestiary.js';
 import { AutoPilot } from './auto.js';
@@ -713,6 +714,41 @@ export class Game {
     } }, { x: PLACES.square.x, z: PLACES.square.z });
   }
 
+  /** Mục tiêu hiện tại: con vừa đánh / Auto đang nhắm / con gần nhất đang đuổi mình. */
+  currentTarget() {
+    const ok = (e) => e && !e.dead && e.root.visible && e.pos.distanceTo(this.player.pos) < 30;
+    if (ok(this.lastTarget)) return this.lastTarget;
+    if (ok(this.auto.target)) return this.auto.target;
+    let best = null, bd = 16;
+    for (const e of this.enemies) if (!e.dead && e.alerted && e.root.visible) { const d = e.pos.distanceTo(this.player.pos); if (d < bd) { bd = d; best = e; } }
+    return best;
+  }
+
+  /** Vòng sáng dưới chân nhân vật và vòng đỏ dưới mục tiêu. */
+  updateRings(dt) {
+    if (!this.rings) {
+      const make = (color, size, op) => {
+        const m = this.vfx.magicCircle(new THREE.Vector3(), color, size, 1e9);
+        m.material.opacity = op;
+        this.vfx.items.find((it) => it.obj === m).update = (o, k, d) => { o.rotation.z += d * 0.6; };
+        return m;
+      };
+      this.rings = { me: make(0x6ad0ff, 1.3, 0.45), tg: make(0xff3a2a, 1.2, 0.85) };
+      // bỏ cột sáng đi kèm vòng phép
+      this.vfx.items.filter((it) => it.max === 1e9 * 0.7).forEach((it) => { it.life = 0; });
+    }
+    const p = this.player.pos;
+    this.rings.me.position.set(p.x, p.y + 0.05, p.z);
+    this.rings.me.visible = !this.player.dead;
+    const t = this.currentTarget();
+    this.rings.tg.visible = !!t;
+    if (t) {
+      this.rings.tg.position.set(t.pos.x, t.pos.y + 0.06, t.pos.z);
+      const s = Math.max(1, (t.monster?.h || 1.6) * 0.7) * (t.boss ? 1.5 : 1);
+      this.rings.tg.scale.setScalar(s);
+    }
+  }
+
   /** Tin giang hồ lác đác cho thế giới sống động (nhân vật trong game). */
   worldChat(dt) {
     this.chatT -= dt;
@@ -842,6 +878,8 @@ export class Game {
     if (!this.activity) this.spawner.update(dt);
     this.companions.update(dt);
     this.vfx.update(dt);
+    this.updateRings(dt);
+    REVEAL.uReveal.value.copy(pp);
     this.mhudT = (this.mhudT || 0) - dt;
     if (this.mhudT <= 0) { this.mhudT = 0.1; this.mhud.update(); }
     this.worldChat(dt);

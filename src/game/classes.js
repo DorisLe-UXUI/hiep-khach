@@ -10,6 +10,8 @@ export const CLASSES = {
     attack: 'melee', range: 2.5, dmgMul: 1,
     q: { name: 'Lướt Kiếm', kind: 'dash', mp: 15, cd: 2.5 },
     f: { name: 'Chưởng Phong', kind: 'orb', mp: 20, cd: 0.8 },
+    u1: { name: 'Kiếm Khí Trảm', kind: 'wave', mp: 22, cd: 5, lv: 4, color: 0xbfe8ff },
+    u2: { name: 'Thiên Kiếm Trận', kind: 'ult', mp: 40, cd: 14, lv: 8, color: 0x9fd8ff },
   },
   thuong: {
     name: 'Thương Khách', han: '槍客', icon: 'spear', color: '#c95a3c', weapon: 'spear',
@@ -18,6 +20,8 @@ export const CLASSES = {
     attack: 'melee', range: 3.3, dmgMul: 1.15, speed: 0.95,
     q: { name: 'Bá Vương Thương', kind: 'dash', mp: 15, cd: 3 },
     f: { name: 'Hoành Tảo Thiên Quân', kind: 'nova', mp: 25, cd: 4 },
+    u1: { name: 'Liệt Hỏa Thương', kind: 'wave', mp: 22, cd: 5, lv: 4, color: 0xffa040 },
+    u2: { name: 'Bá Vương Quyết', kind: 'ult', mp: 40, cd: 14, lv: 8, color: 0xff7a30 },
   },
   cung: {
     name: 'Cung Thủ', han: '弓手', icon: 'bow', color: '#6fb59a', weapon: 'bow',
@@ -26,6 +30,8 @@ export const CLASSES = {
     attack: 'arrow', range: 30, dmgMul: 0.9,
     q: { name: 'Liên Châu Tiễn', kind: 'volley', mp: 18, cd: 3 },
     f: { name: 'Lộn Ngược Tiễn', kind: 'backflip', mp: 12, cd: 2 },
+    u1: { name: 'Tán Hoa Tiễn', kind: 'volley7', mp: 22, cd: 5, lv: 4, color: 0xffe6a0 },
+    u2: { name: 'Vạn Tiễn Tề Phát', kind: 'ult', mp: 40, cd: 14, lv: 8, color: 0xffd060 },
   },
   phap: {
     name: 'Pháp Sư', han: '法師', icon: 'palm', color: '#7a6fd8', weapon: null,
@@ -34,6 +40,8 @@ export const CLASSES = {
     attack: 'orb', range: 25, dmgMul: 0.85,
     q: { name: 'Phong Lôi Trận', kind: 'nova', mp: 22, cd: 4 },
     f: { name: 'Huyền Băng Chưởng', kind: 'bigorb', mp: 28, cd: 1.5 },
+    u1: { name: 'Lôi Đình Chưởng', kind: 'wave', mp: 24, cd: 4, lv: 4, color: 0xb7a8ff },
+    u2: { name: 'Thiên Lôi Trận', kind: 'ult', mp: 45, cd: 14, lv: 8, color: 0xc8b0ff },
   },
   dao: {
     name: 'Đạo Sĩ', han: '道士', icon: 'qi', color: '#5aa7e0', weapon: 'dagger',
@@ -42,6 +50,8 @@ export const CLASSES = {
     attack: 'melee', range: 2.2, dmgMul: 0.9, speed: 1.25,
     q: { name: 'Hồi Xuân Phù', kind: 'heal', mp: 25, cd: 6 },
     f: { name: 'Lôi Phù', kind: 'orb', mp: 18, cd: 0.8 },
+    u1: { name: 'Phù Triện', kind: 'wave', mp: 20, cd: 5, lv: 4, color: 0x9fe8c8 },
+    u2: { name: 'Đạo Pháp Tự Nhiên', kind: 'ult', mp: 40, cd: 16, lv: 8, color: 0x8fe0a8, heal: true },
   },
 };
 

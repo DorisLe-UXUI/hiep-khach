@@ -25,6 +25,11 @@ export class MobileHUD {
           <div class="m-exp"><div id="m-exp"></div></div>
         </div>
       </div>
+      <div id="m-target" class="hidden">
+        <div class="mt-face"><img id="mt-img" alt="" /><span id="mt-lv"></span></div>
+        <div class="mt-info"><div class="mt-name" id="mt-name"></div><div class="mt-bar"><div id="mt-hp"></div><span id="mt-hp-t"></span></div></div>
+        <div class="mt-pct" id="mt-pct"></div>
+      </div>
       <div id="m-quest">
         <div class="mq-tabs"><button class="on">Nhiệm Vụ</button><button>Tổ Đội</button></div>
         <div id="mq-body"></div>
@@ -37,6 +42,8 @@ export class MobileHUD {
         <button class="m-sk s3" data-act="roll"><span class="ico-wrap">${icon('roll')}</span><i class="cd"></i></button>
         <button class="m-sk s4" data-act="jump"><span class="ico-wrap">${icon('cloud')}</span><i class="cd"></i></button>
         <button class="m-sk s5" data-act="block"><span class="ico-wrap">${icon('shield')}</span></button>
+        <button class="m-sk s6" data-act="u1"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
+        <button class="m-sk s7" data-act="u2"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
         <button class="m-auto" data-act="auto"><span>Auto</span></button>
       </div>
       <div id="m-quick">
@@ -84,11 +91,15 @@ export class MobileHUD {
     set('.m-atk', atk);
     set('.m-sk.s1', qi[def.q.kind] || 'dash', def.q.name);
     set('.m-sk.s2', qi[def.f.kind] || 'palm', def.f.name);
+    const uic = { wave: 'shuriken', volley7: 'bow', ult: 'sparkles' };
+    set('.m-sk.s6', uic[def.u1.kind] || 'sparkles', def.u1.name);
+    set('.m-sk.s7', 'dragon', def.u2.name);
+    this.def = def;
   }
 
   press(act, down) {
     const g = this.g, inp = g.input;
-    const key = { atk: 'Mouse0', q: 'KeyQ', f: 'KeyF', roll: 'ControlLeft', jump: 'Space', block: 'Block', potion: 'KeyR' }[act];
+    const key = { atk: 'Mouse0', q: 'KeyQ', f: 'KeyF', u1: 'Digit1', u2: 'Digit2', roll: 'ControlLeft', jump: 'Space', block: 'Block', potion: 'KeyR' }[act];
     if (key) {
       if (down) { inp.justDown.add(key); inp.down.add(key); } else inp.down.delete(key);
       if (down && act !== 'block') g.auto?.pause(1.5);
@@ -181,6 +192,25 @@ export class MobileHUD {
     };
     cd('.m-sk.s1', p.cooldowns.dash, p.cls.q.cd, p.cls.q.mp);
     cd('.m-sk.s2', p.cooldowns.cast, p.cls.f.cd, p.cls.f.mp);
+    cd('.m-sk.s6', p.cooldowns.u1, p.cls.u1.cd, p.cls.u1.mp);
+    cd('.m-sk.s7', p.cooldowns.u2, p.cls.u2.cd, p.cls.u2.mp);
+    for (const [sel, sk] of [['.m-sk.s6', p.cls.u1], ['.m-sk.s7', p.cls.u2]]) {
+      const b = document.querySelector(sel), locked = r.level < sk.lv;
+      b.classList.toggle('locked', locked);
+      b.querySelector('.lock b').textContent = locked ? `Cấp ${sk.lv}` : '';
+    }
+    // khung mục tiêu
+    const tg = g.currentTarget();
+    $('m-target').classList.toggle('hidden', !tg);
+    if (tg) {
+      const pct = Math.max(0, tg.hp / tg.maxHp);
+      $('mt-img').src = tg.monster ? `/assets/thumbs/mon_${tg.tag}.png` : (g.portraits[tg.tag] || g.portraits.doba || '');
+      $('mt-lv').textContent = 'C.' + (tg.lv || Math.max(1, Math.round(tg.exp / 12)));
+      $('mt-name').innerHTML = `${tg.name}${tg.monster?.elite || tg.boss ? ' <span class="elite-tag">Tinh anh</span>' : ''}`;
+      $('mt-hp').style.width = pct * 100 + '%';
+      $('mt-hp-t').textContent = `${Math.ceil(tg.hp)} / ${tg.maxHp}`;
+      $('mt-pct').textContent = Math.round(pct * 100) + '%';
+    }
     cd('.m-sk.s3', 0, 0);
     cd('.m-sk.s4', 0, 0, 8);
     document.querySelector('.m-auto').classList.toggle('on', !!g.auto?.on);

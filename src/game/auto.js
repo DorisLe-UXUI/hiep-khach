@@ -71,6 +71,8 @@ export class AutoPilot {
         if (this.atkT <= 0) { out.press.push('Mouse0'); this.atkT = p.cls.attack === 'melee' ? 0.18 : 0.4; }
         if (p.cooldowns.dash <= 0 && p.mp > p.cls.q.mp + 10 && Math.random() < 0.03) out.press.push('KeyQ');
         if (p.cooldowns.cast <= 0 && p.mp > p.cls.f.mp + 5 && Math.random() < 0.04) out.press.push('KeyF');
+        if (g.rpg.level >= p.cls.u1.lv && p.cooldowns.u1 <= 0 && p.mp > p.cls.u1.mp + 5 && Math.random() < 0.03) out.press.push('Digit1');
+        if (g.rpg.level >= p.cls.u2.lv && p.cooldowns.u2 <= 0 && p.mp > p.cls.u2.mp && (e.boss || e.monster?.elite || Math.random() < 0.01)) out.press.push('Digit2');
       }
       return out;
     }
