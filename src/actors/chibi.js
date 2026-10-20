@@ -9,7 +9,7 @@ import { loadGLTF, loadKitOBJ } from '../engine/assets.js';
 const C = '/assets/chibi/';
 const HEIGHT = 1.75;
 
-const ANIM_FILES = ['general', 'movementbasic', 'movementadvanced', 'combatmelee', 'combatranged', 'special', 'simulation'];
+const ANIM_FILES = ['general', 'movementbasic', 'movementadvanced', 'combatmelee', 'combatranged', 'special', 'simulation', 'tools'];
 
 /** Tên animation cũ (UAL) -> KayKit, kèm hệ số tốc độ */
 const MAP = {
@@ -208,11 +208,11 @@ export const CHIBI_LOOKS = {
   villagerM: { model: 'knight', hide: ['Helmet', 'Cape'], tint: '#c8b8a0' },
   villagerF: { model: 'ranger', hide: ['Quiver'], tint: '#e0c0a0' },
   bandit: { model: 'barbarian', tint: '#8a6a50' },
-  bandit2: { model: 'rogue_hooded', tint: '#6a6050' },
+  bandit2: { model: 'rogue_hooded', tint: '#7a5a3a', tintK: 0.6 },
   boss: { model: 'barbarian', tint: '#a03028', scale: 1.15 },
-  assassin: { model: 'rogue_hooded', tint: '#3a3040' },
-  hanbang: { model: 'rogue', tint: '#5a7aa8' },
-  villain: { model: 'mage', tint: '#b02028', scale: 1.1 },
+  assassin: { model: 'rogue_hooded', tint: '#2a2030', tintK: 0.8 },
+  hanbang: { model: 'rogue', tint: '#3a5a98', tintK: 0.65 },
+  villain: { model: 'mage', tint: '#a01020', tintK: 0.7, scale: 1.1 },
   skeleton: { model: 'skeleton_warrior', skeleton: true },
   skeletonMinion: { model: 'skeleton_minion', skeleton: true },
   skeletonRogue: { model: 'skeleton_rogue', skeleton: true },
@@ -229,6 +229,14 @@ export function chibiHero(h) {
   if (!h.hood) hide.push('Helmet', 'BearHat', 'Mage_Hat', 'Mask');
   return { model, hide, tint: h.fashionColor || null, tintK: 0.5 };
 }
+
+export const FOLK = [
+  ...['a', 'b', 'c', 'd', 'e', 'f'].flatMap((l, i) => [
+    { id: `folk:mini-male-${l}`, name: `Thiếu hiệp ${i + 1}`, han: '少俠', gender: 'male' },
+    { id: `folk:mini-female-${l}`, name: `Thiếu nữ ${i + 1}`, han: '少女', gender: 'female' },
+  ]),
+  ...'abcdefghijklmnopqr'.split('').map((l, i) => ({ id: `folk:blocky-${l}`, name: `Mộc nhân ${i + 1}`, han: '木人', gender: 'any' })),
+];
 
 export const CHIBI_MODELS = [
   { id: 'knight', name: 'Hiệp sĩ', han: '俠士' }, { id: 'rogue', name: 'Nữ hiệp', han: '女俠' },

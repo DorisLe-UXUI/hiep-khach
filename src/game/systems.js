@@ -70,6 +70,7 @@ export const GUILD = {
 export const RECIPES = [
   { id: 'potion', name: 'Kim sang dược', need: { herb: 2 }, gold: 5 },
   { id: 'qipill', name: 'Hồi khí đan', need: { herb: 3 }, gold: 10 },
+  { id: 'grilled', name: 'Cá nướng', need: { fish: 1, wood: 1 }, gold: 0 },
 ];
 
 export const ENCOUNTERS = [

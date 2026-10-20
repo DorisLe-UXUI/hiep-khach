@@ -48,7 +48,8 @@ export class HUD {
       ['rank', 'Xếp hạng', 'podium', 'P', () => g.ui.openRanking(g)],
       ['guild', 'Bang hội', 'pagoda', 'G', () => g.ui.openGuild(g)],
       ['fashion', 'Thời trang', 'robe', 'U', () => g.ui.openFashion(g)],
-      ['bond', 'Kết duyên', 'rings', 'Y', () => g.ui.openBond(g)],
+      ['team', 'Tổ đội', 'team', '', () => g.ui.openParty(g)],
+      ['life', 'Sinh hoạt', 'rod', '', () => g.ui.openLife(g)],
     ];
     const rail = [
       ['bag', 'Túi đồ', 'bag', 'I', () => g.ui.openBag(g)],
@@ -58,6 +59,7 @@ export class HUD {
       ['craft', 'Sản xuất', 'cauldron', 'T', () => g.ui.openCraft(g)],
       ['mount', 'Thú cưỡi', 'horse', 'B', () => g.ui.openCompanions(g)],
       ['bestiary', 'Bách quái', 'dragon', 'L', () => g.ui.openBestiary(g)],
+      ['hub', 'Chức năng', 'gear', 'Y', () => g.ui.openHub(g)],
     ];
     const btn = ([id, n, ic, key]) => `<button class="mi" data-mi="${id}" title="${n} (${key})"><span class="mi-ic">${icon(ic)}</span><span class="mi-n">${n}</span><i class="badge"></i></button>`;
     $('topbar').innerHTML = top.map(btn).join('');

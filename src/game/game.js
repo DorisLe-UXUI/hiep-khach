@@ -17,11 +17,16 @@ import { PLACES } from '../world/layout.js';
 import { DIFFICULTY, QUALITY, writeSave, saveSettings } from '../settings.js';
 import { loadKit, loadModel } from '../engine/assets.js';
 import { rng } from '../world/noise.js';
+import { loadGLTF } from '../engine/assets.js';
 import { Systems, DUNGEONS, WORLD_BOSSES, RIVALS } from './systems.js';
 import { Companions } from './companions.js';
 import { LOOK_OPTIONS } from './classes.js';
 import '../ui/panels.js';
+import '../ui/panels2.js';
 import { VFX } from './vfx.js';
+import { Ally } from '../actors/ally.js';
+import { Life } from './life.js';
+import { Social, RECRUITS } from './social.js';
 import { REVEAL } from '../world/stylized.js';
 import { MonsterCharacter } from '../actors/monster.js';
 import { MONSTERS, Spawner, monsterStats } from './bestiary.js';
@@ -61,10 +66,15 @@ const ENEMY_TYPES = {
 for (const k in LOOKS) LOOKS[k]._role = k;
 
 /** Tạo nhân vật chính (dùng chung cho game và màn tạo nhân vật). */
-export function createHeroCharacter(h) {
+export async function createHeroCharacter(h) {
   const cls = CLASSES[h.cls] || CLASSES.kiem;
   if (Character.chibi) {
     const f = LOOK_OPTIONS.fashion.find((x) => x.id === h.fashion);
+    if (h.model?.startsWith('folk:')) {
+      const c = await MonsterCharacter.create({ file: `/assets/folk/${h.model.slice(5)}.glb`, height: 1.55, folk: true, tint: f?.color || null });
+      await c.equip(cls.weapon || 'staff');
+      return c;
+    }
     return ChibiCharacter.create({ ...chibiHero(h), tint: f?.color || null }, cls.weapon || 'staff');
   }
   return makeChar({ ...heroLook(h), hideHood: !h.hood }, cls.weapon);
@@ -86,6 +96,20 @@ async function makeChar(look, weapon) {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** NPC dịch vụ trong trấn (game nhập vai): mỗi người mở một màn. */
+const SERVICE_NPCS = [
+  { id: 'merchant', name: 'Tiền Đa Bảo', han: '錢多寶', model: 'mini-male-c', x: 12, z: 38, yaw: Math.PI / 2, greet: 'Hàng tốt giá rẻ, vào xem đi khách quan!', action: 'Xem hàng (tiệm tạp hoá)', open: 'openShopPanel' },
+  { id: 'smith', name: 'Thiết Ngưu', han: '鐵牛', model: 'blocky-o', x: 60, z: 36, yaw: -Math.PI / 2, greet: 'Đưa binh khí đây, lão Ngưu rèn cho sắc bén!', action: 'Cường hoá binh khí', open: 'openForge' },
+  { id: 'apothecary', name: 'Tô Linh', han: '蘇靈', model: 'mini-female-a', x: 4, z: 56, yaw: Math.PI / 2, greet: 'Thảo dược, cá tươi đem tới đây, tiểu nữ luyện đan nấu món cho.', action: 'Luyện đan & nấu ăn', open: 'openCraftPanel' },
+  { id: 'auctioneer', name: 'Kim lão', han: '金老', model: 'blocky-i', x: 48, z: 46, yaw: -Math.PI / 2, greet: 'Đấu giá hội Thanh Phong sắp mở phiên mới, mời quý khách!', action: 'Vào phiên đấu giá', open: 'openAuctionPanel' },
+  { id: 'trainer', name: 'Giáo đầu Lý Hổ', han: '李虎', model: 'blocky-j', x: 30, z: 62, yaw: Math.PI, greet: 'Đi giang hồ một mình nguy hiểm lắm. Võ quán có người giỏi, thuê theo cùng không?', action: 'Chiêu mộ đồng đội (tổ đội)', open: 'openPartyPanel' },
+  { id: 'mentor', name: 'Huyền Cơ Tử', han: '玄機子', model: 'mini-male-e', x: 14, z: 86, yaw: Math.PI, greet: 'Lão phu thấy ngươi cốt cách thanh kỳ...', action: 'Sư đồ', open: 'openMasterPanel' },
+  { id: 'herald', name: 'Lệnh sứ chiến trường', han: '戰令使', model: 'blocky-k', x: 44, z: 92, yaw: Math.PI, greet: 'Huyết Ảnh Môn đang tập kết ở đồng cỏ phía đông nam. Thanh Phong cần người!', action: 'Ra chiến trường', open: 'openBattlePanel' },
+  { id: 'fisher', name: 'Ngư ông', han: '漁翁', model: 'mini-male-b', x: -60, z: 80, yaw: -Math.PI / 2, greet: 'Hồ Bích Thủy nhiều cá lắm. Muốn học nghề sinh hoạt không?', action: 'Hướng dẫn sinh hoạt', open: 'openLifePanel' },
+  { id: 'matchmaker', name: 'Hồng nương', han: '紅娘', model: 'mini-female-d', x: 54, z: 72, yaw: -Math.PI / 2, greet: 'Duyên phận trời định, hôn nhân người lo~', action: 'Kết duyên & gia đình', open: 'openFamilyPanel' },
+  { id: 'steward', name: 'Quản gia', han: '管家', model: 'mini-male-f', x: -24, z: 106, yaw: Math.PI, greet: 'Chủ nhân, gia viên cần tu sửa thêm ạ.', action: 'Quản lý gia viên', open: 'openHousePanel' },
+];
 
 export class Game {
   constructor(ctx) {
@@ -117,6 +141,9 @@ export class Game {
     this.sys = new Systems(this);
     this.vfx = new VFX(this.scene);
     this.spawner = new Spawner(this);
+    this.allies = [];
+    this.life = new Life(this);
+    this.social = new Social(this);
     this.auto = new AutoPilot(this);
     this.chatT = 20;
     this.companions = new Companions(this);
@@ -195,6 +222,30 @@ export class Game {
       n.hidden = true;
       n.root.visible = false;
     }
+
+    progress('Mở hàng quán, võ quán...');
+    const folk = async (model, h = 1.5) => (Character.chibi ? MonsterCharacter.create({ file: `/assets/folk/${model}.glb`, height: h, folk: true }) : makeChar(LOOKS.villagerM));
+    for (const sv of SERVICE_NPCS) {
+      const n = new NPC(this, await folk(sv.model), { name: sv.name, idleAnim: 'Idle_Loop', talkAnim: 'Idle_Loop' });
+      n.id = sv.id; n.role = sv; n.speaker = sv.id;
+      SPEAKERS[sv.id] = { name: sv.name, han: sv.han, look: 'villagerM' };
+      n.placeAt(sv.x, sv.z, sv.yaw ?? 0);
+      n.homeYaw = sv.yaw ?? 0; n.home = [sv.x, sv.z];
+      this.npcs.push(n); this.npcById[sv.id] = n; this.scene.add(n.root);
+      this.portraits[sv.id] = renderPortrait(this.renderer, n.char);
+    }
+    const crowd = ['mini-male-a', 'mini-female-b', 'mini-male-d', 'mini-female-e', 'blocky-d', 'mini-female-f', 'blocky-h', 'mini-male-f'];
+    const r0 = rng(77);
+    for (let i = 0; i < crowd.length; i++) {
+      const route = Array.from({ length: 4 }, () => [PLACES.square.x + (r0() - 0.5) * 70, PLACES.square.z + (r0() - 0.3) * 60]);
+      const n = new NPC(this, await folk(crowd[i], 1.4), { name: 'Thôn dân', route });
+      n.id = 'crowd' + i; n.speaker = 'villager';
+      n.placeAt(route[0][0], route[0][1], 0); n.home = route[0];
+      this.npcs.push(n); this.npcById[n.id] = n; this.scene.add(n.root);
+    }
+
+    progress('Rải mỏ quặng, bến câu...');
+    await this.life.build();
 
     progress('Vẽ chân dung...');
     for (const [id, sp] of Object.entries(SPEAKERS)) {
@@ -289,6 +340,9 @@ export class Game {
     this.sys.load(save?.sys);
     this.running = true;
     this.companions.spawnPet();
+    await this.spawnAllies();
+    await this.spawnChild();
+    await this.decorateHouse();
     if (this.sys.canSignIn()) setTimeout(() => this.hud.toast('Phúc lợi: hôm nay chưa điểm danh <span class="sm">(phím O)</span>', 4), 9000);
     this.audio.start();
     await this.startChapter(save?.chapter ?? 0);
@@ -462,6 +516,10 @@ export class Game {
     const id = npc.speaker || npc.id;
     const scripted = st?.talk?.[npc.id];
     let lines = scripted ? scripted(this) : (AMBIENT[id] || AMBIENT.villager)(this);
+    if (!scripted && npc.role) {
+      const r = npc.role;
+      lines = [[npc.id, r.greet], { choice: [{ text: r.action, then: (g) => { g[r.open]?.(); } }, { text: 'Cáo từ', then: () => null }] }];
+    }
     if (!scripted && npc.id === 'keeper') {
       lines = [...lines, { choice: [
         { text: 'Mua bán (tiệm Duyệt Lai)', then: (g) => { g.ui.openShop(g); } },
@@ -619,6 +677,9 @@ export class Game {
       PLACES.cages.forEach(([x, z], i) => { if (!this.freedCages.has(i) && Math.hypot(p.x - x, p.z - z) < 2.8) best = { kind: 'cage', i, label: 'Phá lồng, cứu người' }; });
     }
     for (const h of this.herbs) if (!h.taken && Math.hypot(p.x - h.x, p.z - h.z) < 2) best = { kind: 'herb', herb: h, label: 'Hái Linh chi thảo' };
+    const ln = this.life.nearest(p);
+    if (ln && !best) best = { kind: 'life', node: ln, label: this.life.label(ln) };
+    if (!best && Math.hypot(p.x - this.spots.home.x, p.z - this.spots.home.z) < 3) best = { kind: 'home', label: 'Vào gia viên' };
     return best;
   }
 
@@ -626,6 +687,8 @@ export class Game {
     if (it.kind === 'npc') this.talkTo(it.npc);
     else if (it.kind === 'chest') this.step.interact.chest(this);
     else if (it.kind === 'cage') this.step.interact.cage(this, it.i);
+    else if (it.kind === 'life') this.life.start(it.node);
+    else if (it.kind === 'home') this.ui.openHouse(this);
     else if (it.kind === 'herb') {
       it.herb.taken = true;
       this.scene.remove(it.herb.mesh);
@@ -782,6 +845,96 @@ export class Game {
     return e;
   }
 
+  openShopPanel() { this.ui.openShop(this); }
+  openForge() { this.ui.openEnhance(this, this.rpg.equip.weapon); }
+  openCraftPanel() { this.ui.openCraft(this, 'craft'); }
+  openAuctionPanel() { this.ui.openAuction(this); }
+  openPartyPanel() { this.ui.openParty(this); }
+  openMasterPanel() { this.ui.openMaster(this); }
+  openBattlePanel() { this.ui.openBattlefield(this); }
+  openLifePanel() { this.ui.openLife(this); }
+  openFamilyPanel() { this.ui.openFamily(this); }
+  openHousePanel() { this.ui.openHouse(this); }
+
+  /** Đồng đội theo tổ đội đã chiêu mộ. */
+  async spawnAllies() {
+    for (const a of this.allies) if (!a.battle) this.scene.remove(a.root);
+    this.allies = this.allies.filter((a) => a.battle);
+    const ids = this.social.party();
+    for (let i = 0; i < ids.length; i++) {
+      const r = RECRUITS.find((x) => x.id === ids[i]);
+      const ch = Character.chibi ? await ChibiCharacter.create({ model: r.model, hide: ['Helmet', 'BearHat', 'Mage_Hat'] }, r.weapon) : await makeChar(LOOKS.villagerM, 'sword');
+      const lvK = 1 + (this.rpg.level - 1) * 0.12;
+      const a = new Ally(this, ch, { name: r.name, hp: Math.round(r.hp * lvK), atk: Math.round(r.atk * lvK), ranged: r.ranged, color: r.color, slot: i });
+      a.placeAt(this.player.pos.x + (i - 1) * 1.5, this.player.pos.z - 2, this.player.yaw);
+      this.scene.add(ch.root);
+      this.allies.push(a);
+    }
+  }
+
+  /** Con cái (sau khi kết duyên): đi theo như đồng đội nhỏ. */
+  async spawnChild() {
+    if (this.childActor) { this.scene.remove(this.childActor.root); this.allies = this.allies.filter((a) => a !== this.childActor); this.childActor = null; }
+    const c = this.sys.s.child;
+    if (!c) return;
+    const ch = Character.chibi ? await MonsterCharacter.create({ file: '/assets/folk/mini-female-c.glb', height: 0.85, folk: true }) : await makeChar(LOOKS.villagerF);
+    await ch.equip?.('dagger');
+    const a = new Ally(this, ch, { name: c.name, hp: 150 + c.lv * 40, atk: 6 + c.lv * 3, slot: 3, color: 0xffd0e0 });
+    a.radius = 0.25;
+    a.placeAt(this.player.pos.x + 1, this.player.pos.z - 1, 0);
+    this.scene.add(ch.root);
+    this.childActor = a;
+    this.allies.push(a);
+  }
+
+  /** Gia viên: trang trí thêm theo cấp nhà. */
+  async decorateHouse() {
+    if (this.houseDeco) this.scene.remove(this.houseDeco);
+    const lv = this.social.houseLv();
+    const g = new THREE.Group();
+    const H = this.spots.home;
+    const { signBoard } = await import('../world/architecture.js');
+    const names = ['', '茅屋', '木屋', '青瓦宅', '庭院', '世家府第'];
+    const plaque = signBoard(names[lv], 2.4, 0.7);
+    plaque.position.set(H.x, H.y + 3.0, H.z + 2.9);
+    plaque.rotation.y = Math.PI;
+    g.add(plaque);
+    const lantern = (await loadModel('wooden_lantern_01'));
+    const flowers = (await loadGLTF('/assets/nature/flower_3_group.glb')).scene;
+    const bush = (await loadGLTF('/assets/nature/bush_common_flowers.glb')).scene;
+    const put = (src, x, z, s = 1) => { const m = src.clone(true); m.position.set(H.x + x, this.terrain.heightAt(H.x + x, H.z + z), H.z + z); m.scale.setScalar(s); g.add(m); };
+    if (lv >= 2) { put(lantern, -3, -1.5, 1.4); put(lantern, 3, -1.5, 1.4); }
+    if (lv >= 3) for (let i = -4; i <= 4; i += 2) put(flowers, i, -3.5, 0.9);
+    if (lv >= 4) { put(bush, -6, -2, 1.6); put(bush, 6, -2, 1.6); put(await loadModel('horse_statue_01'), 0, -6, 1.8); }
+    if (lv >= 5) { put(await loadModel('chinese_screen_panels'), -6, 3, 1.5); put(await loadModel('antique_ceramic_vase_01'), 6, 3, 2); put(lantern, -6, -6, 1.8); put(lantern, 6, -6, 1.8); }
+    this.scene.add(g);
+    this.houseDeco = g;
+  }
+
+  /** Chiến trường: phe ta (đồng đội máy) đánh 3 đợt Huyết Ảnh. */
+  async startBattlefield() {
+    const B = PLACES.battle;
+    for (const a of this.allies.filter((x) => x.battle)) this.scene.remove(a.root);
+    this.allies = this.allies.filter((x) => !x.battle);
+    const side = [['knight', 'sword'], ['barbarian', 'axe'], ['ranger', 'bow'], ['mage', 'staff']];
+    for (let i = 0; i < side.length; i++) {
+      const [model, w] = side[i];
+      const ch = Character.chibi ? await ChibiCharacter.create({ model, tint: '#7ab8ff', tintK: 0.3, hide: ['Helmet', 'BearHat', 'Mage_Hat'] }, w) : await makeChar(LOOKS.villagerM, 'sword');
+      const a = new Ally(this, ch, { name: 'Thanh Phong đệ tử', hp: 500 + this.rpg.level * 40, atk: 18 + this.rpg.level * 2, ranged: w === 'bow' || w === 'staff', slot: 4 + i, anchor: new THREE.Vector3(B.x, 0, B.z), color: 0x7ab8ff });
+      a.battle = true;
+      a.placeAt(B.x - 4 + i * 2.5, B.z + 6, Math.PI);
+      this.scene.add(ch.root);
+      this.allies.push(a);
+    }
+    this.beginActivity({ title: 'Thanh Phong chiến trường', han: '清風戰場', waves: [[['assassin', 5]], [['assassin', 4], ['skeleton', 3]], [['hanbang', 1, { name: 'Huyết Ảnh tướng quân', hp: 1500, boss: true }], ['assassin', 3]]], onWin: () => {
+      const r = this.sys.give({ gold: 300, bounty: 4, points: 1 });
+      this.toast(`<span class="han">戰勝</span> Phe Thanh Phong toàn thắng!<br><span class="sm">${r}</span>`, 5);
+      this.sys.s.stats.battleWins = (this.sys.s.stats.battleWins || 0) + 1;
+      for (const a of this.allies.filter((x) => x.battle)) this.scene.remove(a.root);
+      this.allies = this.allies.filter((x) => !x.battle);
+    } }, { x: B.x, z: B.z + 8 });
+  }
+
   toggleMount() { this.companions.toggleMount(); }
   spawnPet() { this.companions.spawnPet(); }
   ownedFashion() { return this.fashionOwned; }
@@ -817,7 +970,10 @@ export class Game {
     if (ad) for (const k of ad.press) input.justDown.add(k);
     if (input.pressed('KeyZ')) this.auto.toggle();
 
-    if (!this.dialogOpen) {
+    const busyLife = this.life.update(dt, input);
+    this.social.tickAuction(dt);
+
+    if (!this.dialogOpen && !busyLife) {
       if (input.pressed('KeyV')) { this.camRig.toggleMode(); this.toast(this.camRig.mode === 'third' ? 'Góc nhìn sau lưng' : 'Góc nhìn từ trên cao', 1.2); }
       if (input.pressed('KeyM')) { this.input.unlock(); this.ui.openMap(this); }
       if (input.pressed('KeyI')) { this.input.unlock(); this.ui.openBag(this); }
@@ -829,10 +985,10 @@ export class Game {
       if (input.pressed('KeyP')) open(() => this.ui.openRanking(this));
       if (input.pressed('KeyG')) open(() => this.ui.openGuild(this));
       if (input.pressed('KeyU')) open(() => this.ui.openFashion(this));
-      if (input.pressed('KeyY')) open(() => this.ui.openBond(this));
       if (input.pressed('KeyT')) open(() => this.ui.openCraft(this));
       if (input.pressed('KeyB')) open(() => this.ui.openCompanions(this));
       if (input.pressed('KeyL')) open(() => this.ui.openBestiary(this));
+      if (input.pressed('Backslash') || input.pressed('KeyY')) open(() => this.ui.openHub(this));
       if (input.pressed('KeyH')) this.toggleMount();
       if (input.pressed('AltLeft') || input.pressed('Backquote')) {
         if (this.input.locked) { this.cursorMode = true; this.input.unlock(); } else { this.cursorMode = false; this.input.lock(); }
@@ -862,6 +1018,7 @@ export class Game {
       n.root.visible = near;
       if (near) { n.update(adt); actors.push(n); }
     }
+    for (const a of this.allies) { if (!a.dead || a.deadT < 30) { a.update(adt); actors.push(a); } }
     for (const a of actors) if (!a.dead) a.separate(actors);
     this.combat.update(adt);
     this.fx.update(dt);

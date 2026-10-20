@@ -595,6 +595,10 @@ export function buildArchitecture(terrain, colliders) {
   spots.bossHall = { x: C.x, z: C.z - 17, y: bossHall.floorY };
   spots.cages = PLACES.cages.map(([x, z]) => { const c = cage(colliders, terrain, x, z); root.add(c); return c; });
   root.add(swordTomb(colliders, terrain));
+  // gia viên của người chơi
+  const home = hall({ w: 9, d: 7, h: 3.3, front: 'door', roofH: 2.3, lift: 0.7, overhang: 1.2 }, colliders, { x: PLACES.home.x, z: PLACES.home.z, rot: Math.PI, terrain });
+  root.add(home.group);
+  spots.home = { x: PLACES.home.x, z: PLACES.home.z - 6.5, y: home.floorY };
   // gộp hàng nghìn khối gạch/cột/xà thành vài chục mesh theo vật liệu
   const stat = mergeStatic(root);
   console.info('Kiến trúc: gộp', stat.meshes, 'mesh ->', stat.merged);

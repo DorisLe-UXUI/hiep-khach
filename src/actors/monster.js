@@ -9,6 +9,7 @@ import { loadGLTF } from '../engine/assets.js';
  */
 const fbxCache = new Map();
 async function loadSource(file) {
+  if (file.startsWith('/')) return loadGLTF(file);
   if (file.endsWith('.fbx')) {
     if (!fbxCache.has(file)) fbxCache.set(file, new FBXLoader().loadAsync(`/assets/monsters/${file}`));
     const o = await fbxCache.get(file);
@@ -20,8 +21,14 @@ async function loadSource(file) {
 const KIND_RE = {
   idle: /(^|\|)(idle|flying_idle|fly)$/i,
   walk: /(^|\|)(walk|flying_idle|fly|crawl)$/i,
-  run: /(^|\|)(run|fast_flying|gallop|walk)$/i,
-  attack: /(attack|punch|bite|headbutt|weapon|sting|claw|slash|smash|kick)/i,
+  run: /(^|\|)(run|sprint|fast_flying|gallop|walk)$/i,
+  attack: /(attack-melee-right|attack|punch|bite|headbutt|weapon|sting|claw|slash|smash|kick)/i,
+  attack2: /(attack-melee-left|attack-kick)/i,
+  kick: /(attack-kick-right|kick)/i,
+  cast: /(holding-right-shoot|holding-both-shoot|cast|spell)/i,
+  sit: /(^|\|)sit$/i,
+  pick: /(pick-up|interact)/i,
+  yes: /(emote-yes|yes|cheer|wave)/i,
   hit: /(hit|hurt|damage)/i,
   death: /(death|die|dead)/i,
 };
@@ -29,6 +36,12 @@ const KIND_RE = {
 /** Tên animation của game -> loại động tác */
 function kindOf(name) {
   if (/Death/.test(name)) return 'death';
+  if (/Sword_Regular_B|Melee_Hook/.test(name)) return 'attack2';
+  if (/Sword_Regular_C|Sword_Heavy/.test(name)) return 'kick';
+  if (/Spell_/.test(name)) return 'cast';
+  if (/Sitting|Driving/.test(name)) return 'sit';
+  if (/PickUp|Chest_Open|Interact|Consume/.test(name)) return 'pick';
+  if (/Yes|Cheer/.test(name)) return 'yes';
   if (/Hit_/.test(name)) return 'hit';
   if (/Sword_|Melee_|Spell_|Attack/.test(name)) return 'attack';
   if (/Sprint|Jog|Run/.test(name)) return 'run';
@@ -76,10 +89,16 @@ export class MonsterCharacter {
     this.clips.walk ??= this.clips.idle;
     this.clips.run ??= this.clips.walk;
     this.clips.attack ??= this.clips.idle;
+    for (const k of ['attack2', 'kick', 'cast']) this.clips[k] ??= this.clips.attack;
+    for (const k of ['sit', 'pick', 'yes']) this.clips[k] ??= this.clips.idle;
     this.actions = {};
     this.current = null;
     this.currentName = null;
     this.bones = { hand_r: model, Head: model };
+    model.traverse((o) => {
+      if (/arm-right|armright/i.test(o.name)) this.bones.hand_r = o;
+      if (/^head$/i.test(o.name)) this.bones.Head = o;
+    });
     this.onDone = new Map();
     this.mixer.addEventListener('finished', (e) => {
       const cb = this.onDone.get(e.action);
@@ -100,11 +119,13 @@ export class MonsterCharacter {
     const a = this.action(name);
     if (!a) { onDone?.(); return null; }
     // đòn đánh, trúng đòn, chết: chạy một lần
-    const one = once || kind === 'attack' || kind === 'hit' || kind === 'death';
+    const one = once || ['attack', 'attack2', 'kick', 'cast', 'hit', 'death', 'pick', 'yes'].includes(kind);
     if (this.current === a && !restart) { a.timeScale = speed; this.currentName = name; return a; }
     a.reset();
     a.enabled = true;
-    a.timeScale = speed * (kind === 'attack' ? 1.1 : 1);
+    // động tác của bộ Kenney rất ngắn: chậm lại cho khớp nhịp đòn của game
+    const shortK = this.def.folk && one && kind !== 'death' ? 0.45 : 1;
+    a.timeScale = speed * (kind === 'attack' ? 1.1 : 1) * shortK;
     a.setLoop(one ? THREE.LoopOnce : THREE.LoopRepeat, one ? 1 : Infinity);
     a.clampWhenFinished = one;
     if (onDone) this.onDone.set(a, onDone); else this.onDone.delete(a);
@@ -116,8 +137,21 @@ export class MonsterCharacter {
   }
 
   duration(name) { return this.clips[kindOf(name)]?.duration ?? 1; }
-  async equip() {}
-  async swapWeapon() {}
+  /** Vũ khí KayKit gắn vào cuối cánh tay phải (nhân vật Kenney). */
+  async equip(kind) {
+    const file = { sword: 'w_sword_1handed', golden: 'w_sword_2handed_color', saber: 'w_sword_1handed', axe: 'w_axe_1handed', dagger: 'w_dagger', bow: 'w_bow_withstring', staff: 'w_staff', spear: 'w_staff', machete: 'w_skeleton_blade' }[kind];
+    if (!file || !this.def.folk) return;
+    const w = (await loadGLTF(`/assets/chibi/${file}.glb`)).scene.clone(true);
+    const arm = this.bones.hand_r;
+    const ws = arm.getWorldScale(new THREE.Vector3()).x || 1;
+    w.scale.setScalar(0.55 / ws);
+    w.position.set(0, -0.26 / ws, 0.05 / ws);
+    w.rotation.set(Math.PI / 2, 0, 0);
+    w.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    arm.add(w);
+    this.weaponMounts = [w];
+  }
+  async swapWeapon(kind) { for (const m of this.weaponMounts || []) m.removeFromParent(); if (kind) await this.equip(kind); }
   setWeaponPose() {}
   update(dt) { this.mixer.update(dt); }
 }

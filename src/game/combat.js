@@ -67,6 +67,10 @@ export class Combat {
 
   enemyMelee(e, a) {
     const p = this.game.player;
+    // đồng đội đứng trong tầm cũng dính đòn
+    for (const al of this.game.allies || []) {
+      if (!al.dead && this.inArc(e, al, a.range, a.arc)) al.takeDamage(Math.round(a.dmg * 0.9));
+    }
     if (p.dead || !this.inArc(e, p, a.range, a.arc)) return;
     const dmg = Math.round(a.dmg * (0.85 + Math.random() * 0.3));
     const dealt = p.takeDamage(dmg, e, { heavy: a.heavy });
@@ -82,7 +86,7 @@ export class Combat {
     mesh.position.copy(from);
     mesh.add(new THREE.PointLight(color, 6, 9, 2));
     this.game.scene.add(mesh);
-    this.orbs.push({ mesh, vel: dir.clone().normalize().multiplyScalar(speed), life: 1.8, owner, dmg, color, hostile: owner !== this.game.player, r: 0.5 * size });
+    this.orbs.push({ mesh, vel: dir.clone().normalize().multiplyScalar(speed), life: 1.8, owner, dmg, color, hostile: !!owner.isEnemy, r: 0.5 * size });
     this.game.audio.whoosh();
   }
 

@@ -3,6 +3,7 @@ import { Actor } from './actor.js';
 
 /** Sơn tặc / trại chủ. AI: canh gác -> phát hiện -> áp sát -> chém -> trúng đòn -> chết. */
 export class Enemy extends Actor {
+  get isEnemy() { return true; }
   constructor(game, character, opts) {
     super(game, character, { radius: opts.boss ? 0.5 : 0.4, hp: opts.hp });
     this.name = opts.name;

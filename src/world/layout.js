@@ -14,6 +14,8 @@ export const PLACES = {
   chest: { x: -168, z: -118 },
   tomb: { x: -222, z: -205 },                 // Kiếm Mộ trên núi tây
   cages: [[30, -186], [66, -186]],            // lồng giam trong trại
+  home: { x: -28, z: 116 },                   // gia viên
+  battle: { x: 132, z: 150 },                 // chiến trường
 };
 
 /** Các vùng san phẳng: [x, z, bán kính, độ cao, độ mềm biên] */
@@ -23,6 +25,8 @@ export const FLATTEN = [
   [PLACES.camp.x, PLACES.camp.z, 46, null, 22],
   [PLACES.chest.x, PLACES.chest.z, 8, null, 10],
   [PLACES.tomb.x, PLACES.tomb.z, 30, null, 26],
+  [PLACES.home.x, PLACES.home.z, 16, null, 14],
+  [PLACES.battle.x, PLACES.battle.z, 30, 4.5, 20],
 ];
 
 /** Đường đất: polyline, mỗi điểm [x, z]; width (m) */

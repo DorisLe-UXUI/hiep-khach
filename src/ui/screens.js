@@ -3,7 +3,7 @@ import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { listProfiles, register, signIn, guest, saveProfile } from '../settings.js';
 import { CLASSES, LOOK_OPTIONS, defaultHero } from '../game/classes.js';
-import { CHIBI_MODELS } from '../actors/chibi.js';
+import { CHIBI_MODELS, FOLK } from '../actors/chibi.js';
 import { Character } from '../actors/character.js';
 import { ITEMS, SKILLS, expNeed, realmOf } from '../game/rpg.js';
 import { WORLD_SIZE, PLACES, PATHS } from '../world/layout.js';
@@ -99,7 +99,9 @@ Object.assign(UI.prototype, {
         const tabs = chibi ? [['model', 'Hình tượng', 'user'], ['fashion', 'Thời trang', 'robe'], ['acc', 'Phụ kiện', 'hood']]
           : [['hair', 'Kiểu tóc', 'user'], ['color', 'Màu tóc', 'lotus'], ['outfit', 'Trang phục', 'shield'], ['fashion', 'Thời trang', 'star'], ['acc', 'Phụ kiện', 'bag']];
         let body = '';
-        if (tab === 'model') body = `<button class="opt ${!h.model ? 'on' : ''}" data-k="model" data-v="">${icon(CLASSES[h.cls].icon)}<span>Theo môn phái</span></button>` + CHIBI_MODELS.map((m) => `<button class="opt ${h.model === m.id ? 'on' : ''}" data-k="model" data-v="${m.id}"><span class="han" style="font-size:22px">${m.han}</span><span>${m.name}</span></button>`).join('');
+        if (tab === 'model') body = `<button class="opt ${!h.model ? 'on' : ''}" data-k="model" data-v="">${icon(CLASSES[h.cls].icon)}<span>Theo môn phái</span></button>`
+          + CHIBI_MODELS.map((m) => `<button class="opt ${h.model === m.id ? 'on' : ''}" data-k="model" data-v="${m.id}"><span class="han" style="font-size:22px">${m.han}</span><span>${m.name}</span></button>`).join('')
+          + FOLK.filter((m) => m.gender === 'any' || m.gender === h.gender).map((m) => `<button class="opt ${h.model === m.id ? 'on' : ''}" data-k="model" data-v="${m.id}"><img class="opt-thumb" src="/assets/thumbs/folk_${m.id.slice(5).replace(/-/g, '_')}.png" alt="" /><span>${m.name}</span></button>`).join('');
         if (tab === 'hair') body = LOOK_OPTIONS.hair[h.gender].map((x) => `<button class="opt ${h.hair === x ? 'on' : ''}" data-k="hair" data-v="${x}">${icon('user')}<span>${LOOK_OPTIONS.hairLabel[x]}</span></button>`).join('');
         if (tab === 'color') body = LOOK_OPTIONS.hairColors.map((x) => `<button class="swatch ${h.hairColor === x ? 'on' : ''}" data-k="hairColor" data-v="${x}" style="background:${x}"></button>`).join('');
         if (tab === 'outfit') body = LOOK_OPTIONS.outfits[h.gender].map((x) => `<button class="opt ${h.outfit === x ? 'on' : ''}" data-k="outfit" data-v="${x}">${icon('shield')}<span>${LOOK_OPTIONS.outfitLabel[x]}</span></button>`).join('');

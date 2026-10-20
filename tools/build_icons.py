@@ -17,7 +17,9 @@ MAP = {
   'chest': 'skoll/open-chest', 'crown': 'lorc/crown', 'meditation': 'lorc/meditation', 'sparkles': 'delapouite/sparkles',
   'guards': 'delapouite/guards', 'village': 'delapouite/village', 'tower': 'delapouite/tower-flag', 'fist': 'lorc/punch-blast',
   'hood': 'lorc/hood', 'compass': 'lorc/compass', 'save': 'delapouite/save', 'hourglass': 'lorc/hourglass', 'gift': 'delapouite/present',
-  'battle': 'lorc/battle-gear', 'shuriken': 'lorc/shuriken', 'fox': 'lorc/fox-head', 'flower': 'delapouite/flower-emblem',
+  'battle': 'lorc/battle-gear', 'fish': 'delapouite/fishing', 'rod': 'delapouite/fishing-pole', 'ore': 'faithtoken/ore', 'wood': 'delapouite/wood-pile',
+  'axe': 'lorc/axe-in-stump', 'mining': 'lorc/mining', 'home': 'delapouite/family-house', 'team': 'delapouite/three-friends', 'baby': 'delapouite/baby-face',
+  'swords': 'lorc/crossed-swords', 'gavel': 'lorc/gavel', 'meal': 'delapouite/meal', 'nugget': 'delapouite/gold-nuggets', 'wizard': 'delapouite/wizard-face', 'ancient': 'delapouite/ancient-sword', 'shuriken': 'lorc/shuriken', 'fox': 'lorc/fox-head', 'flower': 'delapouite/flower-emblem',
 }
 out = {}
 for k, rel in MAP.items():

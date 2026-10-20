@@ -6,6 +6,8 @@ export const realmOf = (lv) => REALMS[Math.min(REALMS.length - 1, Math.floor((lv
 export const expNeed = (lv) => Math.round(70 * Math.pow(lv, 1.55));
 
 /** Danh mục vật phẩm. slot: weapon | armor | trinket; use: hàm khi dùng. */
+import { LIFE_ITEMS } from './life.js';
+
 export const ITEMS = {
   potion: { name: 'Kim sang dược', han: '金創藥', icon: 'potion', type: 'consumable', price: 20, desc: 'Hồi 45% khí huyết. Phím R.' },
   qipill: { name: 'Hồi khí đan', han: '回氣丹', icon: 'flask', type: 'consumable', price: 25, desc: 'Hồi 60% nội lực.' },
@@ -24,6 +26,8 @@ export const ITEMS = {
   charm: { name: 'Hộ thân phù', han: '護身符', icon: 'scroll', type: 'equip', slot: 'trinket', mp: 25, price: 110, desc: 'Bùa bình an của chùa trên núi. Nội lực +25.' },
   jade: { name: 'Ngọc bội Thanh Phong', han: '清風玉佩', icon: 'lotus', type: 'equip', slot: 'trinket', mp: 15, crit: 0.08, desc: 'Nửa miếng ngọc bội của sư phụ. Nội lực +15, bạo kích +8%.' },
 };
+
+Object.assign(ITEMS, LIFE_ITEMS);
 
 export const SKILLS = {
   sword: { name: 'Thanh Phong kiếm pháp', han: '清風劍法', icon: 'sword', max: 5, desc: (l) => `Sát thương đòn kiếm +${l * 10}%.` },
@@ -76,6 +80,7 @@ export class RPG {
   }
 
   gainExp(n) {
+    n = Math.round(n * (1 + (this.g.social?.expBonus() || 0)));
     this.exp += n;
     let up = false;
     while (this.exp >= expNeed(this.level)) {
@@ -117,6 +122,10 @@ export class RPG {
       this.remove('qipill');
       p.mp = Math.min(p.maxMp, p.mp + p.maxMp * 0.6);
       this.g.fx.burst(p.pos.clone().setY(p.pos.y + 1), 0x8fc8ff, 30);
+    } else if (id === 'grilled') {
+      this.remove('grilled');
+      p.heal(p.maxHp * 0.3);
+      p.mp = Math.min(p.maxMp, p.mp + p.maxMp * 0.3);
     } else if (id === 'herb') {
       this.remove('herb');
       p.heal(20);

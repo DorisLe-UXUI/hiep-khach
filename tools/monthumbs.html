@@ -18,9 +18,11 @@
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     renderer.setClearColor(0x000000, 0);
-    const ids = new URLSearchParams(location.search).get('ids')?.split(',') || Object.keys(MONSTERS);
+    const folk = new URLSearchParams(location.search).get('folk');
+    const FOLKS = [...'abcdef'.split('').flatMap((l) => [`mini-male-${l}`, `mini-female-${l}`]), ...'abcdefghijklmnopqr'.split('').map((l) => `blocky-${l}`)];
+    const ids = folk ? FOLKS : new URLSearchParams(location.search).get('ids')?.split(',') || Object.keys(MONSTERS);
     for (const id of ids) {
-      const m = MONSTERS[id];
+      const m = folk ? { file: `/assets/folk/${id}.glb`, name: id } : MONSTERS[id];
       const scene = new THREE.Scene();
       scene.add(new THREE.HemisphereLight(0xfff2dc, 0x302018, 1.8));
       const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(2, 3, 4); scene.add(key);
@@ -39,7 +41,7 @@
       cam.lookAt(center);
       renderer.render(scene, cam);
       const blob = await new Promise((res) => renderer.domElement.toBlob(res, 'image/png'));
-      await fetch(`/__save?dir=thumbs&name=mon_${id}.png`, { method: 'POST', body: blob });
+      await fetch(`/__save?dir=thumbs&name=${folk ? 'folk_' + id.replace(/-/g, '_') : 'mon_' + id}.png`, { method: 'POST', body: blob });
       const img = new Image(); img.src = URL.createObjectURL(blob); img.width = 80; img.title = m.name; img.style.background = '#1a120c';
       document.getElementById('out').appendChild(img);
     }
