@@ -31,7 +31,7 @@ export const ITEMS = {
   jade: { name: 'Ngọc bội Thanh Phong', han: '清風玉佩', icon: 'lotus', type: 'equip', slot: 'trinket', mp: 15, crit: 0.08, desc: 'Nửa miếng ngọc bội của sư phụ. Nội lực +15, bạo kích +8%.' },
 };
 
-Object.assign(ITEMS, LIFE_ITEMS);
+Object.assign(ITEMS, LIFE_ITEMS, GEM_ITEMS);
 
 export const SKILLS = {
   sword: { name: 'Thanh Phong kiếm pháp', han: '清風劍法', icon: 'sword', max: 5, desc: (l) => `Sát thương đòn kiếm +${l * 10}%.` },
@@ -41,7 +41,7 @@ export const SKILLS = {
   guard: { name: 'Hộ thể thần công', han: '護體神功', icon: 'shield', max: 5, desc: (l) => `Giảm thêm ${l * 4}% sát thương nhận vào.` },
 };
 
-import { makeGear, RARITY, gearScore } from './gear.js';
+import { makeGear, RARITY, gearScore, GEM_ITEMS, parseGem, gemValue, gemId, socketsOf, GEM_MAX } from './gear.js';
 import { TITLES } from './titles.js';
 
 export class RPG {
@@ -67,7 +67,12 @@ export class RPG {
   stat(key) {
     let v = 0;
     for (const s of Object.values(this.equip)) v += ITEMS[s]?.[key] || 0;
-    for (const it of Object.values(this.gear)) if (it) v += (it.stats[key] || 0) * (1 + it.enh * 0.08);
+    for (const it of Object.values(this.gear)) {
+      if (!it) continue;
+      v += (it.stats[key] || 0) * (1 + it.enh * 0.08);
+      for (const gid of it.gems || []) { const gm = parseGem(gid); if (gm?.type === key) v += gemValue(gm.type, gm.lv); }
+    }
+    v += this.g.meridian?.stat(key) || 0;
     v += TITLES.find((t) => t.id === this.title)?.stats[key] || 0;
     return key === 'atk' || key === 'hp' || key === 'mp' ? Math.round(v) : v;
   }
@@ -94,6 +99,7 @@ export class RPG {
   gainExp(n) {
     n = Math.round(n * (1 + (this.g.social?.expBonus() || 0)));
     this.exp += n;
+    this.zhenqi = (this.zhenqi || 0) + Math.ceil(n * 0.35);
     let up = false;
     while (this.exp >= expNeed(this.level)) {
       this.exp -= expNeed(this.level);
@@ -246,8 +252,35 @@ export class RPG {
   }
   rarityOf(it) { return RARITY[it.rarity]; }
 
+  // ───── khảm ngọc ─────
+  socket(it, gid) {
+    it.gems ??= [];
+    if (it.gems.length >= socketsOf(it) || !this.remove(gid)) return false;
+    it.gems.push(gid);
+    this.apply();
+    return true;
+  }
+  unsocket(it, i) {
+    const gid = it.gems?.[i];
+    if (!gid || this.gold < 20) return false;
+    this.gold -= 20;
+    it.gems.splice(i, 1);
+    this.add(gid);
+    this.apply();
+    return true;
+  }
+  /** Hợp thành: 3 viên cấp L → 1 viên cấp L+1 */
+  combineGem(gid) {
+    const gm = parseGem(gid);
+    if (!gm || gm.lv >= GEM_MAX || (this.bag[gid] || 0) < 3 || this.gold < 15 * gm.lv) return false;
+    this.gold -= 15 * gm.lv;
+    this.remove(gid, 3);
+    this.add(gemId(gm.type, gm.lv + 1));
+    return true;
+  }
+
   toJSON() {
-    return { level: this.level, exp: this.exp, gold: this.gold, points: this.points, bag: this.bag, equip: this.equip, owned: [...this.owned], skills: this.skills, enh: this.enh || {}, gear: this.gear, gearBag: this.gearBag, title: this.title };
+    return { level: this.level, exp: this.exp, gold: this.gold, points: this.points, bag: this.bag, equip: this.equip, owned: [...this.owned], skills: this.skills, enh: this.enh || {}, gear: this.gear, gearBag: this.gearBag, title: this.title, zhenqi: this.zhenqi || 0, meridians: this.meridians, meridianLuck: this.meridianLuck || 0 };
   }
 
   load(d) {
@@ -258,5 +291,8 @@ export class RPG {
     this.gear = { ...(d.gear || {}) };
     this.gearBag = [...(d.gearBag || [])];
     this.title = d.title || 'newbie';
+    this.zhenqi = d.zhenqi || 0;
+    this.meridians = d.meridians || null;
+    this.meridianLuck = d.meridianLuck || 0;
   }
 }

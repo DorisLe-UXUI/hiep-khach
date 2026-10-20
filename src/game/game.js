@@ -35,8 +35,11 @@ import { MobileHUD } from '../ui/mobilehud.js';
 import { realmOf } from './rpg.js';
 import { Fury } from './fury.js';
 import { Beasts, BEASTS } from './beasts.js';
-import { dropGear, RARITY } from './gear.js';
+import { dropGear, RARITY, randomGem } from './gear.js';
 import { TITLES } from './titles.js';
+import { Meridian } from './meridian.js';
+import { Telegraphs } from './telegraph.js';
+import { Clock } from './clock.js';
 import '../ui/panels3.js';
 
 export const LOOKS = {
@@ -150,6 +153,9 @@ export class Game {
     this.life = new Life(this);
     this.social = new Social(this);
     this.fury = new Fury(this);
+    this.meridian = new Meridian(this);
+    this.telegraphs = new Telegraphs(this);
+    this.clock = new Clock(this);
     this.titleT = 5;
     this.auto = new AutoPilot(this);
     this.chatT = 20;
@@ -381,6 +387,7 @@ export class Game {
     for (const e of this.enemies) this.scene.remove(e.root);
     this.enemies = [];
     this.clearLoot();
+    this.clock.setTo(ch.time);
     await this.sky.set(ch.time);
     // NPC theo chương
     const night = ch.time === 'night';
@@ -629,6 +636,7 @@ export class Game {
     const lv = e.lv || this.rpg.level;
     const big = e.boss || e.elite || e.monster?.elite;
     if (e.beast && Math.random() < 0.4) drops.push(['fodder', 1]);
+    if (Math.random() < (e.boss ? 1 : big ? 0.5 : 0.03)) drops.push([randomGem(e.boss ? 3 : big ? 2 : 1), 1]);
     if (Math.random() < 0.06) drops.push(['tame_charm', 1]);
     if (Math.random() < (big ? 1 : 0.14 * (1 + this.beasts.bonus('drop')))) drops.push(['gear', dropGear(lv, big)]);
     if (e.boss && Math.random() < 0.5) drops.push(['gear', dropGear(lv + 2, true)]);
@@ -893,6 +901,8 @@ export class Game {
     });
     e.radius = Math.max(0.35, m.h * 0.28);
     if (m.beast) e.beast = m.beast;
+    // ban đêm yêu quái mạnh hơn
+    if (opts.zone && !m.beast && this.clock.night) { e.maxHp = e.hp = Math.round(e.maxHp * 1.25); e.dmg = Math.round(e.dmg * 1.25); e.exp = Math.round(e.exp * 1.3); e.night = true; }
     // quái tinh anh ngẫu nhiên: to hơn, trâu hơn, chắc chắn rơi trang bị tốt
     if (opts.zone && !opts.boss && !m.elite && !m.beast && Math.random() < 0.07) {
       e.elite = true;
@@ -1091,6 +1101,8 @@ export class Game {
     this.combat.update(adt);
     this.fx.update(dt);
     this.fury.update(dt);
+    this.telegraphs.update(dt);
+    this.clock.update(dt);
     if ((this.musicT = (this.musicT || 0) - dt) <= 0) { this.musicT = 1.5; this.audio.music(this.pickMusic()); }
     if ((this.titleT -= dt) <= 0) { this.titleT = 4; this.checkTitles(); }
     this.updateLoot(dt);

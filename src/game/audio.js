@@ -114,6 +114,20 @@ export class Audio {
   levelUp() { if (this.sfx('levelup', { vol: 0.6, jitter: 0 })) return; [392, 523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.7, 0.13, 'triangle'), i * 90)); }
   setVolume(v) { if (this.master) this.master.gain.value = v; this.vol = v; if (this.track) this.track.volume = this.musicVol * v * 1.6; }
   setMusicVolume(v) { this.musicVol = v; if (this.track) this.track.volume = v * (this.vol ?? 0.5) * 1.6; }
+  /** Tiếng mưa (nhiễu lọc thông thấp), k: 0..1 */
+  rain(k) {
+    if (!this.ctx) return;
+    if (!this.rainG) {
+      if (k < 0.02) return;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noise; src.loop = true;
+      const f = this.ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 0.4;
+      this.rainG = this.ctx.createGain(); this.rainG.gain.value = 0;
+      src.connect(f).connect(this.rainG).connect(this.master);
+      src.start();
+    }
+    this.rainG.gain.value = k * 0.22;
+  }
   ui(name = 'click') { this.sfx(name, { vol: 0.35, jitter: 0.02 }); }
   step() { this.sfx('step', { vol: 0.18 }); }
   chime() { if (this.sfx('success', { vol: 0.45, jitter: 0 })) return; [523, 659, 784].forEach((f, i) => setTimeout(() => this.tone(f, 0.6, 0.12, 'sine'), i * 110)); }

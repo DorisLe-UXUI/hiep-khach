@@ -53,6 +53,7 @@ export class HUD {
       ['hub', 'Chức năng', 'gear', 'Y', () => g.ui.openHub(g)],
     ];
     const top = [
+      ['meridian', 'Kinh mạch', 'qi', '', () => g.ui.openMeridian(g)],
       ['welfare', 'Phúc lợi', 'present', 'O', () => g.ui.openWelfare(g)],
       ['events', 'Hoạt động', 'calendar', 'N', () => g.ui.openEvents(g)],
       ['rank', 'Xếp hạng', 'podium', 'P', () => g.ui.openRanking(g)],

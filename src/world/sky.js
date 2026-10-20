@@ -162,10 +162,10 @@ export class Sky {
     s.fog.density = t.density * 0.45;
     this.renderer.toneMappingExposure = timeName === 'night' ? 1.2 : 1.0;
     this.sun.color.set(sun);
-    this.sun.intensity = timeName === 'night' ? 0.7 : 2.8;
+    this.sun.intensity = timeName === 'night' ? 1.0 : 2.8;
     this.hemi.color.set(hor);
     this.hemi.groundColor.set(gnd);
-    this.hemi.intensity = timeName === 'night' ? 0.35 : 0.8;
+    this.hemi.intensity = timeName === 'night' ? 0.6 : 0.8;
     for (const c of this.clouds) c.material.color.set(timeName === 'night' ? '#4a5a8a' : timeName.startsWith('dawn') || timeName === 'sunrise' ? '#ffe0d0' : '#ffffff');
     if (this.water?.userData.simple) this.water.material.color.set(timeName === 'night' ? 0x123a5a : 0x3aa8d0);
     else if (this.water) {

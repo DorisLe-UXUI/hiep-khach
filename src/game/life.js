@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { loadGLTF } from '../engine/assets.js';
 import { PLACES, WATER_LEVEL } from '../world/layout.js';
 import { rng } from '../world/noise.js';
+import { randomGem, GEM_ITEMS } from './gear.js';
 
 /**
  * Sinh hoạt: câu cá ở hồ, khai khoáng, chặt gỗ. Nút tài nguyên mọc lại sau một thời gian.
@@ -86,7 +87,7 @@ export class Life {
     p.faceTowards(Math.atan2(n.x - p.pos.x, n.z - p.pos.z), 1, 100);
     if (n.kind === 'fish') {
       p.char.play('Fishing_Cast', { once: true, restart: true, onDone: () => p.char.play('Fishing_Idle') });
-      this.fishing = { node: n, t: 0, bite: 2 + Math.random() * 4, window: 0 };
+      this.fishing = { node: n, t: 0, bite: (2 + Math.random() * 4) * (this.g.clock?.raining ? 0.5 : 1), window: 0 };
       g.toast('Thả câu... chờ cá cắn câu rồi bấm <kbd>E</kbd>', 2.5);
       return;
     }
@@ -120,7 +121,7 @@ export class Life {
         if (input.pressed('KeyE') || input.pressed('Mouse0')) {
           this.fishing = null;
           p.char.play('Fishing_Catch', { once: true, restart: true, onDone: () => p.setState('free') });
-          this.give(Math.random() < 0.08 ? 'goldfish' : 'fish');
+          this.give(Math.random() < (g.clock?.raining ? 0.18 : 0.08) ? 'goldfish' : 'fish');
           g.rpg.gainExp(15);
           f.node.respawn = 8;
           return true;
@@ -141,6 +142,12 @@ export class Life {
         const k = w.node.kind;
         this.give(k === 'wood' ? 'wood' : k === 'jade' ? 'jade_ore' : 'ore', 1 + (Math.random() < 0.3 ? 1 : 0));
         g.rpg.gainExp(12);
+        if (k !== 'wood' && Math.random() < (k === 'jade' ? 0.4 : 0.12)) {
+          const gid = randomGem(k === 'jade' ? 2 : 1);
+          g.rpg.add(gid);
+          g.toast(`Đào được <b style="color:${GEM_ITEMS[gid].color}">${GEM_ITEMS[gid].name}</b>!`, 2.2);
+          g.audio.sfx('sparkle');
+        }
         w.node.respawn = 45;
         w.node.mesh.visible = false;
       }

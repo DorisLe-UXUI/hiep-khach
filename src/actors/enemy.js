@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { castTelegraph } from '../game/telegraph.js';
 import { Actor } from './actor.js';
 
 /** Sơn tặc / trại chủ. AI: canh gác -> phát hiện -> áp sát -> chém -> trúng đòn -> chết. */
@@ -105,6 +106,18 @@ export class Enemy extends Actor {
         if (this.pos.distanceTo(this.home) > 70) { this.setState('return'); this.alerted = false; break; }
         const reach = this.monster ? this.reach : this.boss ? 2.4 : 2.0;
         if (this.caster && dist > reach && dist < 16 && this.cool <= 0 && Math.random() < 0.02) { this.startAttack(); break; }
+        // chiêu có cảnh báo của boss / tinh anh
+        if ((this.boss || this.elite || this.monster?.elite) && dist < 14) {
+          this.skillCool = (this.skillCool ?? 4 + Math.random() * 3) - dt;
+          if (this.skillCool <= 0) {
+            const d = castTelegraph(this, this.game);
+            this.skillCool = (this.boss ? 6 : 9) * (this.phase2 ? 0.7 : 1) + Math.random() * 3;
+            this.setState('channel');
+            this.channelT = d;
+            this.char.play('Spell_Simple_Enter', { once: true, restart: true, speed: 0.8 });
+            break;
+          }
+        }
         if (dist > reach) { moveDir = toP.clone().normalize(); speed = this.speed; }
         else {
           // vòng quanh một chút khi đang hồi chiêu
@@ -113,6 +126,11 @@ export class Enemy extends Actor {
           if (this.cool <= 0) this.startAttack();
         }
         this.faceTowards(Math.atan2(toP.x, toP.z), dt, 8);
+        break;
+      }
+      case 'channel': {
+        // đứng vận chiêu cho tới khi vòng cảnh báo nổ
+        if ((this.channelT -= dt) <= 0) { this.setState('chase'); this.cool = Math.max(this.cool, 0.6); }
         break;
       }
       case 'attack': {

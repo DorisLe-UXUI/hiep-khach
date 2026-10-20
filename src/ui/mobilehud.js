@@ -184,7 +184,8 @@ export class MobileHUD {
     $('mq-pot').textContent = r.bag.potion || 0;
     $('mq-qi').textContent = r.bag.qipill || 0;
     const now = new Date();
-    $('m-clock').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const ck = g.clock;
+    $('m-clock').innerHTML = `${ck.night ? '🌙' : '☀️'}${ck.raining ? '🌧' : ''} <span class="han">${ck.shichen().han}</span> ${ck.shichen().name} ${ck.label()}`;
 
     // hồi chiêu dạng quét tròn
     const cd = (sel, v, max, mp) => {

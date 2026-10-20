@@ -77,3 +77,36 @@ export function dropGear(lv, elite) {
   const slot = SLOTS[Math.floor(Math.random() * SLOTS.length)].id;
   return makeGear(slot, Math.max(1, lv + Math.floor(Math.random() * 3) - 1), rollRarity(elite ? 2.5 : 0));
 }
+
+// ───────── Bảo thạch (khảm ngọc) ─────────
+export const GEM_TYPES = {
+  atk: { name: 'Hồng ngọc', han: '紅玉', color: '#ff4a4a', per: 4 },
+  hp: { name: 'Lục ngọc', han: '綠玉', color: '#4adf6a', per: 40 },
+  mp: { name: 'Lam ngọc', han: '藍玉', color: '#4a9aff', per: 22 },
+  crit: { name: 'Hoàng ngọc', han: '黃玉', color: '#ffd23a', per: 0.012 },
+  def: { name: 'Tử ngọc', han: '紫玉', color: '#c06aff', per: 0.01 },
+};
+export const GEM_MAX = 5;
+/** Số lỗ khảm theo phẩm cấp */
+export const socketsOf = (it) => [0, 1, 1, 2, 3][it.rarity] || 0;
+export const gemId = (type, lv) => `gem_${type}_${lv}`;
+export function parseGem(id) {
+  const m = /^gem_(\w+)_(\d)$/.exec(id || '');
+  return m ? { type: m[1], lv: Number(m[2]) } : null;
+}
+/** Chỉ số 1 viên: cấp L = per × (2^L - 1) */
+export function gemValue(type, lv) {
+  const v = GEM_TYPES[type].per * (2 ** lv - 1);
+  return type === 'crit' || type === 'def' ? +v.toFixed(3) : Math.round(v);
+}
+/** Vật phẩm bảo thạch cho túi đồ */
+export const GEM_ITEMS = {};
+for (const [type, g] of Object.entries(GEM_TYPES)) {
+  for (let lv = 1; lv <= GEM_MAX; lv++) {
+    GEM_ITEMS[gemId(type, lv)] = { name: `${g.name} cấp ${lv}`, han: g.han, icon: 'nugget', type: 'gem', gem: type, lv, color: g.color, sell: 6 * 3 ** (lv - 1), desc: `Khảm vào trang bị: ${STAT_NAME[type]} ${fmtStat(type, gemValue(type, lv))}. Ba viên cùng cấp hợp thành một viên cấp ${lv + 1}.` };
+  }
+}
+export function randomGem(maxLv = 1) {
+  const types = Object.keys(GEM_TYPES);
+  return gemId(types[Math.floor(Math.random() * types.length)], 1 + Math.floor(Math.random() * maxLv));
+}
