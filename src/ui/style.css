@@ -642,3 +642,124 @@ body:not(.cursor-free) .mi { opacity: .82; }
 .gift-btn { display: inline-flex; align-items: center; gap: 6px; }
 .gift-btn .thumb-img { width: 26px; height: 26px; }
 .ware .ic { overflow: hidden; }
+
+/* ───────── phong cách tươi sáng ───────── */
+body.style-bright #game { filter: saturate(1.32) contrast(1.06) brightness(1.03); }
+
+/* ───────── HUD kiểu mobile (chế độ MMO) ───────── */
+#mhud { display: none; }
+body.mmo #mhud { display: block; }
+body.mmo #hero-frame, body.mmo #skills, body.mmo #objective, body.mmo #crosshair, body.mmo #cursor-hint, body.mmo #tip { display: none !important; }
+body.mmo #rail { top: 14px; left: auto; right: 240px; transform: none; flex-direction: row; }
+body.mmo #topbar { top: 76px; left: auto; right: 240px; }
+body.mmo .mi { width: 50px; opacity: 1 !important; } body.mmo .mi-ic { width: 40px; height: 40px; } body.mmo .mi-n { font-size: 10px; }
+body.mmo .mi-ic .ico { width: 24px !important; height: 24px !important; }
+#mhud > * { pointer-events: auto; }
+
+#m-avatar { position: absolute; left: 10px; top: 8px; display: flex; align-items: center; }
+.m-face { position: relative; z-index: 2; width: 86px; height: 86px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 35%, #6a4a30, #1a120c); border: 3px solid #e8c070; box-shadow: 0 0 0 3px #4a2010, 0 4px 14px rgba(0,0,0,.6); }
+.m-face img { width: 100%; height: 100%; object-fit: cover; }
+.m-lv { position: absolute; left: 0; top: 0; width: 30px; height: 30px; display: grid; place-items: center; font: 700 15px var(--serif); color: #fff; background: radial-gradient(circle at 35% 30%, #4aa3ff, #1a4a9a); border: 2px solid #e8c070; border-radius: 50%; text-shadow: 0 1px 2px #000; }
+.m-info { margin-left: -14px; padding: 6px 14px 6px 22px; width: 250px; background: linear-gradient(90deg, rgba(20,10,6,.85), rgba(20,10,6,.25)); border-radius: 0 30px 30px 0; }
+.m-name { display: flex; align-items: center; gap: 6px; font: 700 15px var(--serif); color: #fff; text-shadow: 0 1px 3px #000; }
+.m-vip { padding: 0 6px; font: 800 10px var(--serif); color: #fff; background: linear-gradient(#ff9a3a, #d0401a); border-radius: 3px; }
+.m-bar { position: relative; height: 13px; margin-top: 3px; background: rgba(0,0,0,.6); border: 1px solid rgba(0,0,0,.8); border-radius: 7px; overflow: hidden; }
+.m-bar > div { height: 100%; border-radius: 7px; transition: width .2s; }
+.m-bar.hp > div { background: linear-gradient(#ff7a6a, #d0261e 60%, #8a1210); }
+.m-bar.mp > div { background: linear-gradient(#8ad0ff, #2a7ae0 60%, #144a9a); }
+.m-bar span { position: absolute; inset: 0; display: grid; place-items: center; font: 700 10px var(--serif); color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+.m-power { margin-top: 3px; font: 600 12px var(--serif); color: #ffd27a; text-shadow: 0 1px 2px #000; }
+.m-power b { font: 800 16px var(--serif); color: #fff3a0; letter-spacing: .03em; }
+.m-exp { position: fixed; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0,0,0,.6); }
+.m-exp > div { height: 100%; background: linear-gradient(90deg, #ffd27a, #ff9a3a); }
+#m-status { position: fixed; left: 10px; bottom: 6px; font: 600 12px var(--serif); color: #b8f0a0; text-shadow: 0 1px 2px #000; }
+#m-status b { color: #fff; }
+
+#m-quest { position: absolute; left: 10px; top: 112px; width: 250px; background: linear-gradient(90deg, rgba(10,6,4,.78), rgba(10,6,4,.2)); border-radius: 6px; overflow: hidden; cursor: pointer; }
+.mq-tabs { display: flex; }
+.mq-tabs button { flex: 1; padding: 6px; font: 700 13px var(--serif); color: #cfc2a0; background: rgba(0,0,0,.35); border: 0; border-bottom: 2px solid transparent; }
+.mq-tabs button.on { color: #ffe08a; border-bottom-color: #ffb84a; }
+.mq-item { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 12.5px; line-height: 1.4; }
+.mq-item b { display: block; color: #ffd27a; font-size: 13px; }
+.mq-item.main b { color: #ffb84a; } .mq-item.act b { color: #ff7a6a; }
+.mq-item span { color: #e8f0e0; }
+
+#m-joy { position: absolute; left: 70px; bottom: 70px; width: 150px; height: 150px; touch-action: none; }
+.joy-ring { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.05), rgba(255,255,255,.14) 70%, rgba(255,255,255,.04)); border: 2px solid rgba(255,255,255,.25); }
+.joy-knob { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, rgba(255,255,255,.75), rgba(200,210,230,.4) 60%, rgba(120,130,150,.35)); border: 2px solid rgba(255,255,255,.6); box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: transform .08s; }
+#m-joy.active .joy-knob { transition: none; }
+
+#m-actions { position: absolute; right: 26px; bottom: 26px; width: 300px; height: 300px; }
+#m-actions button { position: absolute; display: grid; place-items: center; padding: 0; border-radius: 50%; touch-action: none; cursor: pointer; }
+#m-actions .ico-wrap { display: grid; place-items: center; position: relative; z-index: 1; }
+.m-atk { right: 10px; bottom: 10px; width: 118px; height: 118px; background: radial-gradient(circle at 50% 35%, #4a8ad0, #163a70 60%, #0a1a38); border: 4px solid #8ad0ff; box-shadow: 0 0 0 4px rgba(0,0,0,.5), 0 0 30px rgba(80,170,255,.5), inset 0 4px 12px rgba(255,255,255,.35); }
+.m-atk .ico { width: 64px !important; height: 64px !important; }
+.m-atk .ico.gi svg path { fill: #eaf6ff !important; }
+.m-sk { width: 72px; height: 72px; background: radial-gradient(circle at 50% 35%, #3a5a7a, #12202e 70%); border: 3px solid #c8d8e8; box-shadow: 0 0 0 3px rgba(0,0,0,.5), inset 0 3px 10px rgba(255,255,255,.25), 0 4px 12px rgba(0,0,0,.6); overflow: hidden; }
+.m-sk .ico { width: 40px !important; height: 40px !important; }
+.m-sk .ico.gi svg path { fill: url(#gi-gold) !important; }
+.m-sk .cd { position: absolute; inset: 0; border-radius: 50%; }
+.m-sk .nm { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font: 700 10px var(--serif); font-style: normal; color: #fff; text-shadow: 0 1px 3px #000; white-space: nowrap; pointer-events: none; }
+.m-sk.nomp { filter: grayscale(.8) brightness(.7); }
+.m-sk.s1 { right: 150px; bottom: 6px; } .m-sk.s2 { right: 140px; bottom: 96px; } .m-sk.s3 { right: 72px; bottom: 156px; }
+.m-sk.s4 { right: 214px; bottom: 140px; width: 60px; height: 60px; } .m-sk.s5 { right: 0; bottom: 162px; width: 60px; height: 60px; }
+.m-sk.s4 .ico, .m-sk.s5 .ico { width: 30px !important; height: 30px !important; }
+.m-auto { right: 236px; bottom: 34px; width: 62px; height: 62px; font: 800 15px var(--serif); color: #fff; background: radial-gradient(circle at 50% 35%, #5a4a30, #1a120a 70%); border: 3px solid #d8b062; text-shadow: 0 1px 2px #000; }
+.m-auto.on { background: radial-gradient(circle at 50% 35%, #ffb84a, #b85a10 70%); box-shadow: 0 0 20px #ffb84a; animation: pulse 1.4s infinite; }
+#m-actions button.down { transform: scale(.92); filter: brightness(1.25); }
+
+#m-quick { position: absolute; right: 340px; bottom: 210px; display: flex; gap: 8px; }
+#m-quick button { position: relative; width: 50px; height: 50px; display: grid; place-items: center; padding: 4px; background: radial-gradient(circle at 50% 35%, #4a3a2a, #120c08 75%); border: 2px solid #9a7638; border-radius: 50%; }
+#m-quick .ico { width: 26px; height: 26px; }
+#m-quick .ico.gi svg path { fill: url(#gi-gold); }
+#m-quick .thumb-img { width: 34px; height: 34px; }
+#m-quick b { position: absolute; right: -2px; bottom: -4px; font: 700 12px var(--serif); color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+
+#m-chat { position: absolute; left: 50%; bottom: 10px; transform: translateX(-56%); width: min(440px, 40vw); background: rgba(8,6,4,.62); border: 1px solid rgba(255,255,255,.12); border-radius: 6px; }
+.mc-tabs { display: flex; }
+.mc-tabs button { flex: 1; padding: 4px; font: 700 12px var(--serif); color: #b8ac90; background: rgba(0,0,0,.35); border: 0; border-bottom: 2px solid transparent; }
+.mc-tabs button.on { color: #8ad0ff; border-bottom-color: #4aa3ff; }
+#mc-log { padding: 4px 8px 6px; font-size: 12.5px; line-height: 1.45; min-height: 92px; color: #e8e0d0; text-shadow: 0 1px 2px #000; }
+.ctag { font-weight: 700; } .ctag.sys { color: #ffd84a; } .ctag.world { color: #ff9a6a; } .ctag.area { color: #8ad0ff; } .ctag.guild { color: #8fe08a; } .ctag.team { color: #4ad8ff; }
+.cy { color: #ffe86a; } .cr { color: #ff6a5a; } .cg { color: #8fe08a; } .cp { color: #d8a0ff; }
+
+#m-ann { position: absolute; top: 66px; left: 50%; transform: translateX(-50%); width: min(620px, 56vw); height: 28px; overflow: hidden; background: linear-gradient(90deg, transparent, rgba(0,0,0,.6) 10%, rgba(0,0,0,.6) 90%, transparent); pointer-events: none; opacity: 0; }
+#m-ann.run { opacity: 1; animation: annFade 9s forwards; }
+#m-ann span { position: absolute; white-space: nowrap; top: 3px; left: 100%; font: 700 16px var(--serif); color: #ffe86a; text-shadow: 0 1px 2px #000; }
+#m-ann.run span { animation: marquee 9s linear forwards; }
+#m-ann b { color: #ff6a5a; }
+@keyframes marquee { to { left: -100%; transform: translateX(-100%); } }
+@keyframes annFade { 0%, 92% { opacity: 1; } 100% { opacity: 0; } }
+
+/* số sát thương kiểu MMO */
+body.mmo #dmg-layer .dmg { font: 900 30px/1 var(--serif); color: #ffb23a; -webkit-text-stroke: 1.5px #3a1200; text-shadow: 0 3px 0 #6a2a00, 0 0 12px rgba(255,140,0,.6); }
+body.mmo .dmg.crit { font-size: 44px !important; color: #fff07a !important; }
+body.mmo .dmg.crit::before { content: "Bạo "; font-size: .7em; color: #ff5a3a; }
+body.mmo .dmg.player { color: #ff4a3a !important; }
+body.mmo .dmg.heal { color: #6aff8a !important; }
+
+/* bảng tên trên đầu */
+.plate.tag { width: auto; }
+.plate .title { display: inline-block; padding: 1px 8px; margin-bottom: 1px; font: 700 11px var(--serif); color: #fff3c0; background: linear-gradient(90deg, transparent, rgba(160,60,10,.85), transparent); text-shadow: 0 1px 2px #000; white-space: nowrap; }
+.plate.me .nm { color: #7aff6a; font-size: 13px; } .plate.npc .nm { color: #ffe86a; font-size: 12px; } .plate.npc .role { font: 600 11px var(--serif); color: #8fe08a; text-shadow: 0 1px 2px #000; }
+.plate .lvl { color: #ffb84a; margin-right: 3px; }
+
+@media (max-width: 900px) {
+  #m-quest { width: 200px; } .m-info { width: 190px; }
+  #m-actions { transform: scale(.82); transform-origin: bottom right; }
+  #m-joy { left: 30px; bottom: 40px; transform: scale(.85); }
+  #m-chat { width: 300px; transform: translateX(-40%); }
+  #m-quick { right: 270px; bottom: 180px; }
+}
+
+@media (max-width: 1100px) {
+  body.mmo #rail, body.mmo #topbar { right: 228px; gap: 2px; }
+  body.mmo .mi { width: 40px; } body.mmo .mi-ic { width: 34px; height: 34px; } body.mmo .mi-n { display: none; }
+  body.mmo #topbar { top: 56px; }
+  .m-info { width: 170px; } .m-face { width: 70px; height: 70px; }
+  #m-quest { top: 96px; width: 210px; }
+  #m-chat { left: 10px; bottom: 26px; transform: none; width: 260px; }
+  #mc-log { min-height: 70px; font-size: 11.5px; }
+  #m-joy { left: 290px; bottom: 30px; }
+  #m-quick { right: 250px; bottom: 175px; }
+}

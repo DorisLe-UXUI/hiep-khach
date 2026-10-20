@@ -159,6 +159,8 @@ export class UI {
   openSettings(s, onChange) {
     const seg = (key, opts) => `<div class="seg" data-k="${key}">${Object.entries(opts).map(([v, o]) => `<button data-v="${v}" class="${s[key] === v ? 'on' : ''}">${o.label}</button>`).join('')}</div>`;
     const body = this.openPanel('Cài đặt', `
+      <div class="set-row">${icon('compass')}<label>Kiểu điều khiển<small>MMO: nhìn chéo từ trên cao, joystick + nút chiêu, giữ chuột phải để xoay · Hành động: sau lưng, khoá chuột</small></label>${seg('controlMode', { mmo: { label: 'MMO' }, action: { label: 'Hành động' } })}</div>
+      <div class="set-row">${icon('sparkles')}<label>Phong cách hình ảnh<small>Tươi sáng + chibi hoặc tả thực (đổi chibi cần tải lại)</small></label>${seg('style', { bright: { label: 'Tươi sáng' }, realistic: { label: 'Tả thực' } })}</div>
       <div class="set-row">${icon('mouse')}<label>Độ nhạy chuột<small>Tốc độ xoay góc nhìn</small></label><input type="range" min="0.3" max="2.5" step="0.05" value="${s.sens}" data-k="sens"></div>
       <div class="set-row">${icon('mouse')}<label>Đảo trục dọc</label><button class="toggle ${s.invertY ? 'on' : ''}" data-k="invertY"></button></div>
       <div class="set-row">${icon('eye')}<label>Góc nhìn (FOV)</label><input type="range" min="45" max="80" step="1" value="${s.fov}" data-k="fov"></div>

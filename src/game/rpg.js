@@ -89,6 +89,8 @@ export class RPG {
       const g = this.g;
       g.audio.levelUp();
       g.fx.levelUp(g.player.pos.clone());
+      g.vfx.pillar(g.player.pos.clone(), 0xffd27a, 7);
+      g.mhud?.log('system', `Chúc mừng <b class="cy">${g.profile.name}</b> đột phá lên <b class="cg">cấp ${this.level}</b>!`);
       g.toast(`<span class="han">突破</span> Đột phá! <b>Cấp ${this.level}</b><br><span class="sm">${realmOf(this.level)} · +1 điểm võ học (phím K)</span>`, 5);
     }
   }

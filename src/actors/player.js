@@ -60,6 +60,8 @@ export class Player extends Actor {
     this.char.play(a.anim, { once: true, fade: 0.08, speed: (a.speed ?? 1.2) * (this.cls.speed ?? 1), restart: true, onDone: () => this.endAttack() });
     this.game.audio.swoosh(key === 'C' ? 1.3 : 1);
     this.st = Math.max(0, this.st - 6);
+    const col = { kiem: 0xcfe8ff, thuong: 0xffd27a, dao: 0x9fe8c8 }[this.clsId] || 0xffffff;
+    setTimeout(() => this.game.vfx.slash(this, col, { flip: key === 'B', wide: key === 'C' ? 1.45 : 1, reach: this.cls.range * 0.75, tilt: key === 'C' ? 0.6 : 0.25 }), key === 'C' ? 220 : 120);
   }
 
   endAttack() {
@@ -114,6 +116,8 @@ export class Player extends Actor {
     this.cooldowns[cdKey] = sk.cd - (sk.kind === 'dash' ? (r.skills.dash || 0) * 0.3 : 0);
     this.pendingSkill = sk;
     const k = sk.kind;
+    const circleCol = { orb: 0x8fd8ff, bigorb: 0x9fe8ff, nova: this.cls.weapon === 'spear' ? 0xffc860 : 0xb7a8ff, heal: 0x8fe0a8, volley: 0xffe6a0, dash: 0xcfe8ff }[k];
+    if (circleCol) this.game.vfx.magicCircle(this.pos.clone(), circleCol, k === 'nova' ? 3.2 : 2.2, 1.0);
     if (k === 'dash') {
       this.setState('dash');
       this.char.play('Sword_Dash', { once: true, fade: 0.06, speed: 1.3, restart: true, onDone: () => this.state === 'dash' && this.setState('free') });
@@ -144,7 +148,8 @@ export class Player extends Actor {
     if (sk.kind === 'orb') c.fireOrb(this, this.handPos(), this.aimDir(), { dmg: this.damage(1.8, 'palm') });
     if (sk.kind === 'bigorb') c.fireOrb(this, this.handPos(), this.aimDir(), { dmg: this.damage(3, 'palm'), size: 2, color: 0x9fe8ff });
     if (sk.kind === 'volley') c.fireArrows(this, this.handPos(), this.aimDir(), 5, this.damage(1.1));
-    if (sk.kind === 'nova') c.nova(this, 5, this.damage(2.2, 'palm'), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff);
+    if (sk.kind === 'nova') { c.nova(this, 5, this.damage(2.2, 'palm'), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff); this.game.vfx.shockwave(this.pos.clone(), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff, 6); }
+    if (sk.kind === 'heal') this.game.vfx.pillar(this.pos.clone(), 0x8fe0a8, 4);
     if (sk.kind === 'heal') this.heal(this.maxHp * 0.3);
   }
 
@@ -164,6 +169,7 @@ export class Player extends Actor {
     amount = Math.round(amount);
     this.hp -= amount;
     this.hurtFlash = 0.5;
+    this.game.vfx.flash(this, 0xff3020);
     this.game.camRig.shake = heavy ? 1 : 0.6;
     this.game.audio.hit();
     if (this.hp <= 0) {
@@ -204,9 +210,12 @@ export class Player extends Actor {
     if (input.held('KeyS')) move.sub(f);
     if (input.held('KeyD')) move.add(r);
     if (input.held('KeyA')) move.sub(r);
-    const hasMove = move.lengthSq() > 0;
+    const vm = input.virtualMove;
+    if (vm) move.addScaledVector(f, vm.y).addScaledVector(r, vm.x);
+    if (input.autoMove && move.lengthSq() === 0) move.copy(input.autoMove);
+    const hasMove = move.lengthSq() > 0.02;
     if (hasMove) move.normalize();
-    const sprint = input.held('ShiftLeft') || input.held('ShiftRight');
+    const sprint = input.held('ShiftLeft') || input.held('ShiftRight') || !!vm?.sprint || !!input.autoSprint;
     const talking = s.state === 'talk';
     const melee = s.cls.attack === 'melee';
 
@@ -234,11 +243,12 @@ export class Player extends Actor {
         s.iframes = 0.5;
         s.char.play('Roll', { once: true, fade: 0.05, speed: 1.5, restart: true, onDone: () => s.state === 'roll' && s.setState('free') });
       }
-      if (input.held('Mouse2') && (s.state === 'free' || s.state === 'recover') && grounded && melee) {
+      const blockHeld = (input.held('Mouse2') && !input.noLock) || input.held('Block');
+      if (blockHeld && (s.state === 'free' || s.state === 'recover') && grounded && melee) {
         s.setState('block');
         s.char.play('Sword_Block', { once: true, fade: 0.08, speed: 1.6, restart: true });
       }
-      if (s.state === 'block' && !input.held('Mouse2')) s.setState('free');
+      if (s.state === 'block' && !blockHeld) s.setState('free');
       if (input.pressed('Space') && !busy) {
         const qg = 1 + (s.rpg.skills.qinggong || 0) * 0.1;
         if (grounded || s.inWater) {
@@ -287,7 +297,7 @@ export class Player extends Actor {
       const t = frac('Sword_Dash');
       if (t > 0.08 && t < 0.42) speed = 17;
       if (t < 0.42) s.iframes = Math.max(s.iframes, 0.05);
-      if (!s.hitDone && t > 0.32) { s.hitDone = true; s.game.combat.playerMelee(s, { range: 3.4, arc: 2.2, dmg: s.damage(2.2, 'dash'), knock: true, back: 4.5 }); }
+      if (!s.hitDone && t > 0.32) { s.hitDone = true; s.game.combat.playerMelee(s, { range: 3.4, arc: 2.2, dmg: s.damage(2.2, 'dash'), knock: true, back: 4.5 }); s.game.vfx.slash(s, 0xcfe8ff, { wide: 1.6, reach: 2.6, tilt: 0.1 }); }
     } else if (s.state === 'roll') {
       speed = frac('Roll') < 0.65 ? 8.5 : 2;
     } else if (s.state === 'cast') {

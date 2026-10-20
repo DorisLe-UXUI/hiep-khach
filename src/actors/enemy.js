@@ -123,11 +123,15 @@ export class Enemy extends Actor {
               this.char.bones.hand_r.getWorldPosition(hand);
               const target = p.pos.clone().setY(p.pos.y + 1.1);
               const n = this.phase2 ? 3 : 1;
+              this.game.vfx.magicCircle(this.pos.clone(), 0xff3a2a, 2.4, 0.9);
               for (let k = 0; k < n; k++) {
                 const dir = target.clone().sub(hand).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), (k - (n - 1) / 2) * 0.25);
                 this.game.combat.fireOrb(this, hand, dir, { dmg: a.dmg, color: 0xff3a2a, speed: 20 });
               }
-            } else this.game.combat.enemyMelee(this, a);
+            } else {
+              this.game.vfx.slash(this, this.boss ? 0xff5040 : 0xffb090, { flip: i % 2 === 1, wide: a.heavy ? 1.4 : 1, reach: a.range * 0.7 });
+              this.game.combat.enemyMelee(this, a);
+            }
           }
         }
         break;

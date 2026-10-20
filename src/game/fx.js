@@ -100,7 +100,7 @@ export class FX {
     this.emit(pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.5, Math.random() * 0.4, (Math.random() - 0.5) * 0.5)), new THREE.Vector3(0, 0.6, 0), color, 0.08, 0.8, 0);
   }
 
-  trail(pos, color) {
+  trailPuff(pos, color) {
     this.emit(pos, new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4), color, 0.2, 0.3);
   }
 

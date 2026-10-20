@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { WORLD_SIZE, PLACES } from '../world/layout.js';
 import { icon } from './icons.js';
+import { realmOf } from '../game/rpg.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -221,28 +222,35 @@ export class HUD {
       mEl.style.opacity = d < 6 ? 0.25 : 1;
     } else { mEl.style.display = 'none'; $('obj-dist').textContent = ''; }
 
-    // bảng tên kẻ địch
+    // bảng tên: người chơi (danh hiệu), NPC (chức danh), kẻ địch (cấp + máu)
     const seen = new Set();
+    const ROLES = { guard: 'Gác cổng', keeper: 'Chưởng quỹ', maiden: 'Lâm gia', captive: 'Bị bắt' };
+    const tag = (key, pos, h, cls, html, hpK) => {
+      const s2 = this.project(pos.clone().setY(pos.y + h));
+      if (s2.behind) return;
+      let el = this.plates.get(key);
+      if (!el) { el = document.createElement('div'); el.className = 'plate tag ' + cls; $('plates').appendChild(el); this.plates.set(key, el); }
+      if (el._html !== html) { el.innerHTML = html; el._html = html; }
+      seen.add(key);
+      el.style.left = s2.x + 'px';
+      el.style.top = s2.y + 'px';
+      if (hpK !== undefined) el.querySelector('.tr div').style.width = hpK * 100 + '%';
+    };
+    if (document.body.classList.contains('mmo') && !g.dialogOpen) {
+      tag(p, p.pos, 2.35, 'me', `<div class="title">${realmOf(g.rpg.level)}</div><div class="nm">${g.profile.name}</div>`);
+      for (const n of g.npcs) {
+        if (!n.root.visible || n.pos.distanceTo(p.pos) > 30) continue;
+        const role = ROLES[n.id] || ROLES[n.speaker] || 'Thôn dân';
+        tag(n, n.pos, 2.3, 'npc', `<div class="role">&lt;${role}&gt;</div><div class="nm">${n.name}</div>`);
+      }
+    }
     for (const e of g.enemies) {
       if (e.dead || e.boss || !e.root.visible) continue;
       const d = e.pos.distanceTo(p.pos);
-      if (d > 28 || !(e.alerted || e.hp < e.maxHp)) continue;
-      const s = this.project(e.pos.clone().setY(e.pos.y + 2.25));
-      if (s.behind) continue;
-      let el = this.plates.get(e);
-      if (!el) {
-        el = document.createElement('div');
-        el.className = 'plate';
-        el.innerHTML = `<div class="nm">${e.name}</div><div class="tr"><div></div></div>`;
-        $('plates').appendChild(el);
-        this.plates.set(e, el);
-      }
-      seen.add(e);
-      el.style.left = s.x + 'px';
-      el.style.top = s.y + 'px';
-      el.querySelector('.tr div').style.width = (e.hp / e.maxHp) * 100 + '%';
+      if (d > 32) continue;
+      tag(e, e.pos, 2.25, 'foe', `<div class="nm"><span class="lvl">Lv.${Math.max(1, Math.round(e.exp / 12))}</span>${e.name}</div><div class="tr"><div></div></div>`, e.hp / e.maxHp);
     }
-    for (const [e, el] of this.plates) if (!seen.has(e)) { el.remove(); this.plates.delete(e); }
+    for (const [k, el] of this.plates) if (!seen.has(k)) { el.remove(); this.plates.delete(k); }
 
     // số sát thương
     for (let i = this.nums.length - 1; i >= 0; i--) {

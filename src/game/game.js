@@ -20,6 +20,10 @@ import { Systems, DUNGEONS, WORLD_BOSSES, RIVALS } from './systems.js';
 import { Companions } from './companions.js';
 import { LOOK_OPTIONS } from './classes.js';
 import '../ui/panels.js';
+import { VFX } from './vfx.js';
+import { AutoPilot } from './auto.js';
+import { MobileHUD } from '../ui/mobilehud.js';
+import { realmOf } from './rpg.js';
 
 export const LOOKS = {
   guard: { outfit: 'male_peasant', base: 'male', hair: ['hair_simpleparted', 'hair_beard'], brows: 'eyebrows_regular', outfitColor: '#6b5a44', hairColor: '#c9c4bb' },
@@ -83,6 +87,9 @@ export class Game {
     this.chestOpened = false;
     this.freedCages = new Set();
     this.sys = new Systems(this);
+    this.vfx = new VFX(this.scene);
+    this.auto = new AutoPilot(this);
+    this.chatT = 20;
     this.companions = new Companions(this);
     this.activity = null;
     this.fashionOwned = [];
@@ -110,6 +117,14 @@ export class Game {
     this.camRig.sens = s.sens;
     this.camRig.invertY = s.invertY;
     this.audio.setVolume(s.volume);
+    const mmo = s.controlMode !== 'action';
+    this.input.noLock = mmo;
+    if (mmo && this.input.locked) this.input.unlock();
+    this.camRig.mode = mmo ? 'top' : 'third';
+    if (mmo && (this.camRig.dist < 6 || this.camRig.dist === 4.6)) this.camRig.dist = 10.5;
+    if (!mmo && this.camRig.dist > 11) this.camRig.dist = 4.6;
+    document.body.classList.toggle('mmo', mmo);
+    document.body.classList.toggle('style-bright', s.style !== 'realistic');
   }
 
   // ─────────────────── khởi tạo ───────────────────
@@ -162,6 +177,9 @@ export class Game {
     await this.placeHerbs();
     this.hud = new HUD(this);
     this.hud.setClass(this.profile.hero?.cls);
+    this.mhud = new MobileHUD(this);
+    this.mhud.setClass(this.profile.hero?.cls || 'kiem', this.player.cls);
+    this.mhud.log('system', 'Chào mừng đến với <b class="cy">Thiên Kiếm Giang Hồ</b>. Bấm <b>Auto</b> để tự động chiến đấu và làm nhiệm vụ.');
     this.wireUI();
   }
 
@@ -172,8 +190,11 @@ export class Game {
     const ch = await makeChar({ ...heroLook(h), hideHood: !h.hood }, weapon);
     const old = this.player;
     if (old) this.scene.remove(old.char.root);
+    ch.model.traverse((o) => { if (o.isMesh && o.material) o.material = o.material.clone(); });
     this.player = new Player(this, ch, cls);
+    this.player.clsId = h.cls;
     this.scene.add(ch.root);
+    this.mhud?.setClass(h.cls, cls);
     if (old) {
       this.player.pos.copy(old.pos);
       this.player.yaw = old.yaw;
@@ -345,6 +366,7 @@ export class Game {
     const t = ENEMY_TYPES[type];
     const ch = await makeChar(opts.look || LOOKS[t.look], opts.weapon || t.weapon);
     if (opts.scale || t.scale) ch.root.scale.setScalar(opts.scale || t.scale);
+    ch.model.traverse((o) => { if (o.isMesh && o.material) o.material = o.material.clone(); });
     const e = new Enemy(this, ch, {
       name: opts.name || t.name, hp: opts.hp || t.hp, dmg: opts.dmg || t.dmg, x, z, boss: opts.boss, aggro: opts.aggro,
       speed: opts.speed || t.speed, patrol: opts.patrol, idleAnim: t.idleAnim || 'Sword_Idle', caster: opts.caster ?? t.caster,
@@ -456,6 +478,8 @@ export class Game {
     if (e.group === 'doba') this.dobaSpot = { x: e.pos.x, z: e.pos.z };
     this.rpg.gainExp(Math.round(e.exp * (this.sys.buff('exp') ? 1.1 : 1)));
     this.sys.progress('kill');
+    this.mhud.log('system', `<b class="cy">${this.profile.name}</b> đã hạ <b class="cr">${e.name}</b>${e.boss ? ' sau một trận ác chiến!' : '.'}`);
+    if (e.boss) this.mhud.announce(`Đại hiệp <b>${this.profile.name}</b> đã đánh bại <b>${e.name}</b>!`);
     if (this.activity && e.group === this.activity.group) this.activityKill();
     this.dropLoot(e);
     if (e.boss) this.camRig.shake = 1.2;
@@ -494,7 +518,7 @@ export class Game {
     const r = this.rpg;
     if (l.kind === 'gold') { r.addGold(l.amount); this.toast(`+${l.amount} lượng bạc`, 1.5); }
     else if (ITEMS[l.kind]?.type === 'equip') r.giveEquip(l.kind);
-    else { r.add(l.kind, l.amount); this.toast(`Nhặt được <b>${ITEMS[l.kind].name}</b> ×${l.amount}`, 1.8); }
+    else { r.add(l.kind, l.amount); this.toast(`Nhặt được <b>${ITEMS[l.kind].name}</b> ×${l.amount}`, 1.8); this.mhud.log('system', `Nhặt được <b class="cp">${ITEMS[l.kind].name}</b> ×${l.amount}`); }
     this.audio.coin();
   }
 
@@ -613,6 +637,7 @@ export class Game {
     if (++a.wave < a.waves.length) { setTimeout(() => this.spawnWave(), 1800); return; }
     this.activity = null;
     a.onWin?.();
+    this.save();
   }
 
   startDungeon(id) {
@@ -649,6 +674,22 @@ export class Game {
     } }, { x: PLACES.square.x, z: PLACES.square.z });
   }
 
+  /** Tin giang hồ lác đác cho thế giới sống động (nhân vật trong game). */
+  worldChat(dt) {
+    this.chatT -= dt;
+    if (this.chatT > 0) return;
+    this.chatT = 25 + Math.random() * 30;
+    const rv = RIVALS[Math.floor(Math.random() * RIVALS.length)];
+    const lines = [
+      `<b class="cy">${rv.name}</b> của <b class="cg">Thanh Phong Bang</b> đã hạ gục <b class="cr">Huyết Ảnh sát thủ</b>.`,
+      `<b class="cy">${rv.name}</b> vượt ải <b class="cp">Luyện Võ Trường</b>, nhận được <b class="cp">Hồi khí đan</b>.`,
+      `<b class="cy">${rv.name}</b> cường hoá binh khí thành công lên <b class="cg">+${3 + Math.floor(Math.random() * 6)}</b>!`,
+      `Boss thế giới <b class="cr">Ma Tôn · Huyết Lang</b> sắp xuất hiện trước Hắc Phong trại.`,
+      `<b class="cy">Lưu chưởng quỹ</b>: Duyệt Lai khách điếm vừa nhập lô Kim sang dược mới!`,
+    ];
+    this.mhud.log(Math.random() < 0.6 ? 'world' : 'system', lines[Math.floor(Math.random() * lines.length)]);
+  }
+
   toggleMount() { this.companions.toggleMount(); }
   spawnPet() { this.companions.spawnPet(); }
   ownedFashion() { return this.fashionOwned; }
@@ -676,6 +717,13 @@ export class Game {
       this.hud.update(0);
       return;
     }
+
+    // Auto: tự đánh / đi nhiệm vụ
+    const ad = this.auto.drive(dt);
+    input.autoMove = ad?.move || null;
+    input.autoSprint = ad?.sprint || false;
+    if (ad) for (const k of ad.press) input.justDown.add(k);
+    if (input.pressed('KeyZ')) this.auto.toggle();
 
     if (!this.dialogOpen) {
       if (input.pressed('KeyV')) { this.camRig.toggleMode(); this.toast(this.camRig.mode === 'third' ? 'Góc nhìn sau lưng' : 'Góc nhìn từ trên cao', 1.2); }
@@ -716,6 +764,12 @@ export class Game {
     this.updateLoot(dt);
     this.sys.update(dt);
     this.companions.update(dt);
+    this.vfx.update(dt);
+    this.mhudT = (this.mhudT || 0) - dt;
+    if (this.mhudT <= 0) { this.mhudT = 0.1; this.mhud.update(); }
+    this.worldChat(dt);
+    this.saveT = (this.saveT ?? 20) - dt;
+    if (this.saveT <= 0) { this.saveT = 20; this.save(); }
     this.camRig.update(dt, pp, frozen);
     this.updateSun(pp);
     this.grass.update(pp.x, pp.z, time);

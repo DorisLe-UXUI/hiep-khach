@@ -52,11 +52,11 @@ export class CameraRig {
       this.dist = THREE.MathUtils.clamp(this.dist + input.wheel * 0.5, 2.2, 11);
     } else {
       this.yaw -= input.mouseDX * sens * 0.6;
-      this.dist = THREE.MathUtils.clamp(this.dist + input.wheel * 1.5, 10, 30);
+      this.dist = THREE.MathUtils.clamp(this.dist + input.wheel * 1.2, 6, 26);
     }
     this.target.lerp(focus, 1 - Math.exp(-dt * 14));
-    const pitch = this.mode === 'third' ? this.pitch : 0.95;
-    const dist = this.mode === 'third' ? this.dist : Math.max(14, this.dist);
+    const pitch = this.mode === 'third' ? this.pitch : 0.72 + (this.dist - 6) * 0.012;
+    const dist = this.dist;
     const head = this.target.clone().add(new THREE.Vector3(0, this.mode === 'third' ? 1.55 : 1.0, 0));
     const back = new THREE.Vector3(Math.sin(this.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.yaw) * Math.cos(pitch));
     // lệch vai phải một chút cho dễ nhìn trước mặt

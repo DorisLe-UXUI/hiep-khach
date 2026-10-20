@@ -20,6 +20,7 @@ import { loadSettings, currentProfile, loadSave, saveProfile, logout } from './s
 const ui = new UI();
 ui.decorate();
 const settings = loadSettings();
+Character.chibi = settings.style !== 'realistic';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });

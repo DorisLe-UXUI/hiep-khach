@@ -8,6 +8,8 @@ export const DEFAULTS = {
   fov: 55,
   difficulty: 'normal', // easy | normal | hard
   dmgNumbers: true,
+  controlMode: 'mmo',   // mmo (góc trên cao, nút cảm ứng) | action (sau lưng, khoá chuột)
+  style: 'bright',      // bright (tươi sáng, chibi) | realistic
 };
 
 export const DIFFICULTY = {

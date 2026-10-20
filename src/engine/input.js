@@ -23,8 +23,11 @@ export class Input {
     });
     addEventListener('mouseup', (e) => this.down.delete('Mouse' + e.button));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.virtualMove = null; // joystick ảo {x, y, sprint}
+    this.autoMove = null;    // hướng do Auto điều khiển (toạ độ thế giới)
+    this.noLock = false;     // chế độ MMO: không khoá chuột, giữ chuột phải để xoay
     addEventListener('mousemove', (e) => {
-      if (!this.locked) return;
+      if (!this.locked && !(this.noLock && this.down.has('Mouse2'))) return;
       this.mouseDX += e.movementX;
       this.mouseDY += e.movementY;
     });
@@ -34,7 +37,7 @@ export class Input {
     });
   }
 
-  lock() { if (!this.locked) this.canvas.requestPointerLock?.()?.catch?.(() => {}); }
+  lock() { if (!this.locked && !this.noLock) this.canvas.requestPointerLock?.()?.catch?.(() => {}); }
   unlock() { if (this.locked) document.exitPointerLock(); }
   held(code) { return this.down.has(code); }
   pressed(code) { return this.justDown.has(code); }

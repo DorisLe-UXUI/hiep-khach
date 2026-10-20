@@ -140,6 +140,12 @@ export class Character {
     this.current = null;
     this.bones = {};
     model.traverse((o) => { if (o.isBone) this.bones[o.name] = o; });
+    // phong cách chibi: đầu to, người thấp lại một chút
+    if (Character.chibi && this.bones.Head) {
+      this.bones.Head.scale.setScalar(1.42);
+      this.bones.neck_01?.scale.setScalar(0.92);
+      model.scale.multiplyScalar(0.9);
+    }
     this.onDone = new Map();
     this.mixer.addEventListener('finished', (e) => {
       const cb = this.onDone.get(e.action);

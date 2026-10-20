@@ -64,12 +64,13 @@ export class Sky {
     s.environment = e.env;
     s.backgroundIntensity = t.bg;
     s.environmentIntensity = t.env;
+    const bright = document.body.classList.contains('style-bright');
     s.fog.color.set(t.fog);
-    s.fog.density = t.density;
-    this.renderer.toneMappingExposure = t.exposure;
+    s.fog.density = t.density * (bright ? 0.55 : 1);
+    this.renderer.toneMappingExposure = t.exposure * (bright ? 1.18 : 1);
     this.sunDir.set(...t.sun).normalize();
     this.sun.color.set(t.color);
-    this.sun.intensity = t.int;
+    this.sun.intensity = t.int * (bright ? 1.15 : 1);
     this.hemi.intensity = t.hemi;
     if (this.water) {
       const u = this.water.material.uniforms;
