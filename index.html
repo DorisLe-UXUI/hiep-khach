@@ -165,7 +165,11 @@
   <section id="worldmap" class="modal hidden">
     <div class="map-frame">
       <div class="map-head"><span class="han">江湖輿圖</span><h2>Bản đồ giang hồ</h2><button class="x" id="map-close">✕</button></div>
-      <div class="map-wrap"><canvas id="map-canvas" width="1100" height="1100"></canvas><div id="map-labels"></div></div>
+      <div class="map-wrap" id="map-wrap">
+        <div id="map-stage"><canvas id="map-canvas" width="1024" height="1024"></canvas><div id="map-labels"></div></div>
+        <div class="map-tools"><button id="map-zin" title="Phóng to">＋</button><button id="map-zout" title="Thu nhỏ">－</button><button id="map-me" title="Về vị trí của ta">◎</button><button id="map-all" title="Toàn cảnh">⤢</button></div>
+        <div class="map-info hidden" id="map-info"></div>
+      </div>
       <div class="map-legend" id="map-legend"></div>
     </div>
   </section>

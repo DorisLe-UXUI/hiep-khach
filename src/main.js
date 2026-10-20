@@ -11,6 +11,7 @@ import { Sky } from './world/sky.js';
 import { Game, createHeroCharacter } from './game/game.js';
 import { UI } from './ui/ui.js';
 import './ui/screens.js';
+import './ui/mapview.js';
 import { Character } from './actors/character.js';
 import { CLASSES, defaultHero, heroLook } from './game/classes.js';
 import { CHAPTERS } from './story/chapters.js';

@@ -21,6 +21,14 @@ export class AutoPilot {
     this.g.mhud?.log('system', this.on ? 'Đã bật tự động chiến đấu & làm nhiệm vụ.' : 'Đã tắt tự động.');
   }
 
+  /** Tự tìm đường tới một điểm (từ bản đồ). */
+  goTo(x, z, name) {
+    this.dest = { x, z, name };
+    this.on = true;
+    this.g.toast(`Tự tìm đường tới <b>${name}</b>`, 2);
+    this.g.mhud?.log('system', `Đang tự tìm đường tới <b class="cg">${name}</b>...`);
+  }
+
   /** Người chơi tự điều khiển thì tạm dừng Auto một lúc. */
   pause(t) { this.pausedT = Math.max(this.pausedT, t); }
 
@@ -33,6 +41,22 @@ export class AutoPilot {
 
     if (p.hp < p.maxHp * 0.4 && g.rpg.potions > 0 && p.cooldowns.potion <= 0) out.press.push('KeyR');
 
+    // đang tự tìm đường: chỉ đánh khi bị tấn công
+    if (this.dest) {
+      const to = new THREE.Vector3(this.dest.x - p.pos.x, 0, this.dest.z - p.pos.z);
+      const d = to.length();
+      if (d < 5) { g.toast(`Đã tới <b>${this.dest.name}</b>`, 2); this.dest = null; this.on = false; return out; }
+      if (p.inCombat <= 0) {
+        out.move = to.normalize();
+        out.sprint = true;
+        this.stuckT = p.pos.distanceTo(this.lastPos) < dt * 1.2 ? this.stuckT + dt : 0;
+        this.lastPos.copy(p.pos);
+        if (this.stuckT > 0.6) out.move.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(performance.now() / 700) > 0 ? 1.2 : -1.2);
+        if (this.stuckT > 2.5) { out.press.push('Space'); this.stuckT = 0; }
+        if (!g.player.mounted && g.sys.s.mountOwned && d > 60 && !this.mountTried) { this.mountTried = true; g.toggleMount(); }
+        return out;
+      }
+    } else this.mountTried = false;
     // chọn mục tiêu
     if (!this.target || this.target.dead) this.target = g.combat.nearestEnemy(p.pos, 28, p.forward(), -1);
     const e = this.target;
