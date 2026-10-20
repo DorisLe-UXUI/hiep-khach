@@ -766,3 +766,6 @@ body.mmo .dmg.heal { color: #6aff8a !important; }
 
 .plate.elite .nm { color: #ffb84a; font-size: 13px; }
 .elite-tag { padding: 0 4px; font-size: 10px; color: #fff; background: linear-gradient(#e2463a, #8a1a14); border-radius: 3px; }
+
+.map-lbl.zone .pin { background: radial-gradient(circle at 35% 30%, #6a8a3a, #2a4a14); width: 30px; height: 30px; }
+.map-lbl.zone .hz { font-size: 18px; color: #1f3a10; }

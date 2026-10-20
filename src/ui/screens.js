@@ -7,6 +7,7 @@ import { CHIBI_MODELS } from '../actors/chibi.js';
 import { Character } from '../actors/character.js';
 import { ITEMS, SKILLS, expNeed, realmOf } from '../game/rpg.js';
 import { WORLD_SIZE, PLACES, PATHS } from '../world/layout.js';
+import { ZONES, MONSTERS } from '../game/bestiary.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -197,11 +198,12 @@ Object.assign(UI.prototype, {
     const pos = (x, z) => { const [px, pz] = toPx(x, z); return `left:${ox + px * k}px;top:${oy + pz * k}px`; };
     const mk = g.markerPos();
     let html = places.map(([id, ic, hz, vi]) => `<div class="map-lbl" style="${pos(PLACES[id].x, PLACES[id].z)}"><div class="pin">${icon(ic)}</div><div class="hz">${hz}</div><div class="vi">${vi}</div></div>`).join('');
+ html += ZONES.map((z) => { const lvs = z.mobs.map((m) => MONSTERS[m].lv); return `<div class="map-lbl zone" style="${pos(z.x, z.z)}"><div class="pin">${icon(z.elite ? 'dragon' : 'skull')}</div><div class="hz">${z.han}</div><div class="vi">${z.name} · Lv.${Math.min(...lvs)}–${Math.max(...lvs)}</div></div>`; }).join('');
     if (mk) html += `<div class="map-lbl quest" style="${pos(mk.x, mk.z)}"><div class="pin">${icon('star')}</div><div class="vi">Mục tiêu</div></div>`;
     const p = g.player.pos;
     html += `<div class="map-lbl me" style="${pos(p.x, p.z)}"><div class="pin" style="transform:rotate(${-g.player.yaw + Math.PI}rad)">${icon('dash')}</div><div class="vi">${esc(g.profile.name)}</div></div>`;
     $('map-labels').innerHTML = html;
-    $('map-legend').innerHTML = [['door', 'Cổng trấn'], ['bag', 'Khách điếm · tiệm'], ['lotus', 'Đình'], ['skull', 'Sào huyệt địch'], ['sword', 'Kiếm Mộ'], ['star', 'Mục tiêu nhiệm vụ'], ['dash', 'Vị trí của ngươi']].map(([i, t]) => `<span>${icon(i)}${t}</span>`).join('') + '<span class="muted">· M hoặc Esc để đóng</span>';
+    $('map-legend').innerHTML = [['door', 'Cổng trấn'], ['dragon', 'Khu săn quái'], ['bag', 'Khách điếm · tiệm'], ['lotus', 'Đình'], ['skull', 'Sào huyệt địch'], ['sword', 'Kiếm Mộ'], ['star', 'Mục tiêu nhiệm vụ'], ['dash', 'Vị trí của ngươi']].map(([i, t]) => `<span>${icon(i)}${t}</span>`).join('') + '<span class="muted">· M hoặc Esc để đóng</span>';
     const close = () => { $('worldmap').classList.add('hidden'); removeEventListener('keydown', onKey, true); if (g.running && !g.paused) g.input.lock(); };
     const onKey = (e) => { if (e.code === 'Escape' || e.code === 'KeyM') { e.stopPropagation(); close(); } };
     addEventListener('keydown', onKey, true);

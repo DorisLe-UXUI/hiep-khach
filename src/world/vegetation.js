@@ -195,7 +195,7 @@ export class GrassField {
         .replace('#include <map_fragment>', `
 #ifdef STYLIZED
   vec3 base = mix(vec3(0.20, 0.45, 0.10), vec3(0.30, 0.55, 0.12), vTint);
-  vec3 tip = mix(vec3(0.55, 0.85, 0.25), vec3(0.75, 0.90, 0.35), vTint);
+  vec3 tip = mix(vec3(0.42, 0.74, 0.20), vec3(0.52, 0.80, 0.24), vTint);
   diffuseColor.rgb = mix(base, tip, vH);
 #else
   vec3 base = mix(vec3(0.06, 0.12, 0.03), vec3(0.18, 0.27, 0.07), vTint);
@@ -271,7 +271,7 @@ export async function buildVegetation(terrain, colliders, renderer, onProgress =
     const st = await buildStylizedVegetation(terrain, colliders, onProgress);
     st.group.add(bambooGrove(terrain, colliders));
     const grass = new GrassField(terrain);
-    grass.perTile = 900;
+    grass.perTile = 450;
     st.group.add(grass.group);
     return { group: st.group, grass: {
       setRadius(r) { grass.radius = Math.min(r, 3); },
