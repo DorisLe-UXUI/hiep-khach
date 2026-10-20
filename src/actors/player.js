@@ -150,6 +150,7 @@ export class Player extends Actor {
 
   takeDamage(amount, from, { heavy = false } = {}) {
     if (this.dead || this.iframes > 0) return 0;
+    if (this.mounted && heavy) this.game.companions.dismount();
     amount *= this.game.diff.enemyDmg * (1 - this.rpg.def());
     const toAttacker = new THREE.Vector3().subVectors(from.pos, this.pos).setY(0).normalize();
     if (this.state === 'block' && this.forward().dot(toAttacker) > 0.25 && this.st > 0) {
@@ -211,6 +212,7 @@ export class Player extends Actor {
 
     const grounded = s.onGround && !s.inWater;
     const busy = ['attack', 'dash', 'roll', 'hit', 'cast', 'shoot', 'drink'].includes(s.state);
+    if (s.mounted && !talking && ['Mouse0', 'KeyQ', 'KeyF', 'ControlLeft', 'KeyC', 'Space'].some((k) => input.pressed(k))) s.game.companions.dismount();
     if (!talking) {
       if (input.pressed('Mouse0') || (!melee && input.held('Mouse0') && s.state === 'free')) {
         if (melee) {
@@ -260,8 +262,9 @@ export class Player extends Actor {
     if (s.state === 'free' && !talking) {
       if (hasMove) {
         speed = sprint && s.st > 1 ? 9 : 5.2;
+        if (s.mounted) speed = sprint ? 17 : 11;
         if (s.inWater) speed = sprint ? 4 : 2.6;
-        if (sprint) s.st = Math.max(0, s.st - dt * 14);
+        if (sprint && !s.mounted) s.st = Math.max(0, s.st - dt * 14);
         s.faceTowards(wantYaw, dt, 12);
       }
     } else if (s.state === 'attack') {
@@ -324,7 +327,8 @@ export class Player extends Actor {
 
     if (s.state === 'free' || s.state === 'talk') {
       const hs = Math.hypot(s.vel.x, s.vel.z);
-      if (s.inWater) s.char.play(hs > 0.5 ? 'Swim_Fwd_Loop' : 'Swim_Idle_Loop', { fade: 0.25 });
+      if (s.mounted) s.char.play('Driving_Loop', { fade: 0.2 });
+      else if (s.inWater) s.char.play(hs > 0.5 ? 'Swim_Fwd_Loop' : 'Swim_Idle_Loop', { fade: 0.25 });
       else if (!s.onGround) { if (!s.gliding && s.char.currentName !== 'Jump_Loop') s.char.play('Jump_Loop', { fade: 0.15 }); }
       else if (hs > 7) s.char.play('Sprint_Loop', { fade: 0.2, speed: hs / 8.5 });
       else if (hs > 3) s.char.play('Jog_Fwd_Loop', { fade: 0.2, speed: hs / 5.2 });

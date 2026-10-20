@@ -35,4 +35,25 @@ export const ICONS = {
   moon: S('<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>'),
 };
 
-export const icon = (name, cls = '') => `<i class="ico ${cls}">${ICONS[name] || ''}</i>`;
+import { GAME_ICONS } from './gameicons.js';
+
+// gradient dùng chung cho icon (vàng kim, đỏ son, ngọc)
+if (typeof document !== 'undefined' && !document.getElementById('gi-defs')) {
+  document.body.insertAdjacentHTML('afterbegin', `<svg id="gi-defs" width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="gi-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4c8"/><stop offset=".45" stop-color="#f0c868"/><stop offset="1" stop-color="#a8742a"/></linearGradient>
+      <linearGradient id="gi-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb0a0"/><stop offset=".5" stop-color="#e2463a"/><stop offset="1" stop-color="#8a1a14"/></linearGradient>
+      <linearGradient id="gi-jade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d8fff0"/><stop offset=".5" stop-color="#6fd0a8"/><stop offset="1" stop-color="#2a7a5c"/></linearGradient>
+    </defs></svg>`);
+}
+
+/** Icon game-icons.net (nếu có) hoặc icon nét. */
+export const icon = (name, cls = '') => {
+  const d = GAME_ICONS[name];
+  if (d) return `<i class="ico gi ${cls}"><svg viewBox="0 0 512 512"><path d="${d}"/></svg></i>`;
+  return `<i class="ico ${cls}">${ICONS[name] || ''}</i>`;
+};
+
+/** Ảnh vật phẩm chụp từ model 3D (tools/thumbs.html) */
+const THUMBS = new Set(['potion', 'qipill', 'herb', 'bounty', 'iron_sword', 'steel_sword', 'dao', 'bishui', 'cloth', 'leather', 'silk', 'charm', 'jade', 'gold', 'chest']);
+export const itemIcon = (id, fallback = 'bag') => (THUMBS.has(id) ? `<img class="thumb-img" src="/assets/thumbs/${id}.png" alt="" draggable="false" />` : icon(fallback));

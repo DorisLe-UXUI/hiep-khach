@@ -12,7 +12,7 @@ export const CLASSES = {
     f: { name: 'Chưởng Phong', kind: 'orb', mp: 20, cd: 0.8 },
   },
   thuong: {
-    name: 'Thương Khách', han: '槍客', icon: 'dash', color: '#c95a3c', weapon: 'spear',
+    name: 'Thương Khách', han: '槍客', icon: 'spear', color: '#c95a3c', weapon: 'spear',
     desc: 'Trường thương tầm xa, đòn nặng, càn quét cả đám địch.',
     stats: { atk: 5, def: 4, spd: 3, range: 3 },
     attack: 'melee', range: 3.3, dmgMul: 1.15, speed: 0.95,
@@ -20,7 +20,7 @@ export const CLASSES = {
     f: { name: 'Hoành Tảo Thiên Quân', kind: 'nova', mp: 25, cd: 4 },
   },
   cung: {
-    name: 'Cung Thủ', han: '弓手', icon: 'star', color: '#6fb59a', weapon: 'bow',
+    name: 'Cung Thủ', han: '弓手', icon: 'bow', color: '#6fb59a', weapon: 'bow',
     desc: 'Bách bộ xuyên dương, tiêu diệt kẻ thù từ xa trước khi chúng kịp áp sát.',
     stats: { atk: 4, def: 2, spd: 5, range: 5 },
     attack: 'arrow', range: 30, dmgMul: 0.9,

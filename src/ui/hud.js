@@ -27,6 +27,51 @@ export class HUD {
     this.bossLagW = 100;
     $('skills').innerHTML = SLOTS.map((s) => `<div class="slot" id="slot-${s.id}"><span class="key">${s.key}</span>${icon(s.ic)}<div class="cd"></div>${s.id === 'potion' ? '<span class="cnt" id="potion-cnt"></span>' : ''}</div>`).join('');
     this.buildMinimap();
+    this.buildMenus();
+  }
+
+  /** Đổi icon đòn thường theo môn phái. */
+  setClass(cls) {
+    const ic = { kiem: 'sword', thuong: 'spear', cung: 'bow', phap: 'fist', dao: 'shuriken' }[cls] || 'sword';
+    const el = $('slot-atk');
+    el.querySelector('.ico')?.remove();
+    el.insertAdjacentHTML('beforeend', icon(ic));
+  }
+
+  buildMenus() {
+    const g = this.game;
+    const top = [
+      ['welfare', 'Phúc lợi', 'present', 'O', () => g.ui.openWelfare(g)],
+      ['events', 'Hoạt động', 'calendar', 'N', () => g.ui.openEvents(g)],
+      ['rank', 'Xếp hạng', 'podium', 'P', () => g.ui.openRanking(g)],
+      ['guild', 'Bang hội', 'pagoda', 'G', () => g.ui.openGuild(g)],
+      ['fashion', 'Thời trang', 'robe', 'U', () => g.ui.openFashion(g)],
+      ['bond', 'Kết duyên', 'rings', 'Y', () => g.ui.openBond(g)],
+    ];
+    const rail = [
+      ['bag', 'Túi đồ', 'bag', 'I', () => g.ui.openBag(g)],
+      ['skill', 'Võ học', 'meditation', 'K', () => g.ui.openSkills(g)],
+      ['quest', 'Nhiệm vụ', 'quill', 'J', () => g.ui.openQuests(g)],
+      ['map', 'Bản đồ', 'map', 'M', () => g.ui.openMap(g)],
+      ['craft', 'Sản xuất', 'cauldron', 'T', () => g.ui.openCraft(g)],
+      ['mount', 'Thú cưỡi', 'horse', 'B', () => g.ui.openCompanions(g)],
+    ];
+    const btn = ([id, n, ic, key]) => `<button class="mi" data-mi="${id}" title="${n} (${key})"><span class="mi-ic">${icon(ic)}</span><span class="mi-n">${n}</span><i class="badge"></i></button>`;
+    $('topbar').innerHTML = top.map(btn).join('');
+    $('rail').innerHTML = rail.map(btn).join('');
+    for (const [id, , , , fn] of [...top, ...rail]) {
+      document.querySelector(`[data-mi="${id}"]`).onclick = () => { g.input.unlock(); g.cursorMode = false; fn(); };
+    }
+  }
+
+  updateBadges() {
+    const g = this.game, sy = g.sys;
+    const set = (id, on) => document.querySelector(`[data-mi="${id}"] .badge`)?.classList.toggle('on', !!on);
+    set('welfare', sy.canSignIn());
+    set('quest', [20, 40, 60, 80, 100].some((n, i) => sy.s.activity >= n && !sy.s.claimedChests.includes(i)));
+    set('skill', g.rpg.points > 0);
+    set('events', Object.keys(sy.s.dungeonRuns).length === 0);
+    set('guild', !sy.s.guild);
   }
 
   buildMinimap() {
@@ -119,6 +164,10 @@ export class HUD {
     $('mp-t').textContent = `${Math.floor(p.mp)} / ${p.maxMp}`;
     $('vignette').style.opacity = p.hp / p.maxHp < 0.3 ? 0.4 + Math.sin(performance.now() / 220) * 0.2 : Math.max(0, p.hurtFlash || 0);
     if (p.hurtFlash) p.hurtFlash = Math.max(0, p.hurtFlash - dt * 2);
+
+    this.badgeT = (this.badgeT || 0) - dt;
+    if (this.badgeT <= 0) { this.badgeT = 0.5; this.updateBadges(); }
+    document.body.classList.toggle('cursor-free', !g.input.locked);
 
     // kỹ năng + hồi chiêu
     const cds = { dash: [p.cooldowns.dash, 2.5], cast: [p.cooldowns.cast, 0.8], potion: [p.cooldowns.potion || 0, 6] };

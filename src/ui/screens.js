@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { UI } from './ui.js';
-import { icon } from './icons.js';
+import { icon, itemIcon } from './icons.js';
 import { listProfiles, register, signIn, guest, saveProfile } from '../settings.js';
 import { CLASSES, LOOK_OPTIONS, defaultHero } from '../game/classes.js';
 import { ITEMS, SKILLS, expNeed, realmOf } from '../game/rpg.js';
@@ -210,7 +210,7 @@ Object.assign(UI.prototype, {
     const cell = (id, qty, owned) => {
       const it = ITEMS[id];
       const equipped = Object.values(r.equip).includes(id);
-      return `<button class="cell q-${it.slot || it.type} ${equipped ? 'eq' : ''}" data-id="${id}" title="${esc(it.name)}">${icon(it.icon)}${qty > 1 ? `<span class="n">${qty}</span>` : ''}${equipped ? '<span class="e">Đ</span>' : ''}</button>`;
+      return `<button class="cell thumb q-${it.slot || it.type} ${equipped ? 'eq' : ''}" data-id="${id}" title="${esc(it.name)}">${itemIcon(id, it.icon)}${qty > 1 ? `<span class="n">${qty}</span>` : ''}${equipped ? '<span class="e">Đ</span>' : ''}</button>`;
     };
     const items = [
       ...[...r.owned].map((id) => [id, 1]),
@@ -221,8 +221,8 @@ Object.assign(UI.prototype, {
       <div class="bag">
         <div class="paperdoll">
           <div class="doll-head"><img src="${g.portraits.hero}" /><div><b>${esc(g.profile.name)}</b><small>${p.cls.name} · ${realmOf(r.level)}</small></div></div>
-          ${slots.map(([s, n, ic]) => { const it = ITEMS[r.equip[s]]; return `<div class="eqslot">${icon(ic)}<div><small>${n}</small><b>${it ? it.name : '—'}</b></div></div>`; }).join('')}
-          <div class="power">${icon('star')} Lực chiến <b>${Math.round(r.atk() * 40 + p.maxHp * 3 + p.maxMp * 2)}</b></div>
+          ${slots.map(([s, n, ic]) => { const it = ITEMS[r.equip[s]]; return `<div class="eqslot">${it ? itemIcon(r.equip[s], ic) : icon(ic)}<div><small>${n}</small><b>${it ? it.name : '—'}</b></div></div>`; }).join('')}
+          <div class="power">${icon('crown')} Lực chiến <b>${Math.round(r.atk() * 40 + p.maxHp * 3 + p.maxMp * 2)}</b></div>
           <div class="statgrid">
             <span>Cấp</span><b>${r.level}</b><span>Kinh nghiệm</span><b>${r.exp}/${need}</b>
             <span>Khí huyết</span><b>${p.maxHp}</b><span>Nội lực</span><b>${p.maxMp}</b>
@@ -231,7 +231,7 @@ Object.assign(UI.prototype, {
           </div>
         </div>
         <div class="bag-right">
-          <div class="subtabs">${[['all', 'Toàn bộ'], ['equip', 'Trang bị'], ['items', 'Vật phẩm']].map(([t, n]) => `<button class="${tab === t ? 'on' : ''}" data-t="${t}">${n}</button>`).join('')}<span class="gold">${icon('star')} ${r.gold} lượng</span></div>
+          <div class="subtabs">${[['all', 'Toàn bộ'], ['equip', 'Trang bị'], ['items', 'Vật phẩm']].map(([t, n]) => `<button class="${tab === t ? 'on' : ''}" data-t="${t}">${n}</button>`).join('')}<span class="gold">${icon('coins')} ${r.gold} lượng</span></div>
           <div class="grid">${items.map(([id, n]) => cell(id, n)).join('')}${Array.from({ length: Math.max(0, 24 - items.length) }, () => '<div class="cell empty"></div>').join('')}</div>
           <div class="detail" id="bag-detail"><p class="muted">Chọn một vật phẩm để xem chi tiết.</p></div>
         </div>
@@ -243,7 +243,7 @@ Object.assign(UI.prototype, {
       const act = it.type === 'equip' ? (equipped ? '<button class="ghost" disabled>Đang trang bị</button>' : '<button class="primary sm" data-do="equip">Trang bị</button>')
         : it.type === 'consumable' || id === 'herb' ? '<button class="primary sm" data-do="use">Sử dụng</button>' : '';
       const enh = it.type === 'equip' && it.slot === 'weapon' ? '<button class="ghost" data-do="enhance">Cường hoá</button>' : '';
-      $('bag-detail').innerHTML = `<div class="dh">${icon(it.icon)}<div><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.type === 'equip' ? { weapon: 'Vũ khí', armor: 'Y phục', trinket: 'Bội sức' }[it.slot] : it.type === 'consumable' ? 'Đan dược' : 'Nguyên liệu'}${r.enh?.[id] ? ` · +${r.enh[id]}` : ''}</small></div></div><p>${it.desc}</p><div class="acts">${act}${enh}</div>`;
+      $('bag-detail').innerHTML = `<div class="dh">${itemIcon(id, it.icon)}<div><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.type === 'equip' ? { weapon: 'Vũ khí', armor: 'Y phục', trinket: 'Bội sức' }[it.slot] : it.type === 'consumable' ? 'Đan dược' : 'Nguyên liệu'}${r.enh?.[id] ? ` · +${r.enh[id]}` : ''}</small></div></div><p>${it.desc}</p><div class="acts">${act}${enh}</div>`;
       $('bag-detail').querySelector('[data-do="equip"]')?.addEventListener('click', () => { r.equipItem(id); this.openBag(g, tab); });
       $('bag-detail').querySelector('[data-do="use"]')?.addEventListener('click', () => { r.use(id); this.openBag(g, tab); });
       $('bag-detail').querySelector('[data-do="enhance"]')?.addEventListener('click', () => this.openEnhance(g, id));
@@ -259,13 +259,13 @@ Object.assign(UI.prototype, {
     const cost = 40 + lv * 35, rate = Math.max(0.3, 1 - lv * 0.08);
     const body = this.openPanel('Cường hoá binh khí', `
       <div class="enh">
-        <div class="enh-ring"><div class="enh-icon">${icon(it.icon)}</div><div class="enh-lv">+${lv}</div></div>
+        <div class="enh-ring"><div class="enh-icon">${icon('anvil')}</div><div class="enh-lv">+${lv}</div></div>
         <div class="enh-info">
           <h3>${it.name} <span class="han">${it.han}</span></h3>
           <div class="enh-row"><span>Cấp cường hoá</span><b>+${lv} → +${lv + 1}</b></div>
           <div class="enh-row"><span>Công</span><b>${(it.atk || 0) + lv * 3} → ${(it.atk || 0) + (lv + 1) * 3}</b></div>
           <div class="enh-row"><span>Tỉ lệ thành công</span><b>${Math.round(rate * 100)}%</b></div>
-          <div class="enh-row"><span>Tiêu hao</span><b>${icon('star')} ${cost} lượng · ${icon('skull')} ${1 + Math.floor(lv / 2)} lệnh bài</b></div>
+          <div class="enh-row"><span>Tiêu hao</span><b>${icon('coins')} ${cost} lượng · ${icon('skull')} ${1 + Math.floor(lv / 2)} lệnh bài</b></div>
           <button class="primary" id="enh-go" ${lv >= 10 ? 'disabled' : ''}>${lv >= 10 ? 'Đã đạt tối đa' : 'Cường hoá'}</button>
           <div id="enh-msg"></div>
         </div>
@@ -276,6 +276,8 @@ Object.assign(UI.prototype, {
       r.gold -= cost; r.remove('bounty', tokens);
       if (Math.random() < rate) {
         r.enh[id] = lv + 1;
+        g.sys.progress('enhance');
+        g.sys.checkAchievements();
         g.audio.levelUp();
         g.toast(`Cường hoá thành công! <b>${it.name} +${lv + 1}</b>`);
       } else {
@@ -308,11 +310,11 @@ Object.assign(UI.prototype, {
     const stock = ['potion', 'qipill', 'steel_sword', 'dao', 'leather', 'silk', 'charm'];
     const sellable = Object.entries(r.bag).filter(([id, n]) => n > 0 && ITEMS[id].sell);
     const body = this.openPanel('Tiệm Duyệt Lai', `
-      <div class="subtabs">${[['buy', 'Mua'], ['sell', 'Bán']].map(([t, n]) => `<button class="${tab === t ? 'on' : ''}" data-t="${t}">${n}</button>`).join('')}<span class="gold">${icon('star')} ${r.gold} lượng</span></div>
+      <div class="subtabs">${[['buy', 'Mua'], ['sell', 'Bán']].map(([t, n]) => `<button class="${tab === t ? 'on' : ''}" data-t="${t}">${n}</button>`).join('')}<span class="gold">${icon('coins')} ${r.gold} lượng</span></div>
       <div class="shop">${(tab === 'buy' ? stock.map((id) => [id, ITEMS[id].price]) : sellable.map(([id, n]) => [id, ITEMS[id].sell, n])).map(([id, price, n]) => {
         const it = ITEMS[id], owned = it.type === 'equip' && r.owned.has(id);
-        return `<div class="ware"><div class="ic">${icon(it.icon)}</div><div class="wi"><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.desc}</small></div>
-          <div class="wp">${icon('star')}${price}${n ? ` <small>×${n}</small>` : ''}</div>
+        return `<div class="ware"><div class="ic">${itemIcon(id, it.icon)}</div><div class="wi"><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.desc}</small></div>
+          <div class="wp">${icon('coins')}${price}${n ? ` <small>×${n}</small>` : ''}</div>
           <button class="primary sm" data-id="${id}" ${owned || (tab === 'buy' && r.gold < price) ? 'disabled' : ''}>${owned ? 'Đã có' : tab === 'buy' ? 'Mua' : 'Bán'}</button></div>`;
       }).join('') || '<p class="muted">Không có gì để bán. Lệnh bài sơn tặc và Linh chi thảo bán được ở đây.</p>'}</div>`);
     body.querySelectorAll('.subtabs button').forEach((b) => (b.onclick = () => this.openShop(g, b.dataset.t)));

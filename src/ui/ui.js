@@ -45,7 +45,7 @@ export class UI {
     $('dialog').addEventListener('click', (e) => { if (!e.target.closest('#dlg-choices')) this._advance?.('next'); });
     document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => this.closePanel()));
     // icon cho nút menu
-    const icons = { hero: 'user', map: 'map', continue: 'play', new: 'plus', chapters: 'book', settings: 'gear', controls: 'keys', credits: 'quill', resume: 'play', journal: 'scroll', inventory: 'bag', quit: 'door', retry: 'heart' };
+    const icons = { hero: 'robe', map: 'map', continue: 'play', new: 'plus', chapters: 'book', settings: 'gear', controls: 'keys', credits: 'quill', resume: 'play', journal: 'scroll', inventory: 'bag', quit: 'door', retry: 'heart' };
     document.querySelectorAll('.mbtn').forEach((b) => b.insertAdjacentHTML('afterbegin', icon(icons[b.dataset.act] || 'star')));
   }
 
@@ -192,7 +192,9 @@ export class UI {
       <p><b>Nhân vật, trang phục, 89 động tác</b>: Quaternius, Universal Base Characters, Modular Character Outfits, Universal Animation Library 1 &amp; 2 (CC0).</p>
       <p><b>Mô hình đồ vật, cây cối, đá, chất liệu PBR, bầu trời HDRI</b>: Poly Haven (CC0).</p>
       <p><b>Kiến trúc cổ trang, rừng trúc, cỏ, mặt hồ, âm thanh</b>: dựng bằng mã nguồn.</p>
-      <p><b>Phông chữ</b>: Noto Serif, Cormorant Garamond (Google Fonts, OFL).</p></div>`);
+      <p><b>Biểu tượng giao diện</b>: game-icons.net (Lorc, Delapouite, Skoll, Felbrigg, Zeromancer, Faithtoken và cộng sự), giấy phép CC BY 3.0.</p>
+      <p><b>Ngựa, chó đồng hành</b>: Quaternius Farm Animals (CC0). <b>Binh khí low-poly, đạo cụ</b>: Quaternius Medieval Weapons, Fantasy Props MegaKit (CC0).</p>
+      <p><b>Phông chữ</b>: Noto Serif, Cormorant Garamond, Ma Shan Zheng (Google Fonts, OFL).</p></div>`);
   }
 
   openJournal(chapters, current, flags) {

@@ -10,7 +10,7 @@ export class Input {
     this.locked = false;
 
     addEventListener('keydown', (e) => {
-      if (e.code === 'Tab') e.preventDefault();
+      if (e.code === 'Tab' || e.code === 'AltLeft') e.preventDefault();
       if (!this.down.has(e.code)) this.justDown.add(e.code);
       this.down.add(e.code);
     });

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8" /><title>Chụp icon vật phẩm</title></head>
+<body style="background:#333;color:#ddd;font:14px monospace">
+  <pre id="log">Đang chụp icon...</pre>
+  <div id="out" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+    import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+
+    // id vật phẩm -> [đường dẫn glb, màu ánh (tuỳ chọn)]
+    const LIST = {
+      potion: ['/assets/kit/potion_1.glb'], qipill: ['/assets/kit/potion_2.glb'], herb: ['/assets/models/fern_02.glb'],
+      bounty: ['/assets/kit/scroll_1.glb'], iron_sword: ['/assets/models/antique_katana_01.glb'],
+      steel_sword: ['/assets/models/wooden_handle_saber.glb'], dao: ['/assets/models/machete.glb'],
+      bishui: ['/assets/models/antique_katana_01.glb', 0x3fd0c0], cloth: ['/assets/characters/outfit_male_peasant.glb'],
+      leather: ['/assets/characters/outfit_male_ranger.glb'], silk: ['/assets/characters/outfit_female_ranger.glb', 0x302860],
+      charm: ['/assets/kit/scroll_2.glb', 0xd04030], jade: ['/assets/kit/coin.glb', 0x40c080], gold: ['/assets/kit/coin_pile.glb', 0xc89030],
+      chest: ['/assets/kit/chest_wood.glb'],
+    };
+    const S = 256;
+    const log = (s) => (document.getElementById('log').textContent += '\n' + s);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    renderer.setSize(S, S);
+    renderer.setPixelRatio(1);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.setClearColor(0x000000, 0);
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+
+    for (const [id, [url, tint]] of Object.entries(LIST)) {
+      const scene = new THREE.Scene();
+      scene.add(new THREE.HemisphereLight(0xfff2dc, 0x302018, 1.6));
+      const key = new THREE.DirectionalLight(0xffffff, 2.8); key.position.set(2, 3, 4); scene.add(key);
+      const rim = new THREE.DirectionalLight(0xffd8a0, 2.2); rim.position.set(-3, 2, -3); scene.add(rim);
+      const g = await loader.loadAsync(url);
+      const obj = g.scene;
+      obj.traverse((o) => {
+        if (!o.isMesh) return;
+        if (o.isSkinnedMesh) o.frustumCulled = false;
+        if (tint) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(tint); o.material.emissiveIntensity = 0.45; o.material.color.lerp(new THREE.Color(tint), 0.35); }
+      });
+      const holder = new THREE.Group();
+      holder.add(obj);
+      scene.add(holder);
+      let box = new THREE.Box3().setFromObject(obj);
+      let size = box.getSize(new THREE.Vector3());
+      const long = Math.max(size.x, size.y, size.z), others = [size.x, size.y, size.z].sort((a, b) => b - a)[1];
+      if (long > others * 2.2) {
+        // vật dài (kiếm, đao): dựng dọc rồi đặt chéo 45°
+        if (size.x === long) obj.rotation.z = Math.PI / 2;
+        else if (size.z === long) obj.rotation.x = Math.PI / 2;
+        holder.rotation.set(0, 0.5, -Math.PI / 4);
+      } else {
+        holder.rotation.set(url.includes('/characters/') ? 0.05 : 0.35, url.includes('/characters/') ? 0.3 : -0.6, 0);
+      }
+      holder.updateMatrixWorld(true);
+      box = new THREE.Box3().setFromObject(holder);
+      const center = box.getCenter(new THREE.Vector3()), sphere = box.getBoundingSphere(new THREE.Sphere());
+      holder.position.sub(center);
+      const cam = new THREE.PerspectiveCamera(28, 1, 0.01, 100);
+      const isLong = long > others * 2.2, isOutfit = url.includes('/characters/');
+      const dist = sphere.radius / Math.sin(THREE.MathUtils.degToRad(14)) * (isLong ? 0.62 : isOutfit ? 0.42 : 0.9);
+      const lookY = isOutfit ? (box.max.y - center.y) * 0.45 : 0;
+      cam.position.set(0, lookY, dist);
+      cam.lookAt(0, lookY, 0);
+      renderer.render(scene, cam);
+      const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
+      await fetch(`/__save?dir=thumbs&name=${id}.png`, { method: 'POST', body: blob });
+      const img = new Image(); img.src = URL.createObjectURL(blob); img.width = 96; img.style.background = '#1a120c';
+      document.getElementById('out').appendChild(img);
+      log(id + ' xong');
+    }
+    log('HOÀN TẤT');
+  </script>
+</body>
+</html>

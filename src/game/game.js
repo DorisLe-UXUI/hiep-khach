@@ -16,6 +16,10 @@ import { PLACES } from '../world/layout.js';
 import { DIFFICULTY, QUALITY, writeSave, saveSettings } from '../settings.js';
 import { loadKit, loadModel } from '../engine/assets.js';
 import { rng } from '../world/noise.js';
+import { Systems, DUNGEONS, WORLD_BOSSES, RIVALS } from './systems.js';
+import { Companions } from './companions.js';
+import { LOOK_OPTIONS } from './classes.js';
+import '../ui/panels.js';
 
 export const LOOKS = {
   guard: { outfit: 'male_peasant', base: 'male', hair: ['hair_simpleparted', 'hair_beard'], brows: 'eyebrows_regular', outfitColor: '#6b5a44', hairColor: '#c9c4bb' },
@@ -78,6 +82,10 @@ export class Game {
     this.herbs = [];
     this.chestOpened = false;
     this.freedCages = new Set();
+    this.sys = new Systems(this);
+    this.companions = new Companions(this);
+    this.activity = null;
+    this.fashionOwned = [];
     this.applySettings(this.settings);
   }
 
@@ -153,6 +161,7 @@ export class Game {
     progress('Rải thảo dược...');
     await this.placeHerbs();
     this.hud = new HUD(this);
+    this.hud.setClass(this.profile.hero?.cls);
     this.wireUI();
   }
 
@@ -174,6 +183,7 @@ export class Game {
     this.portraits.hero = renderPortrait(this.renderer, ch);
     document.getElementById('hero-portrait').src = this.portraits.hero;
     document.getElementById('hero-name').textContent = this.profile.name;
+    this.hud?.setClass(h.cls);
     document.getElementById('hero-title').textContent = `${cls.name} · Cấp ${this.rpg.level}`;
   }
 
@@ -207,7 +217,7 @@ export class Game {
     q('#death [data-act="retry"]').onclick = () => this.respawn();
     q('#death [data-act="quit"]').onclick = () => location.reload();
     document.addEventListener('pointerlockchange', () => {
-      if (this.running && !document.pointerLockElement && !this.player.dead && !this.dialogOpen && !this.panelOpen()) this.pause();
+      if (this.running && !document.pointerLockElement && !this.player.dead && !this.dialogOpen && !this.panelOpen() && !this.cursorMode) this.pause();
     });
   }
 
@@ -224,8 +234,12 @@ export class Game {
       this.rpg.load(save.rpg);
       Object.assign(this.player, { attackBonus: save.attackBonus || 0, storyHp: save.storyHp || 0, storyMp: save.storyMp || 0 });
       this.rpg.apply(true);
+      this.fashionOwned = save.fashion || [];
     }
+    this.sys.load(save?.sys);
     this.running = true;
+    this.companions.spawnPet();
+    if (this.sys.canSignIn()) setTimeout(() => this.hud.toast('Phúc lợi: hôm nay chưa điểm danh <span class="sm">(phím O)</span>', 4), 9000);
     this.audio.start();
     await this.startChapter(save?.chapter ?? 0);
   }
@@ -234,6 +248,7 @@ export class Game {
     writeSave(this.profile, {
       chapter: this.chapterIdx, unlocked: Math.max(this.unlockedChapter, this.chapterIdx), flags: this.flags, unlocks: this.unlocks,
       rpg: this.rpg.toJSON(), attackBonus: this.player.attackBonus, storyHp: this.player.storyHp, storyMp: this.player.storyMp,
+      sys: this.sys.toJSON(), fashion: this.fashionOwned,
     });
   }
 
@@ -321,14 +336,15 @@ export class Game {
   }
 
   markerPos() {
+    if (this.activity) return this.nearestOf(this.activity.group);
     const st = this.step;
     try { return st?.marker?.(this) || null; } catch { return null; }
   }
 
   async spawn(type, x, z, opts = {}) {
     const t = ENEMY_TYPES[type];
-    const ch = await makeChar(LOOKS[t.look], opts.weapon || t.weapon);
-    if (t.scale) ch.root.scale.setScalar(t.scale);
+    const ch = await makeChar(opts.look || LOOKS[t.look], opts.weapon || t.weapon);
+    if (opts.scale || t.scale) ch.root.scale.setScalar(opts.scale || t.scale);
     const e = new Enemy(this, ch, {
       name: opts.name || t.name, hp: opts.hp || t.hp, dmg: opts.dmg || t.dmg, x, z, boss: opts.boss, aggro: opts.aggro,
       speed: opts.speed || t.speed, patrol: opts.patrol, idleAnim: t.idleAnim || 'Sword_Idle', caster: opts.caster ?? t.caster,
@@ -438,7 +454,9 @@ export class Game {
   onEnemyKilled(e) {
     if (e.group) this.kills[e.group] = (this.kills[e.group] || 0) + 1;
     if (e.group === 'doba') this.dobaSpot = { x: e.pos.x, z: e.pos.z };
-    this.rpg.gainExp(e.exp);
+    this.rpg.gainExp(Math.round(e.exp * (this.sys.buff('exp') ? 1.1 : 1)));
+    this.sys.progress('kill');
+    if (this.activity && e.group === this.activity.group) this.activityKill();
     this.dropLoot(e);
     if (e.boss) this.camRig.shake = 1.2;
   }
@@ -487,7 +505,7 @@ export class Game {
       l.t += dt;
       l.mesh.rotation.y += dt * 2;
       const d = l.mesh.position.distanceTo(p);
-      if (d < 4.5 && l.t > 0.6) l.mesh.position.lerp(p.clone().setY(p.y + 0.8), Math.min(1, dt * 8));
+      if (d < (this.companions.pet?.root.visible ? 12 : 4.5) && l.t > 0.6) l.mesh.position.lerp(p.clone().setY(p.y + 0.8), Math.min(1, dt * 8));
       else l.mesh.position.y = l.base + Math.sin(l.t * 3) * 0.12;
       if (Math.random() < 0.1) this.fx.sparkle(l.mesh.position, l.kind === 'gold' ? 0xffd27a : 0xbfe6ff);
       if (d < 1 && l.t > 0.6) { this.collect(l); this.scene.remove(l.mesh); this.loot.splice(i, 1); }
@@ -551,10 +569,95 @@ export class Game {
       this.scene.remove(it.herb.mesh);
       this.rpg.add('herb');
       this.rpg.gainExp(8);
+      this.sys.progress('herb');
       this.toast('Hái được <b>Linh chi thảo</b>', 1.6);
       this.player.char.play('PickUp_Table', { once: true, restart: true, speed: 1.6, onDone: () => this.player.setState('free') });
       this.player.setState('talk');
     }
+  }
+
+  // ─────────────────── hoạt động: phó bản, boss thế giới, luận kiếm ───────────────────
+  async beginActivity(act, place) {
+    await this.ui.fade(true);
+    this.companions.dismount();
+    for (const e of this.enemies) if (e.group?.startsWith('act')) this.scene.remove(e.root);
+    this.enemies = this.enemies.filter((e) => !e.group?.startsWith('act'));
+    this.player.revive(place.x, place.z, Math.PI);
+    this.camRig.snap(this.player.pos);
+    this.activity = { ...act, wave: 0, group: 'act' + Date.now(), left: 0 };
+    await this.ui.fade(false);
+    this.input.lock();
+    this.ui.chapterCard(act.han, act.title, act.han);
+    setTimeout(() => this.spawnWave(), 2500);
+  }
+
+  async spawnWave() {
+    const a = this.activity;
+    if (!a) return;
+    const wave = a.waves[a.wave];
+    a.left = wave.reduce((n, w) => n + w[1], 0);
+    this.toast(a.waves.length > 1 ? `Đợt ${a.wave + 1}/${a.waves.length}` : a.title, 2);
+    const p = this.player.pos;
+    let k = 0;
+    for (const [type, n, extra] of wave) {
+      for (let i = 0; i < n; i++, k++) {
+        const ang = (k / a.left) * Math.PI * 2;
+        this.spawn(type, p.x + Math.cos(ang) * 12, p.z + Math.sin(ang) * 12, { group: a.group, aggro: 80, ...(extra || {}) });
+      }
+    }
+  }
+
+  activityKill() {
+    const a = this.activity;
+    if (--a.left > 0) return;
+    if (++a.wave < a.waves.length) { setTimeout(() => this.spawnWave(), 1800); return; }
+    this.activity = null;
+    a.onWin?.();
+  }
+
+  startDungeon(id) {
+    const d = DUNGEONS.find((x) => x.id === id);
+    const place = { camp: { x: PLACES.camp.x, z: PLACES.camp.z + 10 }, bamboo: { x: PLACES.bamboo.x + 10, z: PLACES.bamboo.z + 10 }, tomb: { x: PLACES.tomb.x, z: PLACES.tomb.z + 4 } }[d.at];
+    this.beginActivity({ title: d.name, han: d.han, waves: d.waves.map((w) => (Array.isArray(w[0]) ? w : [w])), onWin: () => {
+      this.sys.s.dungeonRuns[id] = (this.sys.s.dungeonRuns[id] || 0) + 1;
+      this.sys.progress('dungeon');
+      const r = this.sys.give(d.reward);
+      this.toast(`<span class="han">${d.han}</span> Vượt ải <b>${d.name}</b><br><span class="sm">${r}</span>`, 5);
+      this.audio.levelUp();
+    } }, place);
+  }
+
+  startWorldBoss(id) {
+    const b = WORLD_BOSSES.find((x) => x.id === id);
+    this.beginActivity({ title: b.name, han: b.han, waves: [[['villain', 1, { name: b.name, hp: b.hp, boss: true, scale: 1.9, dmg: 20 + b.lv }]]], onWin: () => {
+      this.sys.s.bossDone[id] = true;
+      const r = this.sys.give({ gold: 400 + b.lv * 30, qipill: 2, points: 1 });
+      this.toast(`Hạ boss thế giới <b>${b.name}</b><br><span class="sm">${r}</span>`, 5);
+    } }, { x: PLACES.camp.x, z: PLACES.camp.z + 60 });
+  }
+
+  startDuel(name) {
+    const r = RIVALS.find((x) => x.name === name);
+    const k = r.power / 10000;
+    const look = heroLook({ gender: r.gender, cls: r.cls, hair: r.gender === 'male' ? 'hair_long' : 'hair_buns', hairColor: '#1b1512', outfit: 'ranger', fashion: ['thanh', 'hac', 'bach', 'xich'][r.lv % 4] });
+    this.beginActivity({ title: `Luận kiếm · ${r.name}`, han: '論劍', waves: [[['bandit', 1, { name: `${r.name} · ${CLASSES[r.cls].name}`, hp: Math.round(300 * k + 150), dmg: Math.round(10 + 8 * k), boss: true, look, weapon: CLASSES[r.cls].weapon || 'sword', caster: r.cls === 'phap' || r.cls === 'cung', speed: 5.8 }]]], onWin: () => {
+      this.sys.s.stats.pvpWins++;
+      this.sys.progress('pvp');
+      r.power = Math.min(r.power, this.sys.power() - 50);
+      this.sys.give({ gold: 80, bounty: 1 });
+      this.toast(`Luận kiếm thắng <b>${r.name}</b>! Thứ hạng tăng.`, 4);
+    } }, { x: PLACES.square.x, z: PLACES.square.z });
+  }
+
+  toggleMount() { this.companions.toggleMount(); }
+  spawnPet() { this.companions.spawnPet(); }
+  ownedFashion() { return this.fashionOwned; }
+  unlockFashion(id) { if (!this.fashionOwned.includes(id)) this.fashionOwned.push(id); }
+  async setFashion(id) {
+    const h = { ...this.profile.hero, fashion: id };
+    this.profile = { ...this.profile, hero: h };
+    (await import('../settings.js')).saveProfile(this.profile);
+    await this.buildHero(h);
   }
 
   // ─────────────────── vòng lặp ───────────────────
@@ -579,7 +682,21 @@ export class Game {
       if (input.pressed('KeyM')) { this.input.unlock(); this.ui.openMap(this); }
       if (input.pressed('KeyI')) { this.input.unlock(); this.ui.openBag(this); }
       if (input.pressed('KeyK')) { this.input.unlock(); this.ui.openSkills(this); }
-      if (input.pressed('KeyJ') || input.pressed('Tab')) { this.input.unlock(); this.ui.openJournal(CHAPTERS, this.chapterIdx, this.flags); }
+      const open = (fn) => { this.input.unlock(); fn(); };
+      if (input.pressed('KeyJ') || input.pressed('Tab')) open(() => this.ui.openQuests(this));
+      if (input.pressed('KeyO')) open(() => this.ui.openWelfare(this));
+      if (input.pressed('KeyN')) open(() => this.ui.openEvents(this));
+      if (input.pressed('KeyP')) open(() => this.ui.openRanking(this));
+      if (input.pressed('KeyG')) open(() => this.ui.openGuild(this));
+      if (input.pressed('KeyU')) open(() => this.ui.openFashion(this));
+      if (input.pressed('KeyY')) open(() => this.ui.openBond(this));
+      if (input.pressed('KeyT')) open(() => this.ui.openCraft(this));
+      if (input.pressed('KeyB')) open(() => this.ui.openCompanions(this));
+      if (input.pressed('KeyH')) this.toggleMount();
+      if (input.pressed('AltLeft') || input.pressed('Backquote')) {
+        if (this.input.locked) { this.cursorMode = true; this.input.unlock(); } else { this.cursorMode = false; this.input.lock(); }
+      }
+      if (this.cursorMode && !this.input.locked && input.pressed('Mouse0')) { this.cursorMode = false; this.input.lock(); input.justDown.delete('Mouse0'); }
       const it = this.player.dead ? null : this.nearestInteract();
       this.hud.prompt(it?.label);
       if (it && input.pressed('KeyE') && this.player.state === 'free') this.interact(it);
@@ -597,6 +714,8 @@ export class Game {
     this.combat.update(adt);
     this.fx.update(dt);
     this.updateLoot(dt);
+    this.sys.update(dt);
+    this.companions.update(dt);
     this.camRig.update(dt, pp, frozen);
     this.updateSun(pp);
     this.grass.update(pp.x, pp.z, time);
@@ -605,7 +724,9 @@ export class Game {
     const st = this.step;
     if (st?.done && !this.dialogOpen && st.done(this)) this.next();
     const ch = this.chapter;
-    this.hud.objective(`<span class="han">${ch.han}</span>${ch.title} · ${ch.subtitle}`, st ? this.ui.nh(st.objective(this)) : '');
+    const a = this.activity;
+    if (a) this.hud.objective(`<span class="han">${a.han}</span>${a.title}`, a.waves.length > 1 ? `Đợt ${a.wave + 1}/${a.waves.length} · còn ${a.left} địch` : `Đánh bại đối thủ`);
+    else this.hud.objective(`<span class="han">${ch.han}</span>${ch.title} · ${ch.subtitle}`, st ? this.ui.nh(st.objective(this)) : '');
     document.getElementById('hero-title').textContent = `${this.player.cls.name} · Cấp ${this.rpg.level}`;
     this.hud.update(dt);
   }
