@@ -14,15 +14,41 @@ export class CameraRig {
     this.shake = 0;
     this.pos = new THREE.Vector3();
     this.lockTarget = null;
+    this.sens = 1;
+    this.invertY = false;
+    this.cinematic = null;
+  }
+
+  snap(focus) {
+    this.target.copy(focus);
+    const back = new THREE.Vector3(Math.sin(this.yaw), 0.4, Math.cos(this.yaw)).normalize();
+    this.pos.copy(focus).add(new THREE.Vector3(0, 1.6, 0)).addScaledVector(back, this.dist);
+  }
+
+  /** Khung hình hội thoại: nhìn nghiêng qua vai người chơi về phía NPC. */
+  frameDialog(a, b) {
+    const mid = a.pos.clone().add(b.pos).multiplyScalar(0.5);
+    const ab = new THREE.Vector3().subVectors(b.pos, a.pos).setY(0);
+    const side = new THREE.Vector3(-ab.z, 0, ab.x).normalize();
+    const look = mid.clone().setY(mid.y + 1.45);
+    const pos = a.pos.clone().addScaledVector(ab.clone().normalize(), -1.3).addScaledVector(side, 1.1).setY(a.pos.y + 1.85);
+    this.cinematic = { pos, look };
   }
 
   toggleMode() { this.mode = this.mode === 'third' ? 'top' : 'third'; }
 
   update(dt, focus, input) {
-    const sens = 0.0024;
+    if (this.cinematic) {
+      this.pos.lerp(this.cinematic.pos, 1 - Math.exp(-dt * 4));
+      this.camera.position.copy(this.pos);
+      this.camera.lookAt(this.cinematic.look);
+      return;
+    }
+    const sens = 0.0024 * (this.sens || 1);
+    const dy = input.mouseDY * (this.invertY ? -1 : 1);
     if (this.mode === 'third') {
       this.yaw -= input.mouseDX * sens;
-      this.pitch = THREE.MathUtils.clamp(this.pitch + input.mouseDY * sens, -0.6, 1.2);
+      this.pitch = THREE.MathUtils.clamp(this.pitch + dy * sens, -0.6, 1.2);
       this.dist = THREE.MathUtils.clamp(this.dist + input.wheel * 0.5, 2.2, 11);
     } else {
       this.yaw -= input.mouseDX * sens * 0.6;

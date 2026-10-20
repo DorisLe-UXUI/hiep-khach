@@ -1,18 +1,36 @@
 import * as THREE from 'three';
 import { WORLD_SIZE, PLACES } from '../world/layout.js';
+import { icon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
+
+const SLOTS = [
+  { id: 'atk', key: 'LMB', ic: 'sword' },
+  { id: 'block', key: 'RMB', ic: 'shield' },
+  { id: 'dash', key: 'Q', ic: 'dash', mp: 15 },
+  { id: 'cast', key: 'F', ic: 'palm', mp: 20 },
+  { id: 'jump', key: '␣', ic: 'cloud', mp: 8 },
+  { id: 'roll', key: 'Ctrl', ic: 'roll' },
+  { id: 'water', key: 'Shift', ic: 'wave', lock: 'waterRun' },
+  { id: 'potion', key: 'R', ic: 'potion' },
+];
 
 export class HUD {
   constructor(game) {
     this.game = game;
-    this.el = $('hud');
-    this.dmgLayer = $('dmg-layer');
     this.nums = [];
-    this.toastT = 0;
+    this.toasts = [];
+    this.tipT = 0;
+    this.barkT = 0;
     this.mini = $('minimap').getContext('2d');
-    // nền bản đồ nhỏ: vẽ sẵn từ độ cao + splat
-    const t = game.terrain, R = 512;
+    this.plates = new Map();
+    this.bossLagW = 100;
+    $('skills').innerHTML = SLOTS.map((s) => `<div class="slot" id="slot-${s.id}"><span class="key">${s.key}</span>${icon(s.ic)}<div class="cd"></div>${s.id === 'potion' ? '<span class="cnt" id="potion-cnt"></span>' : ''}</div>`).join('');
+    this.buildMinimap();
+  }
+
+  buildMinimap() {
+    const t = this.game.terrain, R = 512;
     const c = document.createElement('canvas');
     c.width = c.height = R;
     const g = c.getContext('2d');
@@ -20,51 +38,76 @@ export class HUD {
     for (let j = 0; j < R; j++) for (let i = 0; i < R; i++) {
       const x = (i / R - 0.5) * WORLD_SIZE, z = (j / R - 0.5) * WORLD_SIZE;
       const h = t.heightAt(x, z), sp = t.splatAt(x, z);
-      let col = h < -0.6 ? [40, 70, 80] : [70 + h * 1.2, 92 + h * 0.6, 52 + h * 1.0];
-      if (h > 30) col = [110 + h * 0.4, 108 + h * 0.4, 100 + h * 0.4];
-      if (sp.path > 0.3 || sp.paved > 0.3) col = [168, 148, 110];
-      const o = (j * R + i) * 4;
-      img.data.set([col[0], col[1], col[2], 255], o);
+      // phong cách giấy dó + mực
+      let col = [196 - h * 0.5, 184 - h * 0.6, 150 - h * 0.6];
+      if (h < -0.6 && Math.hypot(x - PLACES.lake.x, (z - PLACES.lake.z) * 1.25) < PLACES.lake.r * 1.4) col = [104, 128, 128];
+      if (h > 25) { const k = Math.min(1, (h - 25) / 60); col = col.map((v) => v * (1 - k * 0.45)); }
+      if (sp.forest > 0.3) col = col.map((v) => v * 0.9);
+      if (sp.path > 0.3 || sp.paved > 0.3) col = [128, 96, 64];
+      img.data.set([col[0], col[1], col[2], 255], (j * R + i) * 4);
     }
     g.putImageData(img, 0, 0);
     this.miniBg = c;
   }
 
-  show() { this.el.classList.remove('hidden'); }
+  show(v = true) { $('hud').classList.toggle('hidden', !v); }
 
-  toast(text, t = 3) {
-    const el = $('toast');
-    el.innerHTML = text;
-    el.classList.add('show');
-    this.toastT = t;
+  toast(html, t = 3.5) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = this.game.ui.nh(html);
+    $('toasts').appendChild(el);
+    this.toasts.push({ el, t });
+    while (this.toasts.length > 3) { this.toasts.shift().el.remove(); }
+  }
+
+  tip(text, t = 6) {
+    const el = $('tip');
+    el.innerHTML = text.replace(/([A-Z][a-z]*|Space|Chuột trái|Chuột phải|Ctrl|Shift|W A S D)(?=\s*[:·]|\s+(?:để|2 lần))/g, '<b>$1</b>');
+    el.classList.remove('hidden');
+    this.tipT = t;
+  }
+
+  bark(name, portrait, text, t = 4) {
+    $('bark-name').textContent = name;
+    $('bark-text').textContent = this.game.ui.nh(text);
+    $('bark-img').src = portrait || '';
+    $('bark').classList.remove('hidden');
+    this.barkT = t;
   }
 
   prompt(text) {
-    const el = $('prompt');
-    if (!text) el.classList.add('hidden');
-    else { el.textContent = text; el.classList.remove('hidden'); }
+    if (!text) $('prompt').classList.add('hidden');
+    else { $('prompt-text').textContent = text; $('prompt').classList.remove('hidden'); }
   }
 
-  dialog(name, text) {
-    const el = $('dialog');
-    if (!name) { el.classList.add('hidden'); return; }
-    $('dialog-name').textContent = name;
-    $('dialog-text').textContent = text;
-    el.classList.remove('hidden');
-  }
-
-  journal(open, html) {
-    const el = $('journal');
-    el.classList.toggle('hidden', !open);
-    if (open) el.innerHTML = '<h2>Nhật ký giang hồ</h2>' + html;
+  objective(chapter, text) {
+    $('obj-chapter').innerHTML = chapter;
+    const el = $('obj-text');
+    if (el.textContent !== text) {
+      el.textContent = text;
+      el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
+    }
   }
 
   damage(pos, n, kind = '') {
+    if (!this.game.settings.dmgNumbers && kind !== 'heal') return;
     const d = document.createElement('div');
     d.className = 'dmg ' + kind;
-    d.textContent = n;
-    this.dmgLayer.appendChild(d);
-    this.nums.push({ el: d, pos: pos.clone(), t: 0, dx: (Math.random() - 0.5) * 30 });
+    d.textContent = kind === 'heal' ? '+' + n : n;
+    $('dmg-layer').appendChild(d);
+    this.nums.push({ el: d, pos: pos.clone(), t: 0, dx: (Math.random() - 0.5) * 40 });
+  }
+
+  flashSlot(id) {
+    const el = $('slot-' + id);
+    if (!el) return;
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  }
+
+  project(v) {
+    const p = v.clone().project(this.game.camera);
+    return { x: ((p.x + 1) / 2) * innerWidth, y: ((1 - p.y) / 2) * innerHeight, behind: p.z > 1 };
   }
 
   update(dt) {
@@ -72,66 +115,143 @@ export class HUD {
     $('hp').style.width = (p.hp / p.maxHp) * 100 + '%';
     $('mp').style.width = (p.mp / p.maxMp) * 100 + '%';
     $('st').style.width = (p.st / p.maxSt) * 100 + '%';
+    $('hp-t').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+    $('mp-t').textContent = `${Math.floor(p.mp)} / ${p.maxMp}`;
+    $('vignette').style.opacity = p.hp / p.maxHp < 0.3 ? 0.4 + Math.sin(performance.now() / 220) * 0.2 : Math.max(0, p.hurtFlash || 0);
+    if (p.hurtFlash) p.hurtFlash = Math.max(0, p.hurtFlash - dt * 2);
 
-    const boss = g.enemies.find((e) => e.boss && !e.dead && e.alerted && e.pos.distanceTo(p.pos) < 40);
+    // kỹ năng + hồi chiêu
+    const cds = { dash: [p.cooldowns.dash, 2.5], cast: [p.cooldowns.cast, 0.8], potion: [p.cooldowns.potion || 0, 6] };
+    for (const s of SLOTS) {
+      const el = $('slot-' + s.id);
+      const cd = cds[s.id];
+      el.querySelector('.cd').style.transform = `scaleY(${cd ? Math.min(1, cd[0] / cd[1]) : 0})`;
+      el.classList.toggle('nomp', !!s.mp && p.mp < s.mp);
+      el.classList.toggle('locked', !!s.lock && !g.unlocks[s.lock]);
+    }
+    $('potion-cnt').textContent = g.potions;
+    $('slot-potion').classList.toggle('locked', g.potions <= 0);
+
+    // boss
+    const boss = g.enemies.find((e) => e.boss && !e.dead && e.alerted && e.pos.distanceTo(p.pos) < 50);
     $('boss').classList.toggle('hidden', !boss);
-    if (boss) { $('boss-name').textContent = boss.name; $('boss-hp').style.width = (boss.hp / boss.maxHp) * 100 + '%'; }
+    if (boss) {
+      const w = (boss.hp / boss.maxHp) * 100;
+      $('boss-name').textContent = boss.name;
+      $('boss-hp').style.width = w + '%';
+      $('boss-lag').style.width = w + '%';
+    }
 
-    const tr = g.quests.tracker();
-    $('tracker').innerHTML = tr.map((q) => `<div class="q"><div class="qt">${q.title}</div>${q.lines.map((l) => `<div class="${q.ready ? 'done' : ''}">· ${l}</div>`).join('')}</div>`).join('');
+    // thông báo
+    for (let i = this.toasts.length - 1; i >= 0; i--) {
+      const t = this.toasts[i];
+      t.t -= dt;
+      if (t.t < 0.6) t.el.classList.add('out');
+      if (t.t <= 0) { t.el.remove(); this.toasts.splice(i, 1); }
+    }
+    if (this.tipT > 0 && (this.tipT -= dt) <= 0) $('tip').classList.add('hidden');
+    if (this.barkT > 0 && (this.barkT -= dt) <= 0) $('bark').classList.add('hidden');
 
-    if (this.toastT > 0) { this.toastT -= dt; if (this.toastT <= 0) $('toast').classList.remove('show'); }
+    // điểm đánh dấu nhiệm vụ trên màn hình
+    const mk = g.markerPos();
+    const mEl = $('marker');
+    if (mk && !g.dialogOpen) {
+      const y = g.terrain.heightAt(mk.x, mk.z) + 2.6;
+      const w = new THREE.Vector3(mk.x, y, mk.z);
+      const d = Math.hypot(mk.x - p.pos.x, mk.z - p.pos.z);
+      let s = this.project(w);
+      const m = 48;
+      if (s.behind) { s.x = innerWidth - s.x; s.y = innerHeight - m; }
+      s.x = Math.min(innerWidth - m, Math.max(m, s.x));
+      s.y = Math.min(innerHeight - m, Math.max(m + 20, s.y));
+      mEl.style.display = 'flex';
+      mEl.style.left = s.x + 'px';
+      mEl.style.top = s.y + 'px';
+      $('marker-dist').textContent = Math.round(d) + 'm';
+      $('obj-dist').textContent = `Cách ${Math.round(d)} trượng`;
+      mEl.style.opacity = d < 6 ? 0.25 : 1;
+    } else { mEl.style.display = 'none'; $('obj-dist').textContent = ''; }
 
-    // số sát thương bay lên
-    const cam = g.camera, w = innerWidth, h = innerHeight, v = new THREE.Vector3();
+    // bảng tên kẻ địch
+    const seen = new Set();
+    for (const e of g.enemies) {
+      if (e.dead || e.boss || !e.root.visible) continue;
+      const d = e.pos.distanceTo(p.pos);
+      if (d > 28 || !(e.alerted || e.hp < e.maxHp)) continue;
+      const s = this.project(e.pos.clone().setY(e.pos.y + 2.25));
+      if (s.behind) continue;
+      let el = this.plates.get(e);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'plate';
+        el.innerHTML = `<div class="nm">${e.name}</div><div class="tr"><div></div></div>`;
+        $('plates').appendChild(el);
+        this.plates.set(e, el);
+      }
+      seen.add(e);
+      el.style.left = s.x + 'px';
+      el.style.top = s.y + 'px';
+      el.querySelector('.tr div').style.width = (e.hp / e.maxHp) * 100 + '%';
+    }
+    for (const [e, el] of this.plates) if (!seen.has(e)) { el.remove(); this.plates.delete(e); }
+
+    // số sát thương
     for (let i = this.nums.length - 1; i >= 0; i--) {
       const n = this.nums[i];
       n.t += dt;
       if (n.t > 1.0) { n.el.remove(); this.nums.splice(i, 1); continue; }
-      v.copy(n.pos).add(new THREE.Vector3(0, n.t * 1.2, 0)).project(cam);
-      if (v.z > 1) { n.el.style.display = 'none'; continue; }
+      const s = this.project(n.pos.clone().add(new THREE.Vector3(0, n.t * 1.3, 0)));
+      if (s.behind) { n.el.style.display = 'none'; continue; }
       n.el.style.display = '';
-      n.el.style.left = ((v.x + 1) / 2) * w + n.dx * n.t + 'px';
-      n.el.style.top = ((1 - v.y) / 2) * h + 'px';
+      n.el.style.left = s.x + n.dx * n.t + 'px';
+      n.el.style.top = s.y + 'px';
       n.el.style.opacity = String(1 - Math.max(0, n.t - 0.6) / 0.4);
     }
     this.drawMinimap();
   }
 
   drawMinimap() {
-    const g = this.mini, p = this.game.player, S = 180, span = 140; // mét hiển thị
+    const g = this.mini, p = this.game.player, S = 200, span = 150;
     const k = S / span;
+    const rot = this.game.camRig.yaw - Math.PI;
     g.save();
     g.clearRect(0, 0, S, S);
     g.beginPath(); g.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); g.clip();
-    // bản đồ xoay theo camera cho dễ định hướng
     g.translate(S / 2, S / 2);
-    g.rotate(this.game.camRig.yaw - Math.PI);
+    g.rotate(rot);
     const bgK = this.miniBg.width / WORLD_SIZE;
-    g.drawImage(this.miniBg, (p.pos.x + WORLD_SIZE / 2) * bgK - span / 2 * bgK, (p.pos.z + WORLD_SIZE / 2) * bgK - span / 2 * bgK, span * bgK, span * bgK, -S / 2, -S / 2, S, S);
+    g.drawImage(this.miniBg, (p.pos.x + WORLD_SIZE / 2 - span / 2) * bgK, (p.pos.z + WORLD_SIZE / 2 - span / 2) * bgK, span * bgK, span * bgK, -S / 2, -S / 2, S, S);
     const dot = (x, z, color, r = 3) => {
-      g.fillStyle = color;
-      g.beginPath(); g.arc((x - p.pos.x) * k, (z - p.pos.z) * k, r, 0, Math.PI * 2); g.fill();
+      g.fillStyle = color; g.strokeStyle = 'rgba(0,0,0,.6)';
+      g.beginPath(); g.arc((x - p.pos.x) * k, (z - p.pos.z) * k, r, 0, Math.PI * 2); g.fill(); g.stroke();
     };
-    for (const e of this.game.enemies) if (!e.dead) dot(e.pos.x, e.pos.z, e.boss ? '#ff3030' : '#d24a3c', e.boss ? 4.5 : 3);
-    for (const n of this.game.npcs) dot(n.pos.x, n.pos.z, '#f2dc8a', 3);
-    // mục tiêu nhiệm vụ (kể cả khi ở ngoài khung: ghim ở mép)
-    for (const m of this.game.questMarkers()) {
+    for (const e of this.game.enemies) if (!e.dead) dot(e.pos.x, e.pos.z, e.boss ? '#ff2a2a' : '#b8332b', e.boss ? 5 : 3);
+    for (const n of this.game.npcs) if (n.root.visible) dot(n.pos.x, n.pos.z, '#2f6f5a', 3.2);
+    const m = this.game.markerPos();
+    if (m) {
       let dx = (m.x - p.pos.x) * k, dz = (m.z - p.pos.z) * k;
-      const d = Math.hypot(dx, dz), lim = S / 2 - 8;
+      const d = Math.hypot(dx, dz), lim = S / 2 - 10;
       if (d > lim) { dx *= lim / d; dz *= lim / d; }
-      g.fillStyle = '#ffd34a'; g.strokeStyle = '#000';
-      g.beginPath(); g.moveTo(dx, dz - 7); g.lineTo(dx + 5, dz); g.lineTo(dx, dz + 7); g.lineTo(dx - 5, dz); g.closePath(); g.fill(); g.stroke();
+      g.save(); g.translate(dx, dz); g.rotate(-rot);
+      g.fillStyle = '#d6b062'; g.strokeStyle = '#3a2410'; g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(0, -8); g.lineTo(6, 0); g.lineTo(0, 8); g.lineTo(-6, 0); g.closePath(); g.fill(); g.stroke();
+      g.restore();
     }
     g.restore();
-    // mũi tên người chơi ở giữa
+    // viền mực
+    g.strokeStyle = 'rgba(40,28,18,.6)'; g.lineWidth = 6;
+    g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 3, 0, Math.PI * 2); g.stroke();
+    // người chơi
     g.save();
     g.translate(S / 2, S / 2);
     g.rotate(-(p.yaw - this.game.camRig.yaw) + Math.PI);
-    g.fillStyle = '#fff'; g.strokeStyle = '#000';
-    g.beginPath(); g.moveTo(0, -8); g.lineTo(5, 6); g.lineTo(0, 3); g.lineTo(-5, 6); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = '#b32a26'; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(0, -9); g.lineTo(6, 7); g.lineTo(0, 3); g.lineTo(-6, 7); g.closePath(); g.fill(); g.stroke();
     g.restore();
+    // chữ Bắc xoay theo camera
+    const n = $('compass-n');
+    const a = rot + Math.PI; // hướng -z trên bản đồ
+    n.style.left = 110 + Math.sin(-a) * 96 + 'px';
+    n.style.top = 100 - Math.cos(-a) * 96 - 8 + 'px';
   }
 }
-
-export { PLACES };

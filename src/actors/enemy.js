@@ -22,6 +22,11 @@ export class Enemy extends Actor {
     this.deadT = 0;
     this.tag = opts.tag || 'bandit';
     this.alerted = false;
+    this.caster = !!opts.caster;
+    this.exp = opts.exp ?? (this.boss ? 300 : 30);
+    this.gold = opts.gold ?? (this.boss ? 150 : 8);
+    this.group = opts.group || null;
+    this.phase2 = false;
   }
 
   setState(s) { this.state = s; this.stateT = 0; this.hitDone = false; }
@@ -42,6 +47,14 @@ export class Enemy extends Actor {
       this.char.play('Death01', { once: true, fade: 0.08 });
       this.game.onEnemyKilled(this);
       return amount;
+    }
+    if (this.boss && !this.phase2 && this.hp < this.maxHp * 0.5) {
+      this.phase2 = true;
+      this.speed *= 1.25;
+      this.game.fx.ring(this.pos.clone(), 6, 0xff3a2a);
+      this.game.fx.burst(this.pos.clone().setY(this.pos.y + 1.2), 0xff3a2a, 60);
+      this.game.toast(`<b>${this.name.split('·').pop().trim()}</b> nổi giận, vận toàn lực!`, 3);
+      this.game.camRig.shake = 1;
     }
     if (stagger) {
       this.setState('hit');
@@ -86,6 +99,7 @@ export class Enemy extends Actor {
         if (p.dead) { this.setState('return'); break; }
         if (this.pos.distanceTo(this.home) > 70) { this.setState('return'); this.alerted = false; break; }
         const reach = this.boss ? 2.4 : 2.0;
+        if (this.caster && dist > reach && dist < 16 && this.cool <= 0 && Math.random() < 0.02) { this.startAttack(); break; }
         if (dist > reach) { moveDir = toP.clone().normalize(); speed = this.speed; }
         else {
           // vòng quanh một chút khi đang hồi chiêu
@@ -104,7 +118,16 @@ export class Enemy extends Actor {
         for (let i = 0; i < a.hitAt.length; i++) {
           if (!(this.hitDone & (1 << i)) && t >= a.hitAt[i]) {
             this.hitDone |= 1 << i;
-            this.game.combat.enemyMelee(this, a);
+            if (a.orb) {
+              const hand = new THREE.Vector3();
+              this.char.bones.hand_r.getWorldPosition(hand);
+              const target = p.pos.clone().setY(p.pos.y + 1.1);
+              const n = this.phase2 ? 3 : 1;
+              for (let k = 0; k < n; k++) {
+                const dir = target.clone().sub(hand).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), (k - (n - 1) / 2) * 0.25);
+                this.game.combat.fireOrb(this, hand, dir, { dmg: a.dmg, color: 0xff3a2a, speed: 20 });
+              }
+            } else this.game.combat.enemyMelee(this, a);
           }
         }
         break;
@@ -147,11 +170,12 @@ export class Enemy extends Actor {
           { anim: 'Sword_Regular_B', hitAt: [0.6], dmg: this.dmg, range: 2.2, arc: 1.2, lunge: 2.5, speed: 0.75 },
           { anim: 'Melee_Hook', hitAt: [0.55], dmg: this.dmg * 0.8, range: 1.8, arc: 1.0, lunge: 2, speed: 0.8 },
         ];
+    if (this.caster) list.push({ anim: 'Spell_Simple_Shoot', hitAt: [0.42], dmg: this.dmg * 1.2, range: 30, arc: 6, lunge: 0, speed: 0.9, orb: true });
     const a = list[Math.floor(Math.random() * list.length)];
     this.attackKind = a;
     this.setState('attack');
     this.hitDone = 0;
-    this.cool = (this.boss ? 1.4 : 1.8) + Math.random() * 1.4;
+    this.cool = (this.boss ? (this.phase2 ? 0.8 : 1.4) : 1.8) + Math.random() * 1.4;
     this.char.play(a.anim, { once: true, fade: 0.1, restart: true, speed: a.speed, onDone: () => this.state === 'attack' && this.setState('chase') });
     this.game.audio.swoosh(0.8);
   }

@@ -12,6 +12,8 @@ export const PLACES = {
   camp: { x: 48, z: -200, r: 38 },            // Hắc Phong trại
   bamboo: { x: -150, z: -105, r: 48 },        // rừng trúc
   chest: { x: -168, z: -118 },
+  tomb: { x: -222, z: -205 },                 // Kiếm Mộ trên núi tây
+  cages: [[30, -186], [66, -186]],            // lồng giam trong trại
 };
 
 /** Các vùng san phẳng: [x, z, bán kính, độ cao, độ mềm biên] */
@@ -20,6 +22,7 @@ export const FLATTEN = [
   [PLACES.pavilion.x, PLACES.pavilion.z, 16, 1.0, 14],
   [PLACES.camp.x, PLACES.camp.z, 46, null, 22],
   [PLACES.chest.x, PLACES.chest.z, 8, null, 10],
+  [PLACES.tomb.x, PLACES.tomb.z, 30, null, 26],
 ];
 
 /** Đường đất: polyline, mỗi điểm [x, z]; width (m) */
@@ -28,6 +31,7 @@ export const PATHS = [
   { width: 4, pts: [[30, 40], [0, 46], [-30, 52], [-50, 52]] },
   { width: 4, pts: [[30, 40], [72, 38], [96, -10], [92, -70], [70, -130], [54, -168], [48, -200]] },
   { width: 3, pts: [[-30, 52], [-60, 10], [-90, -40], [-130, -85], [-160, -112]] },
+  { width: 3, pts: [[-160, -112], [-180, -140], [-196, -165], [-212, -185], [-222, -205]] },
 ];
 
 /** Nhà dân trong trấn: x, z, rộng, sâu, hướng (rad) */

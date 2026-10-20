@@ -193,11 +193,12 @@ export function signBoard(text, w = 3.2, h = 0.9, vertical = false) {
   g.textAlign = 'center'; g.textBaseline = 'middle';
   if (vertical) {
     const chars = [...text];
-    g.font = `bold ${Math.min(150, 880 / chars.length)}px "Noto Serif", serif`;
+    g.font = `${Math.min(190, 880 / chars.length)}px "Ma Shan Zheng", "Noto Serif", serif`;
     chars.forEach((ch, i) => g.fillText(ch, 128, 90 + (i + 0.5) * (850 / chars.length)));
   } else {
-    g.font = `bold ${Math.min(150, 1800 / text.length)}px "Noto Serif", serif`;
-    g.fillText(text, 512, 150);
+    const cjk = /[\u4e00-\u9fff]/.test(text);
+    g.font = cjk ? `${Math.min(200, 860 / text.length)}px "Ma Shan Zheng", serif` : `bold ${Math.min(150, 1800 / text.length)}px "Noto Serif", serif`;
+    g.fillText(text, 512, cjk ? 160 : 150);
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -359,7 +360,7 @@ function pavilion(colliders, terrain) {
   const r2 = hipRoof(s / 2 + 0.4, s / 2 + 0.4, 1.8, 0.7);
   r2.position.y = 4.65;
   g.add(r1, r2, box(s * 0.9, 0.9, s * 0.9, m.lacquer, 0, 4.4, 0));
-  const sign = signBoard('Vọng Nguyệt Đình', 2.6, 0.7);
+  const sign = signBoard('望月亭', 2.6, 0.8);
   sign.position.set(0, 3.0, s / 2 + 0.05);
   g.add(sign);
   colliders.floor(x, z, s / 2 + 1, s / 2 + 1, 0, y);
@@ -445,6 +446,67 @@ function tent(x, z, terrain, rot = 0) {
   return g;
 }
 
+function swordTomb(colliders, terrain) {
+  const m = mats();
+  const T = PLACES.tomb;
+  const g = new THREE.Group();
+  const y = terrain.heightAt(T.x, T.z);
+  g.position.set(T.x, y, T.z);
+  // nền đá tròn
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(14, 15, 1.2, 40), m.paving);
+  disc.position.y = -0.5;
+  disc.receiveShadow = true;
+  g.add(disc);
+  colliders.floor(T.x, T.z, 10, 10, 0, y + 0.1);
+  // bia đá trung tâm
+  g.add(box(2.4, 0.6, 1.2, m.stone, 0, 0.3, -6));
+  const stele = box(1.6, 4.2, 0.6, m.stone, 0, 2.6, -6, 0.8);
+  g.add(stele);
+  const sign = signBoard('劍冢', 0.7, 2.6, true);
+  sign.position.set(0, 2.8, -5.66);
+  g.add(sign);
+  colliders.box(T.x, T.z - 6, 1.2, 0.6);
+  // vòng cột đá đổ nát
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 + 0.3;
+    const h = 2 + ((i * 7) % 5) * 0.8;
+    const px = Math.cos(a) * 12.5, pz = Math.sin(a) * 12.5;
+    const col = box(0.9, h, 0.9, m.stone, px, h / 2 - 0.2, pz, 0.6);
+    col.rotation.set(Math.sin(i) * 0.06, a, Math.cos(i * 3) * 0.06);
+    g.add(col);
+    if (i % 3 !== 1) g.add(box(1.1, 0.35, 1.1, m.stone, px, h - 0.1, pz, 0.6));
+    colliders.circle(T.x + px, T.z + pz, 0.7);
+  }
+  // hai chậu lửa
+  for (const sx of [-1, 1]) {
+    g.add(cyl(0.5, 1.1, m.stone, sx * 3, 0, -3.2, 12));
+    colliders.circle(T.x + sx * 3, T.z - 3.2, 0.55);
+  }
+  // mái che nhỏ trên bia
+  const r = hipRoof(2.2, 1.4, 1.0, 0.5, m.roofDark);
+  r.position.set(0, 4.75, -6);
+  g.add(r);
+  return g;
+}
+
+function cage(colliders, terrain, x, z) {
+  const m = mats();
+  const g = new THREE.Group();
+  g.position.set(x, terrain.heightAt(x, z), z);
+  const s = 2.4, h = 2.4;
+  g.add(box(s, 0.2, s, m.wood, 0, 0.1, 0));
+  g.add(box(s, 0.2, s, m.wood, 0, h, 0));
+  const bars = new THREE.Group();
+  for (let i = 0; i <= 6; i++) {
+    const t = -s / 2 + (i * s) / 6;
+    for (const [bx, bz] of [[t, -s / 2], [t, s / 2], [-s / 2, t], [s / 2, t]]) bars.add(cyl(0.05, h, m.log, bx, 0, bz, 6));
+  }
+  g.add(bars);
+  g.userData.bars = bars;
+  colliders.box(x, z, s / 2, s / 2, 0, g.position.y + h);
+  return g;
+}
+
 /** Dựng toàn bộ công trình. Trả về {group, spots} — spots là toạ độ đặt NPC, đồ vật. */
 export function buildArchitecture(terrain, colliders) {
   const root = new THREE.Group();
@@ -456,10 +518,10 @@ export function buildArchitecture(terrain, colliders) {
   const innUpper = hipRoof(5.5, 3.2, 1.8, 0.7);
   innUpper.position.y = 4.4 + 0.2 + 3.4 - 0.3;
   inn.group.add(innUpper);
-  const innSign = signBoard('Duyệt Lai Khách Điếm', 5, 1.05);
+  const innSign = signBoard('悅來客棧', 5, 1.15);
   innSign.position.set(0, 4.95, 5.5 + 0.35);
   inn.group.add(innSign);
-  for (const [sx, txt] of [[-1, 'Khách Đáo Như Quy'], [1, 'Tửu Hương Bách Lý']]) {
+  for (const [sx, txt] of [[-1, '賓至如歸'], [1, '酒香百里']]) {
     const v = signBoard(txt, 0.5, 2.8, true);
     v.position.set(sx * 8.0, 2.2, 5.5 + 0.25);
     inn.group.add(v);
@@ -473,7 +535,7 @@ export function buildArchitecture(terrain, colliders) {
     root.add(h.group);
   }
 
-  root.add(paifang('Thanh Phong Trấn', colliders, terrain, PLACES.gate.x, PLACES.gate.z));
+  root.add(paifang('清風鎮', colliders, terrain, PLACES.gate.x, PLACES.gate.z));
   root.add(pavilion(colliders, terrain));
   // cầu gỗ từ đình ra hồ
   root.add(bridge(terrain, colliders, PLACES.pavilion.x - 13, PLACES.pavilion.z, 18, Math.PI / 2));
@@ -483,7 +545,7 @@ export function buildArchitecture(terrain, colliders) {
   const C = PLACES.camp;
   const bossHall = hall({ w: 12, d: 8, h: 3.6, front: 'open', roofH: 2.6, lift: 0.25, roofMat: mats().thatch, overhang: 1.2 }, colliders, { x: C.x, z: C.z - 22, terrain });
   root.add(bossHall.group);
-  const campSign = signBoard('Hắc Phong Trại', 3.6, 0.95);
+  const campSign = signBoard('黑風寨', 3.6, 1.0);
   campSign.position.set(0, 3.9, 4.2);
   bossHall.group.add(campSign);
   for (const [tx, tz, r] of [[C.x - 20, C.z - 4, 0.5], [C.x + 20, C.z - 6, -0.6], [C.x - 16, C.z + 14, 1.2], [C.x + 18, C.z + 14, -1.1]]) {
@@ -491,5 +553,7 @@ export function buildArchitecture(terrain, colliders) {
     colliders.box(tx, tz, 2.1, 2.1, r);
   }
   spots.bossHall = { x: C.x, z: C.z - 17, y: bossHall.floorY };
+  spots.cages = PLACES.cages.map(([x, z]) => { const c = cage(colliders, terrain, x, z); root.add(c); return c; });
+  root.add(swordTomb(colliders, terrain));
   return { group: root, spots };
 }

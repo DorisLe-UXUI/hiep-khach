@@ -67,5 +67,31 @@ export async function buildProps(terrain, colliders, spots) {
   chest.rotation.y = 0.6;
   root.add(chest);
   colliders.circle(PLACES.chest.x, PLACES.chest.z, 0.7, chest.position.y + 1);
-  return { group: root, chest };
+  // Kiếm Mộ: kiếm gỉ cắm nghiêng khắp nơi
+  const T = PLACES.tomb;
+  const swords = [await loadModel('antique_katana_01'), await loadModel('wooden_handle_saber')];
+  for (let i = 0; i < 46; i++) {
+    const a = i * 2.39996, d = 7 + (i % 9) * 2.2;
+    const x = T.x + Math.cos(a) * d, z = T.z + Math.sin(a) * d;
+    const sw = swords[i % 2].clone(true);
+    const box = new THREE.Box3().setFromObject(sw), size = box.getSize(new THREE.Vector3());
+    // dựng lưỡi kiếm theo phương thẳng đứng, mũi cắm xuống đất
+    const holder = new THREE.Group();
+    holder.add(sw);
+    if (size.x >= size.y && size.x >= size.z) sw.rotation.z = Math.PI / 2;
+    else if (size.z >= size.y) sw.rotation.x = Math.PI / 2;
+    holder.position.set(x, terrain.heightAt(x, z) + 0.35, z);
+    holder.rotation.set(Math.sin(i * 1.7) * 0.35, a, Math.cos(i * 2.3) * 0.3);
+    holder.scale.setScalar(1.3);
+    root.add(holder);
+  }
+  // vị trí đèn (để thắp sáng ban đêm)
+  const lights = [
+    ...VILLAGE_PROPS.filter((p) => p[0] === 'wooden_lantern_01').map((p) => [p[1], p[2], 1.4]),
+    [I.x - 2.5, I.z + 0.5, 3.0], [I.x + 3, I.z + 0.5, 3.0], [I.x, I.z + 6.5, 4.4],
+    [PLACES.pavilion.x, PLACES.pavilion.z, 3.0],
+    [Cp.x, Cp.z + 2, 0.8], [Cp.x - 5, Cp.z - 14, 1.2], [Cp.x + 5, Cp.z - 14, 1.2],
+    [T.x - 3, T.z - 3.2, 1.6], [T.x + 3, T.z - 3.2, 1.6],
+  ].map(([x, z, h]) => new THREE.Vector3(x, (x === I.x - 2.5 || x === I.x + 3 || x === I.x ? spots.innFloor : terrain.heightAt(x, z)) + h, z));
+  return { group: root, chest, lights };
 }

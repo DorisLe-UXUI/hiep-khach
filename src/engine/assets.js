@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 
 export const manager = new THREE.LoadingManager();
 const gltfLoader = new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder);
@@ -66,4 +68,33 @@ export function rawTex(name, map = 'diff') {
 
 export function loadHDR(name) {
   return hdrLoader.loadAsync(`/assets/hdri/${name}.hdr`);
+}
+
+const objCache = new Map();
+/** Vũ khí low-poly Quaternius (OBJ + MTL) trong /assets/kit/weapons. */
+export function loadKitOBJ(name) {
+  if (!objCache.has(name)) {
+    objCache.set(name, (async () => {
+      const base = '/assets/kit/weapons/';
+      const mtl = await new MTLLoader(manager).setPath(base).loadAsync(name + '.mtl');
+      mtl.preload();
+      const obj = await new OBJLoader(manager).setMaterials(mtl).setPath(base).loadAsync(name + '.obj');
+      obj.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        const ms = Array.isArray(o.material) ? o.material : [o.material];
+        o.material = ms.map((m) => new THREE.MeshStandardMaterial({ color: m.color, roughness: 0.55, metalness: /metal|steel|iron|blade|silver|gold/i.test(m.name) ? 0.8 : 0.1 }));
+        if (o.material.length === 1) o.material = o.material[0];
+      });
+      return obj;
+    })());
+  }
+  return objCache.get(name).then((o) => o.clone(true));
+}
+
+/** Đạo cụ Quaternius đã đóng gói trong /assets/kit/<tên>.glb */
+export async function loadKit(name) {
+  const g = await loadGLTF(`/assets/kit/${name}.glb`);
+  g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  return g.scene;
 }

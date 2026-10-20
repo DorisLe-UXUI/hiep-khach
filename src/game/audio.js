@@ -8,7 +8,7 @@ export class Audio {
     if (this.ctx) return;
     this.ctx = new AudioContext();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.5;
+    this.master.gain.value = this.vol ?? 0.5;
     this.master.connect(this.ctx.destination);
     this.noise = this.ctx.createBuffer(1, this.ctx.sampleRate * 2, this.ctx.sampleRate);
     const d = this.noise.getChannelData(0);
@@ -53,6 +53,9 @@ export class Audio {
   whoosh() { this.burst({ dur: 0.5, freq: 300, q: 1, sweep: 3, gain: 0.4 }); this.tone(220, 0.4, 0.08, 'triangle'); }
   hit() { this.burst({ dur: 0.12, freq: 220, q: 0.8, type: 'lowpass', gain: 0.9, sweep: 0.5 }); this.tone(90, 0.15, 0.3); }
   clang() { this.tone(1450, 0.5, 0.15, 'triangle'); this.tone(2310, 0.35, 0.08, 'sine'); this.burst({ dur: 0.08, freq: 3000, gain: 0.3 }); }
+  coin() { this.tone(1320, 0.12, 0.1, 'triangle'); setTimeout(() => this.tone(1760, 0.18, 0.1, 'triangle'), 70); }
+  levelUp() { [392, 523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.7, 0.13, 'triangle'), i * 90)); }
+  setVolume(v) { if (this.master) this.master.gain.value = v; this.vol = v; }
   chime() { [523, 659, 784].forEach((f, i) => setTimeout(() => this.tone(f, 0.6, 0.12, 'sine'), i * 110)); }
 
   wind() {

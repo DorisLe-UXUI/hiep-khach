@@ -30,12 +30,21 @@ export class Combat {
     return ang < arc / 2 + 0.2;
   }
 
+  /** Gây sát thương lên kẻ địch (dùng chung cho mọi đòn của người chơi). */
+  hurtEnemy(p, e, dmg, opts = {}) {
+    const crit = Math.random() < this.game.rpg.crit();
+    dmg = Math.round(dmg * (crit ? 1.8 : 1));
+    e.takeDamage(dmg, p, opts);
+    this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
+    return dmg;
+  }
+
   playerMelee(p, a) {
     let hits = 0;
     for (const e of this.enemies()) {
       if (!this.inArc(p, e, a.range, a.arc)) continue;
-      const crit = Math.random() < 0.12;
-      let dmg = Math.round(a.dmg[0] + Math.random() * (a.dmg[1] - a.dmg[0]));
+      const crit = Math.random() < this.game.rpg.crit();
+      let dmg = Math.round(a.dmg);
       if (crit) dmg = Math.round(dmg * 1.8);
       e.takeDamage(dmg, p, { knock: a.knock, back: a.back ?? 2.5 });
       this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
@@ -60,14 +69,45 @@ export class Combat {
     p.inCombat = 8;
   }
 
-  fireOrb(owner, from, dir) {
-    const mesh = new THREE.Mesh(this.orbGeo, this.orbMat);
+  /** Chưởng khí. Của người chơi thì trúng địch, của địch thì trúng người chơi. */
+  fireOrb(owner, from, dir, { dmg = 30, size = 1, color = 0xbfe6ff, speed = 26 } = {}) {
+    const mat = new THREE.MeshBasicMaterial({ color, toneMapped: false });
+    const mesh = new THREE.Mesh(this.orbGeo, mat);
+    mesh.scale.setScalar(size);
     mesh.position.copy(from);
-    const light = new THREE.PointLight(0x9fd4ff, 6, 9, 2);
-    mesh.add(light);
+    mesh.add(new THREE.PointLight(color, 6, 9, 2));
     this.game.scene.add(mesh);
-    this.orbs.push({ mesh, vel: dir.clone().normalize().multiplyScalar(26), life: 1.6, owner });
+    this.orbs.push({ mesh, vel: dir.clone().normalize().multiplyScalar(speed), life: 1.8, owner, dmg, color, hostile: owner !== this.game.player, r: 0.5 * size });
     this.game.audio.whoosh();
+  }
+
+  /** Bắn n mũi tên toả hình quạt. */
+  fireArrows(owner, from, dir, n, dmg) {
+    if (!this.arrowGeo) {
+      this.arrowGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.9, 5).rotateX(Math.PI / 2);
+      this.arrowMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2b, emissive: 0x3a2a10 });
+    }
+    const base = Math.atan2(dir.x, dir.z);
+    for (let i = 0; i < n; i++) {
+      const a = base + (n > 1 ? (i / (n - 1) - 0.5) * 0.5 : 0);
+      const d = new THREE.Vector3(Math.sin(a), dir.y || 0, Math.cos(a)).normalize();
+      const mesh = new THREE.Mesh(this.arrowGeo, this.arrowMat);
+      mesh.position.copy(from);
+      mesh.lookAt(from.clone().add(d));
+      this.game.scene.add(mesh);
+      this.orbs.push({ mesh, vel: d.multiplyScalar(42), life: 1.1, owner, dmg, color: 0xffe6b0, arrow: true, hostile: false, r: 0.35 });
+    }
+    this.game.audio.swoosh(0.6);
+  }
+
+  /** Sóng chấn quanh người (Phong Lôi Trận, Hoành Tảo). */
+  nova(owner, radius, dmg, color) {
+    for (const e of this.enemies()) {
+      if (e.pos.distanceTo(owner.pos) < radius + e.radius) this.hurtEnemy(owner, e, dmg, { knock: true, back: 5 });
+    }
+    this.game.fx.ring(owner.pos.clone(), radius, color);
+    this.game.camRig.shake = 0.6;
+    this.game.audio.hit();
   }
 
   update(dt) {
@@ -75,23 +115,31 @@ export class Combat {
       const o = this.orbs[i];
       o.life -= dt;
       o.mesh.position.addScaledVector(o.vel, dt);
-      this.game.fx.trail(o.mesh.position, 0xbfe6ff);
+      if (!o.arrow) this.game.fx.trail(o.mesh.position, o.color);
       let hit = o.mesh.position.y < this.game.terrain.heightAt(o.mesh.position.x, o.mesh.position.z);
-      for (const e of this.enemies()) {
-        const c = e.pos.clone().setY(e.pos.y + 1.1);
-        if (c.distanceTo(o.mesh.position) < e.radius + 0.6) {
-          const dmg = 32 + Math.round(Math.random() * 10);
-          e.takeDamage(dmg, o.owner, { knock: true, back: 3 });
-          this.game.hud.damage(c.setY(c.y + 0.8), dmg, 'crit');
+      if (o.hostile) {
+        const p = this.game.player;
+        if (!p.dead && p.pos.clone().setY(p.pos.y + 1.1).distanceTo(o.mesh.position) < p.radius + o.r) {
+          const dealt = p.takeDamage(o.dmg, o.owner, { heavy: true });
+          if (dealt) this.game.hud.damage(p.pos.clone().setY(p.pos.y + 1.9), dealt, 'player');
           hit = true;
-          break;
+        }
+      } else {
+        for (const e of this.enemies()) {
+          const c = e.pos.clone().setY(e.pos.y + 1.1);
+          if (c.distanceTo(o.mesh.position) < e.radius + o.r + 0.2) {
+            this.hurtEnemy(o.owner, e, o.dmg, { knock: !o.arrow, back: 3 });
+            hit = true;
+            break;
+          }
         }
       }
       if (hit || o.life <= 0) {
-        this.game.fx.burst(o.mesh.position.clone(), 0xbfe6ff, 30);
+        if (!o.arrow || hit) this.game.fx.burst(o.mesh.position.clone(), o.color, o.arrow ? 10 : 30);
         if (hit) this.game.audio.hit();
         this.game.scene.remove(o.mesh);
-        o.mesh.children[0].dispose?.();
+        o.mesh.children[0]?.dispose?.();
+        if (!o.arrow) o.mesh.material.dispose();
         this.orbs.splice(i, 1);
       }
     }

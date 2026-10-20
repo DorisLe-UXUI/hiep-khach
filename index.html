@@ -3,50 +3,195 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hiệp Khách Giang Hồ</title>
+  <title>Thiên Kiếm Giang Hồ · Thanh Phong Kiếm Ký</title>
+  <link rel="icon" href="/brand/icon.png" />
+  <link rel="preload" as="image" href="/brand/bg.jpg" />
+  <link rel="preload" as="image" href="/brand/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Noto+Serif:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/ui/style.css" />
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="vignette"></div>
 
-  <div id="title" class="screen">
-    <div class="title-box">
-      <h1>Hiệp Khách Giang Hồ</h1>
-      <p class="sub">Thanh Phong trấn · Hắc Phong trại</p>
-      <div id="load-bar"><div id="load-fill"></div></div>
-      <p id="load-text">Đang tải giang hồ...</p>
-      <button id="start" disabled>Nhập giang hồ</button>
-      <div class="keys">
-        <div><b>WASD</b> di chuyển · <b>Shift</b> chạy nhanh · <b>Chuột</b> xoay góc nhìn</div>
-        <div><b>Chuột trái</b> chém (bấm liên tiếp ra liên chiêu) · <b>Chuột phải</b> đỡ đòn</div>
-        <div><b>Space</b> nhảy, bấm lần nữa trên không để <b>khinh công</b> · <b>Ctrl</b> lộn né</div>
-        <div><b>Q</b> Lướt Kiếm · <b>F</b> Chưởng Phong (tốn nội lực) · <b>E</b> nói chuyện / nhặt đồ</div>
-        <div><b>V</b> đổi góc nhìn (sau lưng ↔ từ trên cao) · <b>Tab</b> nhật ký nhiệm vụ · <b>Esc</b> tạm dừng</div>
+  <!-- ───────── MÀN TẢI ───────── -->
+  <section id="loading" class="screen">
+    <div class="brand-bg"></div>
+    <div class="petals"></div>
+    <div class="load-center">
+      <img class="brand-logo" src="/brand/logo.png" alt="Thiên Kiếm Giang Hồ" />
+      <div class="load-sub"><span class="han">天劍江湖 · 清風劍記</span>Thanh Phong Kiếm Ký</div>
+      <div class="sword-bar"><div class="sword-track"><div id="load-fill"></div></div><div id="load-pct">0%</div></div>
+      <div id="load-text">Đang mài kiếm...</div>
+    </div>
+    <div class="load-tip"><span class="tip-tag">Giang hồ truyền ngôn</span><span id="load-lore"></span></div>
+  </section>
+
+  <!-- ───────── ĐĂNG NHẬP ───────── -->
+  <section id="login" class="screen hidden">
+    <div class="brand-bg"></div>
+    <div class="petals"></div>
+    <img class="login-logo" src="/brand/logo.png" alt="Thiên Kiếm Giang Hồ" />
+    <div class="login-card">
+      <div class="tabs"><button class="tab on" data-tab="in">Đăng nhập</button><button class="tab" data-tab="up">Đăng ký</button></div>
+      <label class="field icon-field"><i data-ico="user"></i><input id="login-acc" maxlength="16" placeholder="Tài khoản" autocomplete="username" /></label>
+      <label class="field icon-field"><i data-ico="lock"></i><input id="login-pass" type="password" maxlength="32" placeholder="Mật khẩu" autocomplete="current-password" /></label>
+      <label class="field icon-field up-only hidden"><i data-ico="lock"></i><input id="login-pass2" type="password" maxlength="32" placeholder="Nhập lại mật khẩu" autocomplete="new-password" /></label>
+      <div class="login-row"><label class="remember"><input type="checkbox" id="login-remember" checked /> Lưu tài khoản</label><span class="muted sm">Lưu trên máy này</span></div>
+      <div id="login-err"></div>
+      <button id="login-go" class="primary">ĐĂNG NHẬP</button>
+      <div class="login-alt">
+        <button id="login-guest" class="alt"><i data-ico="play"></i>Chơi ngay</button>
+        <button class="alt" disabled title="Cần máy chủ đăng nhập"><i data-ico="user"></i>Google</button>
+        <button class="alt" disabled title="Cần máy chủ đăng nhập"><i data-ico="user"></i>Apple</button>
+      </div>
+      <div id="login-profiles"></div>
+    </div>
+  </section>
+
+  <!-- ───────── TẠO / CHỌN NHÂN VẬT ───────── -->
+  <section id="create" class="screen hidden">
+    <div class="cr-head"><span class="han">創角</span><h2 id="cr-title">Chọn môn phái</h2></div>
+    <div class="cr-classes" id="cr-classes"></div>
+    <div class="cr-info" id="cr-info"></div>
+    <div class="cr-custom" id="cr-custom"></div>
+    <div class="cr-bottom">
+      <div class="seg big" id="cr-gender"><button data-g="male" class="on">Nam</button><button data-g="female">Nữ</button></div>
+      <input id="cr-name" maxlength="12" placeholder="Hiệp danh" />
+      <button id="cr-go" class="primary">Tạo nhân vật</button>
+    </div>
+  </section>
+
+  <!-- ───────── MENU CHÍNH ───────── -->
+  <section id="menu" class="screen hidden">
+    <div class="menu-left">
+      <img class="menu-logo" src="/brand/logo.png" alt="Thiên Kiếm Giang Hồ" />
+      <div class="logo-sub"><span class="han">清風劍記</span> Thanh Phong Kiếm Ký</div>
+      <div class="brush"></div>
+      <nav id="menu-buttons">
+        <button data-act="continue" class="mbtn" disabled><span>Tiếp tục</span><small id="continue-info"></small></button>
+        <button data-act="new" class="mbtn" disabled><span>Hành trình mới</span></button>
+        <button data-act="chapters" class="mbtn" disabled><span>Chọn chương</span></button>
+        <button data-act="hero" class="mbtn" disabled><span>Nhân vật &amp; thời trang</span></button>
+        <button data-act="settings" class="mbtn"><span>Cài đặt</span></button>
+        <button data-act="controls" class="mbtn"><span>Điều khiển</span></button>
+        <button data-act="credits" class="mbtn"><span>Ghi công</span></button>
+      </nav>
+      <div id="menu-profile"></div>
+    </div>
+    <div class="menu-han">天<br />劍<br />江<br />湖</div>
+    <div class="menu-quote"><span class="han">劍在人心</span><br />“Kiếm tại nhân tâm.<br />Tâm chính, kiếm chính.”</div>
+  </section>
+
+  <!-- ───────── BẢNG PHỤ (dùng chung) ───────── -->
+  <section id="panel" class="modal hidden">
+    <div class="sheet">
+      <header><h2 id="panel-title"></h2><button class="x" data-close>✕</button></header>
+      <div id="panel-body"></div>
+      <footer><button class="ghost" data-close>Quay lại <kbd>Esc</kbd></button></footer>
+    </div>
+  </section>
+
+  <!-- ───────── CHUYỂN CẢNH / DẪN TRUYỆN / THẺ CHƯƠNG ───────── -->
+  <div id="fade"></div>
+  <section id="narration" class="hidden">
+    <div id="narr-text"></div>
+    <div class="hint">Space / Click để tiếp · <kbd>Esc</kbd> bỏ qua</div>
+  </section>
+  <section id="chapter-card" class="hidden">
+    <div class="cc-han" id="cc-han"></div>
+    <div class="cc-title" id="cc-title"></div>
+    <div class="cc-line"></div>
+    <div class="cc-sub" id="cc-sub"></div>
+    <div class="cc-han-sub" id="cc-han-sub"></div>
+  </section>
+
+  <!-- ───────── HUD ───────── -->
+  <section id="hud" class="hidden">
+    <div id="hero-frame">
+      <div class="portrait"><img id="hero-portrait" alt="" /></div>
+      <div class="hero-info">
+        <div class="hero-name"><span id="hero-name">Tiêu Vân</span> <span id="hero-title">Bạch Vân đệ tử</span></div>
+        <div class="bar hp"><div class="fill" id="hp"></div><span id="hp-t"></span></div>
+        <div class="bar mp"><div class="fill" id="mp"></div><span id="mp-t"></span></div>
+        <div class="bar st"><div class="fill" id="st"></div></div>
       </div>
     </div>
-  </div>
 
-  <div id="hud" class="hidden">
-    <div id="bars">
-      <div class="bar"><span>Khí huyết</span><div class="track"><div id="hp" class="fill hp"></div></div></div>
-      <div class="bar"><span>Nội lực</span><div class="track"><div id="mp" class="fill mp"></div></div></div>
-      <div class="bar"><span>Thể lực</span><div class="track"><div id="st" class="fill st"></div></div></div>
+    <div id="skills"></div>
+
+    <div id="nav">
+      <canvas id="minimap" width="200" height="200"></canvas>
+      <div id="compass-n">B</div>
+      <div id="objective">
+        <div id="obj-chapter"></div>
+        <div id="obj-text"></div>
+        <div id="obj-dist"></div>
+      </div>
     </div>
-    <div id="boss" class="hidden"><div id="boss-name"></div><div class="track"><div id="boss-hp" class="fill hp"></div></div></div>
-    <div id="tracker"></div>
-    <canvas id="minimap" width="180" height="180"></canvas>
-    <div id="prompt" class="hidden"></div>
-    <div id="toast"></div>
-    <div id="dialog" class="hidden"><div id="dialog-name"></div><div id="dialog-text"></div><div id="dialog-hint">E / Space để tiếp</div></div>
-    <div id="journal" class="hidden"></div>
-    <div id="crosshair"></div>
-    <div id="dmg-layer"></div>
-  </div>
 
-  <div id="death" class="screen hidden"><div class="title-box"><h1>Trọng thương</h1><p class="sub">Ngươi được người qua đường cứu về khách điếm...</p><button id="respawn">Tỉnh lại</button></div></div>
-  <div id="pause" class="screen hidden"><div class="title-box"><h1>Tạm dừng</h1><button id="resume">Tiếp tục</button></div></div>
+    <div id="boss" class="hidden">
+      <div id="boss-name"></div>
+      <div class="boss-track"><div id="boss-lag"></div><div id="boss-hp"></div></div>
+    </div>
+
+    <div id="toasts"></div>
+    <div id="tip" class="hidden"></div>
+    <div id="marker"><div class="dia"></div><div class="dist" id="marker-dist"></div></div>
+    <div id="plates"></div>
+    <div id="dmg-layer"></div>
+    <div id="prompt" class="hidden"><kbd>E</kbd><span id="prompt-text"></span></div>
+    <div id="bark" class="hidden"><img id="bark-img" alt="" /><div><b id="bark-name"></b><span id="bark-text"></span></div></div>
+    <div id="crosshair"></div>
+  </section>
+
+  <!-- ───────── HỘI THOẠI ───────── -->
+  <section id="dialog" class="hidden">
+    <div class="dlg-portrait"><img id="dlg-img" alt="" /></div>
+    <div class="dlg-body">
+      <div id="dlg-name"></div><div id="dlg-han"></div>
+      <div id="dlg-text"></div>
+      <div id="dlg-choices"></div>
+      <div id="dlg-hint">Space / E / Click để tiếp</div>
+    </div>
+  </section>
+
+  <!-- ───────── BẢN ĐỒ GIANG HỒ ───────── -->
+  <section id="worldmap" class="modal hidden">
+    <div class="map-frame">
+      <div class="map-head"><span class="han">江湖輿圖</span><h2>Bản đồ giang hồ</h2><button class="x" id="map-close">✕</button></div>
+      <div class="map-wrap"><canvas id="map-canvas" width="1100" height="1100"></canvas><div id="map-labels"></div></div>
+      <div class="map-legend" id="map-legend"></div>
+    </div>
+  </section>
+
+  <!-- ───────── TẠM DỪNG ───────── -->
+  <section id="pause" class="modal hidden">
+    <div class="pause-box">
+      <div class="seal small">停</div>
+      <div class="han">暫停</div><h2>Tạm dừng</h2>
+      <div id="pause-chapter"></div>
+      <button data-act="resume" class="mbtn"><span>Tiếp tục</span></button>
+      <button data-act="journal" class="mbtn"><span>Nhật ký giang hồ</span></button>
+      <button data-act="map" class="mbtn"><span>Bản đồ giang hồ</span></button>
+      <button data-act="inventory" class="mbtn"><span>Hành trang &amp; võ học</span></button>
+      <button data-act="settings" class="mbtn"><span>Cài đặt</span></button>
+      <button data-act="controls" class="mbtn"><span>Điều khiển</span></button>
+      <button data-act="quit" class="mbtn"><span>Về menu chính</span></button>
+    </div>
+  </section>
+
+  <!-- ───────── TỬ TRẬN ───────── -->
+  <section id="death" class="modal hidden">
+    <div class="pause-box">
+      <div class="seal">傷</div><h2 class="red">Trọng thương</h2>
+      <p class="muted">Máu nhuộm áo, nhưng hơi thở vẫn còn...</p>
+      <button data-act="retry" class="mbtn"><span>Vận công tỉnh lại</span></button>
+      <button data-act="quit" class="mbtn"><span>Về menu chính</span></button>
+    </div>
+  </section>
 
   <script type="module" src="/src/main.js"></script>
 </body>

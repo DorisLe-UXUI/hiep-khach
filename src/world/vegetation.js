@@ -61,6 +61,7 @@ function freeSpot(terrain, x, z, { pathClear = 0.08, maxSlope = 0.5, minH = WATE
     if (Math.hypot(x - PLACES.camp.x, z - PLACES.camp.z) < PLACES.camp.r + 6) return false;
     if (Math.hypot(x - PLACES.pavilion.x, z - PLACES.pavilion.z) < 16) return false;
     if (Math.hypot(x - PLACES.bamboo.x, z - PLACES.bamboo.z) < PLACES.bamboo.r + 4) return false;
+    if (Math.hypot(x - PLACES.tomb.x, z - PLACES.tomb.z) < 22) return false;
   }
   return true;
 }
@@ -198,6 +199,7 @@ class GrassField {
 `);
     };
     this.tiles = new Map();
+    this.excl = [];
     this.pool = [];
     this.group = new THREE.Group();
     this.blade = blade;
@@ -223,6 +225,7 @@ class GrassField {
       const keep = (1 - sp.path * 1.6) * (1 - sp.paved * 2) * (1 - sp.forest * 0.7) * (h > WATER_LEVEL + 0.5 ? 1 : 0) * (h < 40 ? 1 : 0);
       const rr = r(), a = r(), b = r(), c = r();
       if (rr > keep) continue;
+      if (this.excl.some((e) => (x - e.x) ** 2 + (z - e.z) ** 2 < e.r * e.r)) continue;
       m.makeTranslation(x, h - 0.03, z);
       im.setMatrixAt(n, m);
       attr.setXYZW(n, a, b, c * 6.28, 0.35 + b * 0.45 + a * 0.25);
@@ -328,6 +331,12 @@ export async function buildVegetation(terrain, colliders, renderer, onProgress =
   root.add(grass.group);
   // cập nhật chung: cỏ lá + bụi cây quanh người chơi
   const field = {
+    setRadius(r) { grass.radius = r; },
+    /** vùng không mọc cỏ (sân khấu tạo nhân vật) */
+    exclude(x, z, r) {
+      grass.excl.push({ x, z, r });
+      for (const [k, im] of grass.tiles) { grass.group.remove(im); grass.pool.push(im); grass.tiles.delete(k); }
+    },
     update(x, z, t) {
       grass.update(x, z, t);
       for (const n of near) n.userData.update(x, z);

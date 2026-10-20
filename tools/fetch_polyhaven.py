@@ -40,6 +40,20 @@ MODELS = [
     "bark_debris_01", "modular_wooden_pier", "horse_statue_01",
 ]
 
+# đợt 2: binh khí + đồ vật thời xưa
+MODELS += [
+    "antique_estoc", "ornate_medieval_dagger", "ornate_medieval_mace", "ornate_war_hammer", "kite_shield",
+    "wooden_axe_02", "wooden_axe_03", "sledgehammer_01", "wooden_hammer_01", "fish_knife",
+    "brass_vase_01", "brass_vase_02", "brass_vase_03", "brass_vase_04", "brass_pot_02", "brass_goblets",
+    "brass_candleholders", "brass_diya_lantern", "brass_pan_01", "ceramic_pot", "ceramic_vase_02", "ceramic_vase_04",
+    "carved_wooden_plate", "carved_wooden_elephant", "sungka_board", "wooden_spoon", "wooden_cutting_board",
+    "wooden_broom", "wooden_ladder_02", "wooden_display_shelves_01", "wooden_bookshelf_worn", "decorative_book_set_01",
+    "painted_wooden_cabinet", "painted_wooden_cabinet_02", "painted_wooden_shelves", "painted_wooden_table",
+    "painted_wooden_stool", "painted_wooden_chair_01", "painted_wooden_nightstand", "barrel_03", "Barrel_02",
+    "round_wooden_table_02", "small_wooden_table_01", "wine_bottles_01", "planter_pot_clay", "pot_enamel_01",
+    "wooden_military_crate", "WoodenTable_01", "WoodenChair_01", "potted_plant_02", "rock_moss_set_01",
+]
+
 TEXTURES = [
     # địa hình
     "forest_ground_04", "forest_leaves_02", "leafy_grass", "grass_path_2", "rocky_trail",

@@ -82,6 +82,24 @@ export class FX {
     }
   }
 
+  levelUp(pos) {
+    for (let i = 0; i < 80; i++) {
+      const a = Math.random() * Math.PI * 2, r = 0.4 + Math.random() * 0.6;
+      this.emit(pos.clone().add(new THREE.Vector3(Math.cos(a) * r, Math.random() * 0.3, Math.sin(a) * r)), new THREE.Vector3(Math.cos(a) * 0.4, 2 + Math.random() * 3, Math.sin(a) * 0.4), i % 2 ? 0xffd27a : 0xfff3c0, 0.12, 1.2 + Math.random() * 0.6, -0.5);
+    }
+  }
+
+  ring(pos, radius, color) {
+    for (let i = 0; i < 60; i++) {
+      const a = (i / 60) * Math.PI * 2;
+      this.emit(pos.clone().add(new THREE.Vector3(0, 0.3, 0)), new THREE.Vector3(Math.cos(a) * radius * 2.4, 0.5, Math.sin(a) * radius * 2.4), color, 0.22, 0.45, 0);
+    }
+  }
+
+  sparkle(pos, color = 0xfff0b0) {
+    this.emit(pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.5, Math.random() * 0.4, (Math.random() - 0.5) * 0.5)), new THREE.Vector3(0, 0.6, 0), color, 0.08, 0.8, 0);
+  }
+
   trail(pos, color) {
     this.emit(pos, new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4), color, 0.2, 0.3);
   }

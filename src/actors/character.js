@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { loadGLTF, loadModel } from '../engine/assets.js';
+import { loadGLTF, loadModel, loadKitOBJ } from '../engine/assets.js';
 
 const C = '/assets/characters/';
 const HEAD_BONES = new Set(['Head', 'neck_01']);
@@ -94,7 +94,8 @@ async function buildTemplate(look) {
       const mn = (o.material?.name || '').toLowerCase();
       if (look.outfitColor && (mn.includes('ranger') || mn.includes('peasant'))) {
         o.material = o.material.clone();
-        o.material.color.set(look.outfitColor);
+        // texture gốc khá tối: nhân màu lên để màu thời trang rõ hơn
+        o.material.color.set(look.outfitColor).multiplyScalar(2.1);
       }
       if (o.material?.map) o.material.map.anisotropy = 8;
     });
@@ -110,10 +111,15 @@ async function buildTemplate(look) {
 }
 
 const WEAPONS = {
-  sword: { model: 'antique_katana_01', pos: [0.0, 0.03, 0.0], rot: [0, 0, 0], len: 1.0 },
-  saber: { model: 'wooden_handle_saber', pos: [0.0, 0.03, 0.0], rot: [0, 0, 0], len: 0.9 },
-  axe: { model: 'hatchet', pos: [0.0, 0.03, 0.0], rot: [0, 0, 0], len: 0.5 },
-  machete: { model: 'machete', pos: [0.0, 0.03, 0.0], rot: [0, 0, 0], len: 0.6 },
+  sword: { model: 'antique_katana_01', pos: [0.0, 0.03, 0.0], len: 1.0 },
+  saber: { model: 'wooden_handle_saber', pos: [0.0, 0.03, 0.0], len: 0.9 },
+  axe: { model: 'hatchet', pos: [0.0, 0.03, 0.0], len: 0.5 },
+  machete: { model: 'machete', pos: [0.0, 0.03, 0.0], len: 0.6 },
+  dagger: { model: 'ornate_medieval_dagger', pos: [0.0, 0.03, 0.0], len: 0.45 },
+  spear: { kit: 'Spear', pos: [0.0, 0.03, 0.0], len: 2.1, grip: 0.42 },
+  bow: { kit: 'Bow_Wooden', pos: [0.0, 0.03, 0.0], len: 1.3, grip: 0.5, bow: true },
+  golden: { kit: 'Sword_Golden', pos: [0.0, 0.03, 0.0], len: 1.05 },
+  claymore: { kit: 'Claymore', pos: [0.0, 0.03, 0.0], len: 1.3 },
 };
 
 export class Character {
@@ -142,9 +148,16 @@ export class Character {
     });
   }
 
-  async equip(kind) {
+  /** Đổi vũ khí đang cầm (thay trang bị). */
+  async swapWeapon(kind, tint) {
+    if (this.weaponMount) { this.weaponMount.removeFromParent(); this.weaponMount = null; this.weaponTip = null; }
+    if (kind) await this.equip(kind, tint);
+  }
+
+  async equip(kind, tint) {
     const def = WEAPONS[kind];
-    const src = await loadModel(def.model);
+    if (!def) return;
+    const src = def.kit ? await loadKitOBJ(def.kit) : await loadModel(def.model);
     const w = src.clone(true);
     // đặt chuôi kiếm ở gốc, lưỡi hướng theo trục dài nhất
     const box = new THREE.Box3().setFromObject(w), size = box.getSize(new THREE.Vector3());
@@ -156,7 +169,8 @@ export class Character {
     w.scale.setScalar(k);
     // chuôi = đầu nhỏ hơn của trục dài: thử cả hai đầu, chọn đầu có tiết diện hẹp
     w.position.set(-(box.min.x + box.max.x) / 2 * k, -(box.min.y + box.max.y) / 2 * k, -(box.min.z + box.max.z) / 2 * k);
-    w.position[axis] = -box.min[axis] * k - def.len * 0.12;
+    w.position[axis] = -box.min[axis] * k - def.len * (def.grip ?? 0.12);
+    if (tint) w.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(tint); o.material.emissiveIntensity = 0.35; } });
     // quay để trục dài trùng trục Y cục bộ của holder
     const inner = new THREE.Group();
     inner.add(holder);

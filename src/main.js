@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { manager, setMaxAnisotropy, loadHDR } from './engine/assets.js';
+import { manager, setMaxAnisotropy } from './engine/assets.js';
 import { Input } from './engine/input.js';
 import { Terrain } from './world/terrain.js';
 import { Colliders } from './world/colliders.js';
@@ -7,7 +7,19 @@ import { createWater } from './world/water.js';
 import { buildArchitecture } from './world/architecture.js';
 import { buildVegetation } from './world/vegetation.js';
 import { buildProps } from './world/props.js';
+import { Sky } from './world/sky.js';
 import { Game } from './game/game.js';
+import { UI } from './ui/ui.js';
+import './ui/screens.js';
+import { Character } from './actors/character.js';
+import { CLASSES, defaultHero, heroLook } from './game/classes.js';
+import { CHAPTERS } from './story/chapters.js';
+import { PLACES } from './world/layout.js';
+import { loadSettings, currentProfile, loadSave, saveProfile, logout } from './settings.js';
+
+const ui = new UI();
+ui.decorate();
+const settings = loadSettings();
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -15,37 +27,24 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.85;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 setMaxAnisotropy(renderer.capabilities.getMaxAnisotropy());
 
-const loadFill = document.getElementById('load-fill');
-const loadText = document.getElementById('load-text');
-let stepsDone = 0;
-const STEPS = 40;
-const progress = (msg) => {
-  stepsDone++;
-  loadFill.style.width = Math.min(100, (stepsDone / STEPS) * 100) + '%';
-  if (msg) loadText.textContent = msg;
+let pct = 0;
+const step = (text, to) => { pct = Math.max(pct, to); ui.progress(pct, text); };
+manager.onProgress = (url, loaded, total) => {
+  ui.progress(Math.max(pct, Math.min(95, pct + (loaded / total) * 8)), `Đang tải ${decodeURIComponent(url.split('/').pop())}`);
 };
-manager.onProgress = (url, loaded, total) => { loadText.textContent = `Đang tải ${url.split('/').pop()} (${loaded}/${total})`; };
+
+let mode = 'loading';
+let game = null;
+const preview = { char: null, token: 0, angle: 0 };
 
 async function boot() {
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 1600);
-
-  // Trời: HDRI vừa làm nền vừa làm ánh sáng môi trường
-  progress('Vén mây...');
-  const hdr = await loadHDR('kloofendal_misty_morning_puresky');
-  hdr.mapping = THREE.EquirectangularReflectionMapping;
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromEquirectangular(hdr).texture;
-  scene.background = hdr;
-  scene.backgroundIntensity = 0.9;
-  scene.environmentIntensity = 0.75;
-  scene.fog = new THREE.FogExp2(0xb7c0c2, 0.0032);
-
+  scene.fog = new THREE.FogExp2(0xb7c0c2, 0.003);
+  const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeight, 0.1, 1600);
   const sunDir = new THREE.Vector3(-0.55, 0.42, 0.35).normalize();
   const sun = new THREE.DirectionalLight(0xffe2bd, 2.6);
   sun.castShadow = true;
@@ -54,43 +53,44 @@ async function boot() {
   sc.left = sc.bottom = -55; sc.right = sc.top = 55; sc.near = 1; sc.far = 300;
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.04;
-  scene.add(sun, sun.target);
-  scene.add(new THREE.HemisphereLight(0xcfd8e6, 0x4b4232, 0.35));
+  const hemi = new THREE.HemisphereLight(0xcfd8e6, 0x4b4232, 0.35);
+  scene.add(sun, sun.target, hemi);
 
-  progress('Đắp núi, đào hồ...');
+  step('Đắp núi, đào hồ...', 8);
+  await new Promise((r) => setTimeout(r, 30));
   const terrain = new Terrain();
   scene.add(terrain.mesh);
   const colliders = new Colliders();
-  scene.add(createWater(sunDir));
+  const water = createWater(sunDir);
+  scene.add(water);
 
-  progress('Dựng nhà, lợp ngói...');
+  step('Viết câu đối, treo biển hiệu...', 14);
+  await Promise.race([document.fonts.load('120px "Ma Shan Zheng"', '悅來客棧清風鎮望月亭黑風寨劍冢賓至如歸酒香百里'), new Promise((r) => setTimeout(r, 4000))]);
+  step('Dựng nhà, lợp ngói...', 18);
   const arch = buildArchitecture(terrain, colliders);
   scene.add(arch.group);
 
-  progress('Bày biện khách điếm...');
+  step('Bày biện khách điếm...', 26);
   const props = await buildProps(terrain, colliders, arch.spots);
   scene.add(props.group);
 
-  progress('Trồng rừng...');
-  const veg = await buildVegetation(terrain, colliders, renderer, progress);
+  step('Trồng rừng trúc, rừng thông...', 40);
+  const veg = await buildVegetation(terrain, colliders, renderer, (m) => step(m, Math.min(70, pct + 2)));
   scene.add(veg.group);
 
+  step('Vén mây, gọi gió...', 72);
+  const sky = new Sky({ renderer, scene, sun, sunDir, hemi, water, lights: props.lights });
+  await sky.set('morning');
+
   const input = new Input(canvas);
-  const game = new Game({ renderer, scene, camera, sun, sunDir, terrain, colliders, input, grass: veg.grass, spots: arch.spots, chest: props.chest });
-  await game.init(progress);
+  const profile = currentProfile() || { name: 'Tiêu Vân', hero: defaultHero() };
+  game = new Game({ renderer, scene, camera, sun, sunDir, hemi, terrain, colliders, input, grass: veg.grass, spots: arch.spots, chest: props.chest, sky, ui, settings, profile: { ...profile, hero: profile.hero || defaultHero() } });
+  step('Triệu tập giang hồ nhân sĩ...', 78);
+  await game.init((m) => step(m, Math.min(94, pct + 3)));
 
-  // Biên dịch shader trước để vào game không bị khựng
-  progress('Mài kiếm...');
+  step('Mài kiếm...', 96);
   await renderer.compileAsync(scene, camera);
-  loadFill.style.width = '100%';
-  loadText.textContent = 'Sẵn sàng.';
-
-  const startBtn = document.getElementById('start');
-  startBtn.disabled = false;
-  startBtn.onclick = () => {
-    document.getElementById('title').classList.add('hidden');
-    game.start();
-  };
+  step('Sẵn sàng.', 100);
 
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
@@ -101,14 +101,112 @@ async function boot() {
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 1 / 20);
-    game.update(dt, clock.elapsedTime);
+    if (mode === 'create') updatePreview(dt, camera);
+    else game.update(dt, clock.elapsedTime);
     renderer.render(scene, camera);
     input.endFrame();
   });
-  window.__game = game; // tiện gỡ lỗi trong console
+  window.__game = game;
+
+  mode = 'menu';
+  await new Promise((r) => setTimeout(r, 500));
+  await ui.hideLoading();
+  await flow();
+}
+
+// ───────────── luồng màn hình ─────────────
+async function flow() {
+  let profile = currentProfile();
+  if (!profile) profile = await ui.login();
+  if (!profile.hero) {
+    const hero = await createHero(null);
+    profile = saveProfile({ ...profile, name: hero.name, hero });
+  }
+  game.profile = profile;
+  await game.buildHero(profile.hero);
+  ui.heroName = profile.name;
+  showMenu(profile);
+  await ui.fade(false);
+}
+
+const STAGE = { x: PLACES.pavilion.x - 4, z: PLACES.pavilion.z + 30 };
+
+async function createHero(initial, editOnly = false) {
+  mode = 'create';
+  ui.hideMenu();
+  if (!createHero.cleared) { game.grass.exclude(STAGE.x + 2, STAGE.z, 6); createHero.cleared = true; }
+  await game.sky.set('sunrise');
+  await ui.fade(false);
+  const hero = await ui.createCharacter(initial, (h) => buildPreview(h), { editOnly });
+  if (preview.char) game.scene.remove(preview.char.root);
+  preview.char = null;
+  mode = 'menu';
+  await game.sky.set('morning');
+  return hero;
+}
+
+async function buildPreview(h) {
+  const token = ++preview.token;
+  const cls = CLASSES[h.cls];
+  const c = await Character.create(heroLook(h), cls.weapon);
+  if (token !== preview.token) return;
+  c.model.traverse((o) => { if (o.isMesh && /hood/i.test(o.name)) o.visible = !!h.hood; });
+  if (preview.char) game.scene.remove(preview.char.root);
+  preview.char = c;
+  const y = game.terrain.heightAt(STAGE.x, STAGE.z);
+  c.root.position.set(STAGE.x, y, STAGE.z);
+  c.root.rotation.y = Math.PI / 2 + preview.angle;
+  game.scene.add(c.root);
+  c.play(cls.attack === 'melee' ? 'Sword_Idle' : 'Idle_Loop', { fade: 0 });
+}
+
+let dragX = null;
+addEventListener('pointerdown', (e) => { if (mode === 'create' && e.target === canvas) dragX = e.clientX; });
+addEventListener('pointermove', (e) => { if (dragX !== null) { preview.angle += (e.clientX - dragX) * 0.01; dragX = e.clientX; } });
+addEventListener('pointerup', () => (dragX = null));
+
+function updatePreview(dt, camera) {
+  const y = game.terrain.heightAt(STAGE.x, STAGE.z);
+  // nhân vật ở giữa-trái khung hình, nền là hồ Bích Thủy
+  camera.position.set(STAGE.x + 4.4, y + 1.3, STAGE.z);
+  camera.lookAt(STAGE.x, y + 1.05, STAGE.z);
+  for (const n of game.npcs) n.char.update(dt);
+  if (preview.char) {
+    preview.char.root.rotation.y = Math.PI / 2 + preview.angle;
+    preview.char.update(dt);
+  }
+  game.sky.update(camera.position, 0);
+  game.updateSun(new THREE.Vector3(STAGE.x, y, STAGE.z));
+  game.grass.update(STAGE.x, STAGE.z, performance.now() / 1000);
+}
+
+function showMenu(profile) {
+  const save = loadSave(profile);
+  ui.showMenu(profile, save, CHAPTERS, {
+    className: CLASSES[profile.hero.cls]?.name,
+    continue: () => start(save),
+    newGame: () => start(null),
+    chapter: (i) => start({ ...(save || {}), chapter: i }),
+    hero: async () => {
+      const h = await createHero({ ...profile.hero, name: profile.name }, true);
+      profile = saveProfile({ ...profile, hero: h });
+      game.profile = profile;
+      await game.buildHero(h);
+      showMenu(profile);
+    },
+    settings,
+    onSettings: (s) => game.applySettings(s),
+    switchProfile: () => { logout(); location.reload(); },
+  });
+}
+
+async function start(save) {
+  ui.hideMenu();
+  mode = 'play';
+  await game.begin(save);
 }
 
 boot().catch((e) => {
   console.error(e);
-  loadText.textContent = 'Lỗi khi tải: ' + e.message;
+  ui.progress(100, 'Lỗi khi tải: ' + e.message);
 });
