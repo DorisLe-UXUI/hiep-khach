@@ -19,9 +19,9 @@ async function loadSource(file) {
 }
 
 const KIND_RE = {
-  idle: /(^|\|)(idle|flying_idle|fly)$/i,
-  walk: /(^|\|)(walk|flying_idle|fly|crawl)$/i,
-  run: /(^|\|)(run|sprint|fast_flying|gallop|walk)$/i,
+  idle: /(^|\||_)(idle|flying_idle|fly|flying)$/i,
+  walk: /(^|\||_)(walk|flying_idle|fly|flying|crawl)$/i,
+  run: /(^|\||_)(run|sprint|fast_flying|gallop|walk|flying)$/i,
   attack: /(attack-melee-right|attack|punch|bite|headbutt|weapon|sting|claw|slash|smash|kick)/i,
   attack2: /(attack-melee-left|attack-kick)/i,
   kick: /(attack-kick-right|kick)/i,
@@ -68,7 +68,7 @@ export class MonsterCharacter {
       o.material = ms.length === 1 ? ms[0] : ms;
     });
     // model thú (poly.pizza) có khung xương ×100: đo theo hình đã gắn xương
-    const precise = /\/beasts\//.test(def.file);
+    const precise = /\/beasts\/|pp_/.test(def.file);
     if (precise) model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model, precise);
     const s = def.height / Math.max(0.01, box.max.y - box.min.y);

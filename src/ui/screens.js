@@ -107,7 +107,7 @@ Object.assign(UI.prototype, {
         if (tab === 'outfit') body = LOOK_OPTIONS.outfits[h.gender].map((x) => `<button class="opt ${h.outfit === x ? 'on' : ''}" data-k="outfit" data-v="${x}">${icon('shield')}<span>${LOOK_OPTIONS.outfitLabel[x]}</span></button>`).join('');
         if (tab === 'weapon') {
           const cur = heroWeapon(h) || '';
-          body = WEAPON_SKINS[h.cls].map((w) => `<button class="opt wpn ${cur === w.id ? 'on' : ''}" data-k="weapon" data-v="${w.id}"><span class="han" style="font-size:20px">${w.han}</span>${icon(w.icon)}<span>${w.name}</span></button>`).join('');
+          body = WEAPON_SKINS[h.cls].map((w) => `<button class="opt wpn ${cur === w.id ? 'on' : ''}" data-k="weapon" data-v="${w.id}">${w.thumb ? `<img class="opt-thumb" src="/assets/thumbs/wpn_${w.thumb}.png" alt="" />` : `<span class="han" style="font-size:20px">${w.han}</span>${icon(w.icon)}`}<span>${w.name}</span></button>`).join('');
         }
         if (tab === 'fashion') body = LOOK_OPTIONS.fashion.map((f) => `<button class="opt fashion ${h.fashion === f.id ? 'on' : ''}" data-k="fashion" data-v="${f.id}"><i class="dot" style="background:${f.color || 'linear-gradient(135deg,#6b5a3a,#2d3b2a)'}"></i><span>${f.name}</span>${f.price ? `<small>${icon('star')}${f.price}</small>` : ''}</button>`).join('');
         if (tab === 'acc') body = `<button class="opt ${h.hood ? 'on' : ''}" data-k="hood" data-v="${!h.hood}">${icon('hood')}<span>${chibi ? 'Mũ / mặt nạ' : 'Mũ trùm'}</span></button>` + (h.gender === 'male' && !chibi ? `<button class="opt ${h.beard ? 'on' : ''}" data-k="beard" data-v="${!h.beard}">${icon('user')}<span>Râu</span></button>` : '');

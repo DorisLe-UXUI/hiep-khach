@@ -35,7 +35,7 @@
       c.root.rotation.y = beasts ? 0.95 : 0.45;
       scene.add(c.root);
       c.root.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(c.model, !!beasts);
+      const box = new THREE.Box3().setFromObject(c.model, !!beasts || /pp_/.test(m.file));
       const center = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
       const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
       const r = Math.max(size.x, size.y, size.z) * 0.62;

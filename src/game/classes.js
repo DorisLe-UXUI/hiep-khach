@@ -96,33 +96,41 @@ export function heroLook(h) {
 /** Binh khí người chơi chọn theo môn phái (chỉ đổi ngoại hình, động tác đi theo loại vũ khí). */
 export const WEAPON_SKINS = {
   kiem: [
-    { id: 'sword', name: 'Thanh phong kiếm', han: '青鋒劍', icon: 'sword' },
-    { id: 'katana', name: 'Đường đao', han: '唐刀', icon: 'sword' },
-    { id: 'goldsword', name: 'Kim long kiếm', han: '金龍劍', icon: 'sword' },
-    { id: 'saber', name: 'Đao & thuẫn', han: '刀盾', icon: 'shield' },
+    { id: 'kk_sword_e', name: 'Thanh phong kiếm', han: '青鋒劍', thumb: 'sword_e' },
+    { id: 'kk_sword_d', name: 'Long tuyền kiếm', han: '龍泉劍', thumb: 'sword_d' },
+    { id: 'kk_sword_a', name: 'Kim quang kiếm', han: '金光劍', thumb: 'sword_a' },
+    { id: 'kk_sword_b', name: 'Khoát kiếm', han: '闊劍', thumb: 'sword_b' },
+    { id: 'kk_sword_c', name: 'Liễu diệp đao', han: '柳葉刀', thumb: 'sword_c' },
+    { id: 'kk_saber_shield', name: 'Đao & thuẫn', han: '刀盾', thumb: 'shield_b' },
+    { id: 'sword', name: 'Thiết kiếm', han: '鐵劍', icon: 'sword' },
     { id: 'greatsword', name: 'Trọng kiếm', han: '重劍', icon: 'swords' },
-    { id: 'claymore', name: 'Trảm mã kiếm', han: '斬馬劍', icon: 'swords' },
   ],
   thuong: [
-    { id: 'spear', name: 'Hồng anh thương', han: '紅纓槍', icon: 'spear' },
-    { id: 'halberd', name: 'Phương thiên kích', han: '方天戟', icon: 'axe' },
+    { id: 'spear', name: 'Trường thương', han: '長槍', icon: 'spear' },
+    { id: 'kk_spear', name: 'Hồng anh thương', han: '紅纓槍', thumb: 'spear_a' },
+    { id: 'kk_halberd', name: 'Phương thiên kích', han: '方天戟', thumb: 'halberd' },
+    { id: 'halberd', name: 'Khai sơn phủ', han: '開山斧', icon: 'axe' },
     { id: 'golden', name: 'Thanh long đao', han: '青龍刀', icon: 'swords' },
   ],
   cung: [
     { id: 'bow', name: 'Trường cung', han: '長弓', icon: 'bow' },
-    { id: 'bow_wood', name: 'Mộc cung', han: '木弓', icon: 'bow' },
-    { id: 'bow_hunt', name: 'Liệp cung', han: '獵弓', icon: 'bow' },
+    { id: 'kk_bow_a', name: 'Mộc cung', han: '木弓', thumb: 'bow_a_withstring' },
+    { id: 'kk_bow_b', name: 'Liệp cung', han: '獵弓', thumb: 'bow_b_withstring' },
   ],
   phap: [
     { id: '', name: 'Tay không (chưởng)', han: '空掌', icon: 'palm' },
-    { id: 'staff', name: 'Pháp trượng', han: '法杖', icon: 'wizard' },
-    { id: 'wand', name: 'Phù trượng', han: '符杖', icon: 'sparkles' },
+    { id: 'kk_wand', name: 'Lam ngọc trượng', han: '藍玉杖', thumb: 'wand_a' },
+    { id: 'kk_staff_b', name: 'Pháp trượng', han: '法杖', thumb: 'staff_b' },
+    { id: 'kk_staff_a', name: 'Mộc trượng', han: '木杖', thumb: 'staff_a' },
     { id: 'spellbook', name: 'Thiên thư', han: '天書', icon: 'book' },
   ],
   dao: [
     { id: 'dagger', name: 'Song chủy thủ', han: '雙匕首', icon: 'dash' },
+    { id: 'kk_dagger_a', name: 'Liễu diệp song chủy', han: '柳葉雙匕', thumb: 'dagger_a' },
+    { id: 'kk_dagger_b', name: 'Tam xoa song chủy', han: '三叉雙匕', thumb: 'dagger_b' },
+    { id: 'kk_claw', name: 'Song câu', han: '雙鉤', thumb: 'fistweapon_b' },
     { id: 'twinblade', name: 'Song loan đao', han: '雙彎刀', icon: 'swords' },
-    { id: 'staff', name: 'Đạo trượng', han: '道杖', icon: 'wizard' },
+    { id: 'kk_staff_a', name: 'Đạo trượng', han: '道杖', thumb: 'staff_a' },
   ],
 };
 /** Binh khí đang dùng của nhân vật (đã kiểm tra hợp với môn phái) */

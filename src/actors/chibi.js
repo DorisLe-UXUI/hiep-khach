@@ -52,7 +52,18 @@ const WEAPONS = {
   spear: [{ obj: 'Spear', hand: 'r', len: 1.9, grip: 0.4 }],
   skelaxe: [{ file: 'w_skeleton_axe', hand: 'r' }],
   skelstaff: [{ file: 'w_skeleton_staff', hand: 'r' }],
-  // binh khí cho người chơi chọn
+  // binh khí cho người chơi chọn (KayKit Fantasy Weapons Bits, CC0)
+  kk_sword_a: [{ path: '/assets/weapons/sword_a.glb', hand: 'r' }], kk_sword_b: [{ path: '/assets/weapons/sword_b.glb', hand: 'r' }],
+  kk_sword_c: [{ path: '/assets/weapons/sword_c.glb', hand: 'r' }], kk_sword_d: [{ path: '/assets/weapons/sword_d.glb', hand: 'r' }],
+  kk_sword_e: [{ path: '/assets/weapons/sword_e.glb', hand: 'r' }],
+  kk_saber_shield: [{ path: '/assets/weapons/sword_c.glb', hand: 'r' }, { path: '/assets/weapons/shield_b.glb', hand: 'l' }],
+  kk_spear: [{ path: '/assets/weapons/spear_a.glb', hand: 'r' }], kk_halberd: [{ path: '/assets/weapons/halberd.glb', hand: 'r' }],
+  kk_bow_a: [{ path: '/assets/weapons/bow_a_withstring.glb', hand: 'l' }], kk_bow_b: [{ path: '/assets/weapons/bow_b_withstring.glb', hand: 'l' }],
+  kk_staff_a: [{ path: '/assets/weapons/staff_a.glb', hand: 'r' }], kk_staff_b: [{ path: '/assets/weapons/staff_b.glb', hand: 'r' }],
+  kk_wand: [{ path: '/assets/weapons/wand_a.glb', hand: 'r' }],
+  kk_dagger_a: [{ path: '/assets/weapons/dagger_a.glb', hand: 'r' }, { path: '/assets/weapons/dagger_a.glb', hand: 'l' }],
+  kk_dagger_b: [{ path: '/assets/weapons/dagger_b.glb', hand: 'r' }, { path: '/assets/weapons/dagger_b.glb', hand: 'l' }],
+  kk_claw: [{ path: '/assets/weapons/fistweapon_b.glb', hand: 'r' }, { path: '/assets/weapons/fistweapon_b.glb', hand: 'l' }],
   katana: [{ obj: 'Sword_2', hand: 'r', len: 1.15, grip: 0.14 }],
   goldsword: [{ obj: 'Sword_Golden', hand: 'r', len: 1.15, grip: 0.14 }],
   greatsword: [{ file: 'w_sword_2handed', hand: 'r' }],
@@ -64,7 +75,7 @@ const WEAPONS = {
   spellbook: [{ file: 'w_wand', hand: 'r' }, { file: 'w_spellbook_open', hand: 'l' }],
   twinblade: [{ file: 'w_skeleton_blade', hand: 'r' }, { file: 'w_skeleton_blade', hand: 'l' }],
 };
-const STYLE_OF = { bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
+const STYLE_OF = { kk_spear: 'spear', kk_halberd: 'spear', kk_bow_a: 'bow', kk_bow_b: 'bow', kk_staff_a: 'staff', kk_staff_b: 'staff', kk_wand: 'staff', kk_dagger_a: 'dual', kk_dagger_b: 'dual', kk_claw: 'dual', bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
 
 let clipsP = null;
 function loadClips() {
@@ -155,7 +166,7 @@ export class ChibiCharacter {
         holder.add(w);
         w = holder;
       } else {
-        w = (await loadGLTF(`${C}${d.file}.glb`)).scene.clone(true);
+        w = (await loadGLTF(d.path || `${C}${d.file}.glb`)).scene.clone(true);
       }
       w.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       // bù tỉ lệ của bộ xương để vũ khí giữ đúng kích thước gốc của pack

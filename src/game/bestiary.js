@@ -47,6 +47,20 @@ export const MONSTERS = {
   coctinh: { name: 'Cóc Vương', han: '蛤王', file: 'big_frog.glb', h: 2.4, lv: 6, elite: true },
 };
 
+// ── Quái mới (Quaternius CC0 qua poly.pizza) ──
+Object.assign(MONSTERS, {
+  manbinh: { name: 'Man Binh', han: '蠻兵', file: 'pp_orc.glb', h: 1.5, lv: 8 },
+  kholau: { name: 'Khô Lâu Binh', han: '骷髏兵', file: 'pp_skeleton.glb', h: 1.5, lv: 10 },
+  acquy: { name: 'Ác Quỷ', han: '惡鬼', file: 'pp_demon.glb', h: 1.6, lv: 12, caster: true },
+  oanhon: { name: 'Oan Hồn', han: '冤魂', file: 'pp_ghost.glb', h: 1.4, lv: 8, caster: true },
+  chutinh: { name: 'Chu Tinh', han: '蛛精', file: 'pp_spider.glb', h: 1.0, lv: 7 },
+  bucyeu: { name: 'Bức Yêu', han: '蝠妖', file: 'pp_bat.glb', h: 0.9, lv: 5 },
+  linhnhay: { name: 'Linh Nhầy', han: '靈涎', file: 'pp_slime.glb', h: 0.8, lv: 2 },
+  tadao: { name: 'Mạo Yêu', han: '帽妖', file: 'pp_wizard.glb', h: 1.3, lv: 9, caster: true },
+  hacnhan2: { name: 'Hắc Ảnh Nhẫn', han: '黑影忍', file: 'pp_ninja.glb', h: 1.4, lv: 9 },
+  tuyetnhan: { name: 'Tuyết Nhân', han: '雪人', file: 'pp_yeti.glb', h: 1.8, lv: 11 },
+});
+
 // ── Thú hoang (thu phục được) ──
 const BEAST_LV = { donkey: 2, rabbit: 1, alpaca: 3, deer: 4, fox: 4, raccoon: 3, wolf: 7, bull: 7, stag: 9 };
 for (const [id, lv] of Object.entries(BEAST_LV)) {
@@ -56,13 +70,13 @@ for (const [id, lv] of Object.entries(BEAST_LV)) {
 
 /** Khu vực săn quái. */
 export const ZONES = [
-  { id: 'dongco', name: 'Đồng cỏ Thanh Phong', han: '清風草原', x: 70, z: 160, r: 42, n: 9, mobs: ['lucnhay', 'hongnhay', 'ketinh', 'chuot'], elite: null },
+  { id: 'dongco', name: 'Đồng cỏ Thanh Phong', han: '清風草原', x: 70, z: 160, r: 42, n: 9, mobs: ['lucnhay', 'hongnhay', 'ketinh', 'chuot', 'linhnhay'], elite: null },
   { id: 'rungnam', name: 'Rừng Nấm', han: '蘑菇林', x: -78, z: -18, r: 40, n: 9, mobs: ['namtinh', 'namyeu', 'ganhay', 'xuongrong'], elite: 'namvuong' },
   { id: 'bangho', name: 'Bờ hồ Bích Thủy', han: '碧水湖畔', x: -112, z: 138, r: 36, n: 8, mobs: ['ech', 'ngutinh', 'thuyphao', 'ran'], elite: 'coctinh' },
-  { id: 'doigio', name: 'Đồi Gió', han: '風丘', x: 150, z: 70, r: 44, n: 9, mobs: ['giapphong', 'dongdoc', 'phonglinh', 'miuyeu'], elite: 'hauvuong' },
-  { id: 'thunglung', name: 'Thung lũng Yêu Ma', han: '妖魔谷', x: 150, z: -120, r: 44, n: 10, mobs: ['tieunhan', 'tieuman', 'phapsu', 'doi', 'nhen'], elite: 'manthuong' },
-  { id: 'hangtuyet', name: 'Hàn Băng Cốc', han: '寒冰谷', x: -40, z: -245, r: 38, n: 9, mobs: ['thachlinh', 'uhon', 'quydaulau', 'tieulong'], elite: 'tuyetquai' },
-  { id: 'hoason', name: 'Hỏa Diệm Sơn', han: '火焰山', x: 215, z: -215, r: 34, n: 6, mobs: ['xichma', 'lamma', 'longthan'], elite: 'hoalong' },
+  { id: 'doigio', name: 'Đồi Gió', han: '風丘', x: 150, z: 70, r: 44, n: 9, mobs: ['giapphong', 'dongdoc', 'phonglinh', 'miuyeu', 'bucyeu'], elite: 'hauvuong' },
+  { id: 'thunglung', name: 'Thung lũng Yêu Ma', han: '妖魔谷', x: 150, z: -120, r: 44, n: 10, mobs: ['tieunhan', 'tieuman', 'phapsu', 'doi', 'nhen', 'manbinh', 'chutinh', 'hacnhan2', 'tadao'], elite: 'manthuong' },
+  { id: 'hangtuyet', name: 'Hàn Băng Cốc', han: '寒冰谷', x: -40, z: -245, r: 38, n: 9, mobs: ['thachlinh', 'uhon', 'quydaulau', 'tieulong', 'tuyetnhan', 'kholau', 'oanhon'], elite: 'tuyetquai' },
+  { id: 'hoason', name: 'Hỏa Diệm Sơn', han: '火焰山', x: 215, z: -215, r: 34, n: 6, mobs: ['xichma', 'lamma', 'longthan', 'acquy'], elite: 'hoalong' },
 ];
 
 /** Chỉ số theo cấp. */
