@@ -256,7 +256,7 @@ Object.assign(UI.prototype, {
       const act = it.type === 'equip' ? (equipped ? '<button class="ghost" disabled>Đang trang bị</button>' : '<button class="primary sm" data-do="equip">Trang bị</button>')
         : it.type === 'consumable' || id === 'herb' ? '<button class="primary sm" data-do="use">Sử dụng</button>' : '';
       const enh = it.type === 'equip' && it.slot === 'weapon' ? '<button class="ghost" data-do="enhance">Cường hoá</button>' : '';
-      $('bag-detail').innerHTML = `<div class="dh">${itemIcon(id, it.icon)}<div><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.type === 'equip' ? { weapon: 'Vũ khí', armor: 'Y phục', trinket: 'Bội sức' }[it.slot] : it.type === 'consumable' ? 'Đan dược' : 'Nguyên liệu'}${r.enh?.[id] ? ` · +${r.enh[id]}` : ''}</small></div></div><p>${it.desc}</p><div class="acts">${act}${enh}</div>`;
+      $('bag-detail').innerHTML = `<div class="dh">${itemIcon(id, it.icon)}<div><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.type === 'equip' ? { weapon: 'Vũ khí', armor: 'Y phục', trinket: 'Bội sức' }[it.slot] : it.food ? 'Ẩm thực' : it.type === 'consumable' ? 'Đan dược' : it.loot ? 'Tạp vật · bán ở tiệm' : 'Nguyên liệu'}${r.enh?.[id] ? ` · +${r.enh[id]}` : ''}</small></div></div><p>${it.desc}</p><div class="acts">${act}${enh}</div>`;
       $('bag-detail').querySelector('[data-do="equip"]')?.addEventListener('click', () => { r.equipItem(id); this.openBag(g, tab); });
       $('bag-detail').querySelector('[data-do="use"]')?.addEventListener('click', () => { r.use(id); this.openBag(g, tab); });
       $('bag-detail').querySelector('[data-do="enhance"]')?.addEventListener('click', () => this.openEnhance(g, id));
@@ -320,10 +320,10 @@ Object.assign(UI.prototype, {
   // ───────────── TIỆM ─────────────
   openShop(g, tab = 'buy') {
     const r = g.rpg;
-    const stock = ['potion', 'qipill', 'tame_charm', 'beast_pill', 'fodder', 'steel_sword', 'dao', 'leather', 'silk', 'charm'];
+    const stock = ['potion', 'qipill', 'tame_charm', 'beast_pill', 'fodder', 'steel_sword', 'dao', 'leather', 'silk', 'charm', 'dim_sum', 'steamer', 'chicken_soup', 'roast_chicken', 'meat_skewer', 'mooncake', 'longjing', 'nuerhong', 'zhuyeqing', 'hotpot'];
     const sellable = Object.entries(r.bag).filter(([id, n]) => n > 0 && ITEMS[id].sell);
     const body = this.openPanel('Tiệm Duyệt Lai', `
-      <div class="subtabs">${[['buy', 'Mua'], ['sell', 'Bán']].map(([t, n]) => `<button class="${tab === t ? 'on' : ''}" data-t="${t}">${n}</button>`).join('')}<span class="gold">${icon('coins')} ${r.gold} lượng</span></div>
+      <div class="subtabs">${[['buy', 'Mua'], ['sell', 'Bán']].map(([t, n]) => `<button class="${tab === t ? 'on' : ''}" data-t="${t}">${n}</button>`).join('')}${tab === 'sell' && sellable.some(([id]) => ITEMS[id].loot) ? '<button class="ghost sm" id="sell-junk">Bán hết tạp vật</button>' : ''}<span class="gold">${icon('coins')} ${r.gold} lượng</span></div>
       <div class="shop">${(tab === 'buy' ? stock.map((id) => [id, ITEMS[id].price]) : sellable.map(([id, n]) => [id, ITEMS[id].sell, n])).map(([id, price, n]) => {
         const it = ITEMS[id], owned = it.type === 'equip' && r.owned.has(id);
         return `<div class="ware"><div class="ic">${itemIcon(id, it.icon)}</div><div class="wi"><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.desc}</small></div>
@@ -332,6 +332,12 @@ Object.assign(UI.prototype, {
       }).join('') || '<p class="muted">Không có gì để bán. Lệnh bài sơn tặc và Linh chi thảo bán được ở đây.</p>'}</div>`);
     body.querySelectorAll('.subtabs button').forEach((b) => (b.onclick = () => this.openShop(g, b.dataset.t)));
     body.querySelectorAll('.ware button').forEach((b) => (b.onclick = () => { tab === 'buy' ? r.buy(b.dataset.id) : r.sell(b.dataset.id); this.openShop(g, tab); }));
+    body.querySelector('#sell-junk')?.addEventListener('click', () => {
+      let got = 0;
+      for (const [id, n] of sellable) if (ITEMS[id].loot) for (let i = 0; i < n; i++) if (r.sell(id)) got += ITEMS[id].sell;
+      g.toast(`Bán tạp vật được <b>${got}</b> lượng`, 1.6);
+      this.openShop(g, 'sell');
+    });
     this.onPanelClose = () => g.running && !g.paused && g.input.lock();
   },
 });

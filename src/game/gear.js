@@ -48,6 +48,8 @@ export function rollRarity(bonus = 0) {
   return 0;
 }
 
+import { pickNamedWeapon } from './loot.js';
+
 let uidN = Date.now() % 100000;
 export function makeGear(slot, lv, rarity = rollRarity()) {
   const R = RARITY[rarity];
@@ -58,6 +60,10 @@ export function makeGear(slot, lv, rarity = rollRarity()) {
   for (let i = 0; i < R.affixes; i++) {
     const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
     stats[k] = (stats[k] || 0) + statValue(k, lv, R.mul * (0.5 + Math.random() * 0.5));
+  }
+  if (slot === 'weapon') {
+    const w = pickNamedWeapon(lv, rarity);
+    return { uid: 'g' + uidN++, slot, base: w.name, name: w.name, rarity, lv, stats, enh: 0, han: w.han[0], thumb: w.thumb };
   }
   return { uid: 'g' + uidN++, slot, base, name: base, rarity, lv, stats, enh: 0, han: HAN[slot] };
 }

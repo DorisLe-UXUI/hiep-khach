@@ -10,7 +10,7 @@ fs.rmSync(OUT, { recursive: true, force: true });
 execSync(`npx vite build --base ./ --outDir dist-lite --emptyOutDir --logLevel error`, { cwd: ROOT, stdio: 'inherit', env: { ...process.env, VITE_LITE: '1' } });
 
 // 1) giữ asset cần cho chế độ chibi
-const KEEP_DIRS = ['audio', 'beasts', 'heroes', 'weapons', 'ui', 'chibi', 'folk', 'kit', 'monsters', 'nature', 'thumbs', 'licenses'];
+const KEEP_DIRS = ['audio', 'beasts', 'heroes', 'weapons', 'ui', 'chibi', 'folk', 'kit', 'monsters', 'nature', 'thumbs', 'loot', 'licenses'];
 const keepList = fs.readFileSync(path.join(ROOT, 'tools/lite_models.txt'), 'utf8').split(/\s+/).filter(Boolean);
 const A = path.join(OUT, 'assets');
 for (const d of fs.readdirSync(A)) {

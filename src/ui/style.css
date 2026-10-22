@@ -411,7 +411,7 @@ input[type=range] { width: 180px; accent-color: var(--gold); }
 .cr-bottom .primary { width: auto; padding: 12px 30px; }
 
 /* ───────── túi đồ ───────── */
-.sheet:has(.bag), .sheet:has(.enh) { width: min(980px, 96vw); }
+.sheet:has(.bag), .sheet:has(.enh), .sheet:has(.gear), .sheet:has(.mer), .sheet:has(.bst) { width: min(1000px, 96vw); }
 .bag { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
 .paperdoll { padding: 14px; background: radial-gradient(ellipse at 50% 0%, rgba(214,176,98,.12), transparent 70%), rgba(0,0,0,.25); border: 1px solid var(--edge-soft); border-radius: 4px; }
 .doll-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
@@ -634,7 +634,7 @@ body:not(.cursor-free) .mi { opacity: .82; }
 .slot .ico { width: 32px !important; height: 32px !important; }
 .cell .ico, .ware .ic .ico, .skill .ic .ico { width: 34px !important; height: 34px !important; }
 .cell.thumb { padding: 2px; }
-.cell .thumb-img, .ware .ic .thumb-img, .rw .thumb-img, .eqslot .thumb-img, .detail .thumb-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,.7)); }
+.cell .thumb-img, .ware .ic .thumb-img, .rw .thumb-img, .eqslot .thumb-img, .detail .thumb-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 1px rgba(255,236,190,.85)) drop-shadow(0 0 4px rgba(255,214,140,.35)) drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
 .eqslot .thumb-img { width: 34px; height: 34px; }
 .detail .thumb-img { width: 64px; height: 64px; }
 
@@ -1121,3 +1121,9 @@ body.mmo.menus-open [data-mi="more"] .mi-ic { transform: rotate(0); filter: brig
 #load-fill::after { content: ''; position: absolute; right: -2px; top: -3px; bottom: -3px; width: 10px; background: radial-gradient(circle, #fff, rgba(255,240,180,0) 70%); }
 #load-pct { width: 56px !important; font: 800 17px var(--serif) !important; color: #fff3c0 !important; text-shadow: 0 2px 4px #000; }
 #load-text { font-size: 15px !important; color: #f6ead0 !important; }
+/* bảng trang bị: chú thích phẩm cấp, nút phân giải không xuống dòng */
+.gear-right .subtabs { flex-wrap: wrap; gap: 6px 12px; }
+.rleg { flex-wrap: wrap; white-space: nowrap; }
+.gsalv { flex-wrap: wrap; } .gsalv button { white-space: nowrap; }
+.ggrid { max-height: 260px; }
+.gcell .thumb-img { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 1px rgba(255,236,190,.85)) drop-shadow(0 2px 3px rgba(0,0,0,.6)); pointer-events: none; }

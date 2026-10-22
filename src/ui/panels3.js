@@ -16,7 +16,7 @@ const statLines = (it, cmp) => Object.entries(it.stats).map(([k, v]) => {
 }).join('');
 const gcell = (it, extra = '') => {
   const R = RARITY[it.rarity];
-  return `<button class="gcell r${it.rarity}" style="--rc:${R.color}" data-uid="${it.uid}" ${extra}>${icon(SLOTS.find((s) => s.id === it.slot).icon)}<span class="gh">${it.han}</span>${it.enh ? `<span class="ge">+${it.enh}</span>` : ''}<span class="gl">${it.lv}</span></button>`;
+  return `<button class="gcell r${it.rarity}" style="--rc:${R.color}" data-uid="${it.uid}" ${extra}>${it.thumb ? `<img class="thumb-img" src="/assets/thumbs/${it.thumb}.png" alt="" draggable="false" />` : icon(SLOTS.find((s) => s.id === it.slot).icon)}<span class="gh">${it.han}</span>${it.enh ? `<span class="ge">+${it.enh}</span>` : ''}<span class="gl">${it.lv}</span></button>`;
 };
 
 Object.assign(UI.prototype, {

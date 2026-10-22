@@ -1,4 +1,5 @@
 import { GEM_ITEMS } from '../game/gear.js';
+import { LOOT_ITEMS } from '../game/loot.js';
 // Bộ biểu tượng nét mảnh 24x24 (stroke = currentColor), dùng chung cho menu, HUD, hành trang.
 const S = (body, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ${extra}>${body}</svg>`;
 
@@ -57,7 +58,7 @@ export const icon = (name, cls = '') => {
 
 /** Ảnh vật phẩm chụp từ model 3D (tools/thumbs.html) */
 const THUMBS = new Set(['potion', 'qipill', 'herb', 'bounty', 'iron_sword', 'steel_sword', 'dao', 'bishui', 'cloth', 'leather', 'silk', 'charm', 'jade', 'gold', 'chest']);
-export const itemIcon = (id, fallback = 'bag') => (GEM_ITEMS[id] ? `<span class="gem-ic l${GEM_ITEMS[id].lv}" style="--gc:${GEM_ITEMS[id].color}"><i></i><b>${GEM_ITEMS[id].lv}</b></span>` : THUMBS.has(id) ? `<img class="thumb-img" src="/assets/thumbs/${id}.png" alt="" draggable="false" />` : icon(fallback));
+export const itemIcon = (id, fallback = 'bag') => (GEM_ITEMS[id] ? `<span class="gem-ic l${GEM_ITEMS[id].lv}" style="--gc:${GEM_ITEMS[id].color}"><i></i><b>${GEM_ITEMS[id].lv}</b></span>` : THUMBS.has(id) || LOOT_ITEMS[id] ? `<img class="thumb-img" src="/assets/thumbs/${LOOT_ITEMS[id]?.thumb || id}.png" alt="" draggable="false" />` : icon(fallback));
 
 /** Biểu tượng 3D (ảnh PNG trong suốt ở /assets/ui) */
 export const uiImg = (id, cls = '') => `<img class="ui3d ${cls}" src="/assets/ui/${id}.png" alt="" draggable="false" />`;

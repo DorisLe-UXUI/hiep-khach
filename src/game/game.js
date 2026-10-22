@@ -38,6 +38,7 @@ import { Fury } from './fury.js';
 import { setLang, trLine, voiceOf, SPEAKER_NAMES, LANG } from '../i18n.js';
 import { Beasts, BEASTS } from './beasts.js';
 import { dropGear, RARITY, randomGem } from './gear.js';
+import { randomFood, randomMat } from './loot.js';
 import { TITLES } from './titles.js';
 import { Meridian } from './meridian.js';
 import { Telegraphs } from './telegraph.js';
@@ -663,10 +664,14 @@ export class Game {
     if (Math.random() < (big ? 1 : 0.14 * (1 + this.beasts.bonus('drop')))) drops.push(['gear', dropGear(lv, big)]);
     if (e.boss && Math.random() < 0.5) drops.push(['gear', dropGear(lv + 2, true)]);
     if (e.tag === 'hanbang') drops.push(['silk', 1]);
+    if (Math.random() < (e.boss ? 1 : big ? 0.7 : 0.28)) drops.push([randomFood(), e.boss ? 3 : 1]);
+    if (Math.random() < (e.boss ? 1 : big ? 0.8 : 0.3)) drops.push([randomMat(big), 1]);
+    if (e.boss) drops.push([randomMat(true), 1]);
     for (const [kind, amount] of drops) {
       const model = { gold: 'coin_pile', potion: 'potion_1', qipill: 'potion_2', bounty: 'scroll_1' }[kind] || 'chest_wood';
+      const own = ITEMS[kind]?.model;
       if (kind === 'gear') this.vfx.pillar(e.pos.clone(), new THREE.Color(RARITY[amount.rarity].color).getHex(), 2 + amount.rarity);
-      const m = (await loadKit(model)).clone(true);
+      const m = (own ? (await loadGLTF(own)).scene : await loadKit(model)).clone(true);
       const box = new THREE.Box3().setFromObject(m), size = box.getSize(new THREE.Vector3());
       m.scale.setScalar(0.45 / Math.max(size.x, size.y, size.z));
       const a = Math.random() * Math.PI * 2;

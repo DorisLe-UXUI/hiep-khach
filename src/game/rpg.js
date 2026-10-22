@@ -7,6 +7,7 @@ export const expNeed = (lv) => Math.round(70 * Math.pow(lv, 1.55));
 
 /** Danh mục vật phẩm. slot: weapon | armor | trinket; use: hàm khi dùng. */
 import { LIFE_ITEMS } from './life.js';
+import { LOOT_ITEMS, BUFF_NAME } from './loot.js';
 
 export const ITEMS = {
   potion: { name: 'Kim sang dược', han: '金創藥', icon: 'potion', type: 'consumable', price: 20, desc: 'Hồi 45% khí huyết. Phím R.' },
@@ -31,7 +32,7 @@ export const ITEMS = {
   jade: { name: 'Ngọc bội Thanh Phong', han: '清風玉佩', icon: 'lotus', type: 'equip', slot: 'trinket', mp: 15, crit: 0.08, desc: 'Nửa miếng ngọc bội của sư phụ. Nội lực +15, bạo kích +8%.' },
 };
 
-Object.assign(ITEMS, LIFE_ITEMS, GEM_ITEMS);
+Object.assign(ITEMS, LIFE_ITEMS, GEM_ITEMS, LOOT_ITEMS);
 
 export const SKILLS = {
   sword: { name: 'Thanh Phong kiếm pháp', han: '清風劍法', icon: 'sword', max: 5, desc: (l) => `Sát thương đòn kiếm +${l * 10}%.` },
@@ -74,6 +75,8 @@ export class RPG {
     }
     v += this.g.meridian?.stat(key) || 0;
     v += TITLES.find((t) => t.id === this.title)?.stats[key] || 0;
+    const b = this.buffs?.[key];
+    if (b && b.until > performance.now()) v += b.val;
     return key === 'atk' || key === 'hp' || key === 'mp' ? Math.round(v) : v;
   }
 
@@ -144,6 +147,18 @@ export class RPG {
       this.remove('grilled');
       p.heal(p.maxHp * 0.3);
       p.mp = Math.min(p.maxMp, p.mp + p.maxMp * 0.3);
+    } else if (ITEMS[id]?.food) {
+      const f = ITEMS[id].food;
+      if (!f.buff && (!f.hp || p.hp >= p.maxHp) && (!f.mp || p.mp >= p.maxMp)) return false;
+      this.remove(id);
+      if (f.hp) p.heal(p.maxHp * f.hp);
+      if (f.mp) p.mp = Math.min(p.maxMp, p.mp + p.maxMp * f.mp);
+      if (f.buff) {
+        const [k, val, dur] = f.buff;
+        (this.buffs ??= {})[k] = { val, until: performance.now() + dur * 1000 };
+        this.g.toast?.(`${ITEMS[id].name}: <b>${BUFF_NAME[k]} +${k === 'atk' ? val : Math.round(val * 100) + '%'}</b> trong ${dur} giây`, 2);
+      }
+      this.g.fx?.burst(p.pos.clone().setY(p.pos.y + 1), f.buff ? 0xffc04a : 0x9aff8a, 18);
     } else if (id === 'herb') {
       this.remove('herb');
       p.heal(20);
