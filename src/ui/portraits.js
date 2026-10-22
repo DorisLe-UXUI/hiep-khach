@@ -4,7 +4,7 @@ import * as THREE from 'three';
  * Chụp chân dung (đầu + vai) của nhân vật 3D để dùng trong khung hội thoại.
  * Trả về dataURL PNG nền trong suốt.
  */
-export function renderPortrait(renderer, character, size = 256) {
+export function renderPortrait(renderer, character, size = 384) {
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xfff4e6, 0x3a3028, 1.4));
   const key = new THREE.DirectionalLight(0xffe6c8, 2.4);
@@ -18,21 +18,32 @@ export function renderPortrait(renderer, character, size = 256) {
   const prevPos = root.position.clone(), prevRot = root.rotation.y;
   scene.add(root);
   root.position.set(0, 0, 0);
-  root.rotation.y = 0;
+  root.rotation.y = 0.32; // nghiêng 3/4 cho có chiều sâu
   character.play('Idle_Loop', { fade: 0 });
   character.mixer.setTime(0.6);
+  character.update?.(0); // nhân vật Meshy: chép tư thế từ khung điều khiển sang
   root.updateMatrixWorld(true);
   const head = new THREE.Vector3();
   character.bones.Head.getWorldPosition(head);
   const cam = new THREE.PerspectiveCamera(24, 1, 0.05, 10);
-  const chibi = !character.bones.neck_01; // KayKit: xương đầu ở gáy, đầu to
-  if (chibi) {
+  const top = character.bones.head_end?.getWorldPosition(new THREE.Vector3());
+  if (top) {
+    // Meshy: canh theo cả khối đầu (gốc đầu → đỉnh đầu), lấy thêm chút vai
+    const h = top.y - head.y, c = new THREE.Vector3(head.x, head.y + h * 0.42, head.z);
+    cam.position.set(c.x + 0.25, c.y + h * 0.12, c.z + h * 3.3);
+    cam.lookAt(c.x, c.y - h * 0.08, c.z);
+  } else if (!character.bones.neck_01) {
+    // KayKit: xương đầu ở gáy, đầu to
     cam.position.set(head.x + 0.2, head.y + 0.42, head.z + 1.9);
     cam.lookAt(head.x, head.y + 0.32, head.z);
   } else {
     cam.position.set(head.x + 0.12, head.y + 0.02, head.z + 1.15);
     cam.lookAt(head.x, head.y - 0.06, head.z);
   }
+  // đèn viền vàng ấm cho nổi khối trong khung vàng
+  const warm = new THREE.DirectionalLight(0xffd090, 1.4);
+  warm.position.set(1.2, 0.4, -0.8);
+  scene.add(warm);
 
   const rt = new THREE.WebGLRenderTarget(size, size, { colorSpace: THREE.SRGBColorSpace });
   const prevTarget = renderer.getRenderTarget();
