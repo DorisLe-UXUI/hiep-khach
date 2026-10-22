@@ -129,7 +129,15 @@ export class UI {
     b('settings').onclick = () => this.openSettings(handlers.settings, handlers.onSettings);
     b('controls').onclick = () => this.openControls();
     b('credits').onclick = () => this.openCredits();
-    $('menu-profile').innerHTML = `${handlers.avatar ? `<span class="av-framed"><img class="av-face" src="${handlers.avatar}" alt="" /><img class="av-frame" src="/assets/ui/frame.png" alt="" /></span>` : icon('user')}<span><b>${esc(profile.name)}</b> · ${esc(profile.hero ? 'Môn phái: ' + (handlers.className || '') : profile.title)}</span><button id="switch-prof">Đăng xuất</button>`;
+    $('menu-profile').innerHTML = `${handlers.avatar ? `<span class="av-framed"><img class="av-face" src="${handlers.avatar}" alt="" /><img class="av-frame" src="/assets/ui/frame.png" alt="" /></span>` : icon('user')}<span class="mp-info"><b>${esc(profile.name)}</b><small>${esc(profile.hero ? 'Môn phái: ' + (handlers.className || '') : profile.title)}</small></span><button id="switch-prof">Đăng xuất</button>`;
+    // nút góc trên phải
+    const mt = (k) => document.querySelector(`#menu-top [data-mt="${k}"]`);
+    mt('settings').onclick = () => this.openSettings(handlers.settings, handlers.onSettings);
+    mt('friends').onclick = () => handlers.ranking?.();
+    mt('gift').onclick = () => handlers.welfare?.();
+    mt('mail').onclick = () => handlers.mail?.();
+    mt('mail').querySelector('.dot').classList.toggle('on', !!handlers.mailUnread?.());
+    mt('gift').querySelector('.dot').classList.toggle('on', !!handlers.giftReady?.());
     $('switch-prof').onclick = () => handlers.switchProfile();
     setTimeout(() => document.querySelector('#menu-buttons .mbtn:not(:disabled)')?.focus(), 50);
   }

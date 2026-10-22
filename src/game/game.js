@@ -1047,13 +1047,16 @@ export class Game {
     const input = this.input;
     this.sky.update(this.running ? this.player.pos : this.camera.position, time);
     if (!this.running) {
-      const a = time * 0.035;
-      this.camera.position.set(PLACES.square.x + Math.sin(a) * 75, 26, PLACES.square.z + Math.cos(a) * 75);
-      this.camera.lookAt(PLACES.square.x, 7, PLACES.square.z - 12);
+      // máy quay menu: thấp, lia chậm qua mái nhà, cây đỏ và dãy núi; bớt sương cho màu tươi
+      if (this._menuFog == null) { this._menuFog = this.scene.fog.density; this.scene.fog.density *= 0.35; }
+      const a = time * 0.03;
+      this.camera.position.set(PLACES.square.x + Math.sin(a) * 46, 9, PLACES.square.z + Math.cos(a) * 46);
+      this.camera.lookAt(PLACES.square.x - Math.sin(a) * 90, 16, PLACES.square.z - Math.cos(a) * 90);
       this.updateSun(this.camera.position);
       this.grass.update(PLACES.square.x, PLACES.square.z, time);
       return;
     }
+    if (this._menuFog != null) { this.scene.fog.density = this._menuFog; this._menuFog = null; }
     if (this.paused || this.panelOpen()) {
       this.hud.update(0);
       return;

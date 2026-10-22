@@ -161,6 +161,23 @@ export class Systems {
     return this.give(r);
   }
 
+  // ─── hộp thư hệ thống ───
+  mails() {
+    this.s.mail ??= [
+      { id: 'welcome', from: 'Thanh Phong trấn', title: 'Chào mừng thiếu hiệp tới Thanh Phong', body: 'Giang hồ hiểm ác, chút quà mọn này mong thiếu hiệp nhận lấy phòng thân. Hẹn gặp ở Duyệt Lai khách điếm!', reward: { gold: 200, potion: 5, qipill: 3 } },
+      { id: 'beast', from: 'Mã phu', title: 'Quà ra mắt Ngự thú', body: 'Thú hoang ngoài đồng cỏ có thể thu phục bằng Ngự thú phù. Tặng thiếu hiệp vài lá dùng thử.', reward: { tame_charm: 3, fodder: 2 } },
+      { id: 'voice', from: 'Ban biên soạn', title: 'Bản cập nhật mới', body: 'Đã có lồng tiếng tiếng Anh, ba ngôn ngữ phụ đề, 20 nhân vật mới và 20 yêu quái. Chúc thiếu hiệp chơi vui!', reward: { essence: 20 } },
+    ];
+    return this.s.mail;
+  }
+  mailUnread() { return this.mails().some((m) => !m.claimed); }
+  claimMail(id) {
+    const m = this.mails().find((x) => x.id === id);
+    if (!m || m.claimed) return null;
+    m.claimed = true;
+    return this.give(m.reward);
+  }
+
   canSignIn() { return this.s.signin.last !== today(); }
   signIn() {
     if (!this.canSignIn()) return null;

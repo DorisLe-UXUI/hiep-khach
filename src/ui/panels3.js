@@ -1,3 +1,4 @@
+import { ITEMS } from '../game/rpg.js';
 import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { SLOTS, RARITY, STAT_NAME, fmtStat, gearScore, GEM_ITEMS, GEM_TYPES, GEM_MAX, socketsOf, parseGem, gemValue, gemId } from '../game/gear.js';
@@ -243,5 +244,19 @@ Object.assign(UI.prototype, {
       else $('mer-msg').textContent = res;
     });
     this.relock(g);
+  },
+
+  // ───────────── HỘP THƯ ─────────────
+  openMail(g, after) {
+    const list = g.sys.mails();
+    const body = this.openPanel('Hộp thư', `<div class="mail-list">${list.map((m) => `
+      <div class="mail ${m.claimed ? 'read' : ''}">
+        <img class="mail-ic" src="/assets/ui/mail.png" alt="" />
+        <div class="mail-b"><small>${m.from}</small><b>${m.title}</b><p>${m.body}</p>
+          <div class="mail-rw">${Object.entries(m.reward).map(([k, v]) => `<span>${k === 'gold' ? itemIcon('gold') : itemIcon(k, ITEMS[k]?.icon)}<i>${v}</i></span>`).join('')}</div></div>
+        <button class="${m.claimed ? 'ghost' : 'primary'} sm" data-mail="${m.id}" ${m.claimed ? 'disabled' : ''}>${m.claimed ? 'Đã nhận' : 'Nhận quà'}</button>
+      </div>`).join('')}</div>`);
+    body.querySelectorAll('[data-mail]').forEach((b) => (b.onclick = () => { const r = g.sys.claimMail(b.dataset.mail); if (r) { g.audio.coin(); g.toast('Nhận: ' + r, 3); } this.openMail(g, after); }));
+    this.onPanelClose = () => after?.();
   },
 });

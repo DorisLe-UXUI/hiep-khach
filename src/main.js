@@ -61,10 +61,10 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 setMaxAnisotropy(renderer.capabilities.getMaxAnisotropy());
 
 let pct = 0;
-const step = (text, to) => { pct = Math.max(pct, to); ui.progress(pct, text); };
-manager.onProgress = (url, loaded, total) => {
-  ui.progress(Math.max(pct, Math.min(95, pct + (loaded / total) * 8)), `Đang tải ${decodeURIComponent(url.split('/').pop())}`);
-};
+let stepText = 'Đang mài kiếm...';
+const step = (text, to) => { pct = Math.max(pct, to); stepText = text; ui.progress(pct, text); };
+// không hiện tên file kỹ thuật, chỉ hiện câu mô tả của bước đang làm
+manager.onProgress = (url, loaded, total) => ui.progress(Math.max(pct, Math.min(95, pct + (loaded / total) * 8)), stepText);
 
 let mode = 'loading';
 let game = null;
@@ -223,6 +223,12 @@ function showMenu(profile) {
   ui.showMenu(profile, save, CHAPTERS, {
     className: CLASSES[profile.hero.cls]?.name,
     avatar: game.portraits.hero,
+    ranking: () => ui.openRanking(game),
+    // nhận quà phải ở trong game (bản lưu được nạp xong) nên vào game trước rồi mở bảng
+    welfare: async () => { await start(save); game.input.unlock(); ui.openWelfare(game); },
+    mail: async () => { await start(save); game.input.unlock(); ui.openMail(game); },
+    mailUnread: () => game.sys.mailUnread(),
+    giftReady: () => game.sys.canSignIn(),
     continue: () => start(save),
     newGame: () => start(null),
     chapter: (i) => start({ ...(save || {}), chapter: i }),
