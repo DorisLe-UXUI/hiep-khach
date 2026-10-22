@@ -68,7 +68,7 @@ manager.onProgress = (url, loaded, total) => {
 
 let mode = 'loading';
 let game = null;
-const preview = { char: null, token: 0, angle: 0 };
+const preview = { char: null, token: 0, angle: 0.35 };
 
 async function boot() {
   // chibi: tải song song mọi model của màn hình chính ngay từ đầu
@@ -199,7 +199,8 @@ async function buildPreview(h) {
   c.root.rotation.y = preview.angle;
   stage.setColor(cls.color || '#d6b062');
   stage.scene.add(c.root);
-  c.play(cls.attack === 'melee' ? 'Sword_Idle' : 'Idle_Loop', { fade: 0 });
+  // dáng đứng thư thả; mới chọn thì chào một cái rồi đứng nghỉ
+  c.play('Yes', { fade: 0, once: true, speed: 0.9, onDone: () => c.play('Idle_Loop', { fade: 0.35 }) });
 }
 
 let dragX = null;
@@ -221,6 +222,7 @@ function showMenu(profile) {
   const save = loadSave(profile);
   ui.showMenu(profile, save, CHAPTERS, {
     className: CLASSES[profile.hero.cls]?.name,
+    avatar: game.portraits.hero,
     continue: () => start(save),
     newGame: () => start(null),
     chapter: (i) => start({ ...(save || {}), chapter: i }),

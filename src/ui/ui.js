@@ -1,4 +1,4 @@
-import { icon } from './icons.js';
+import { icon, uiImg } from './icons.js';
 import { DIFFICULTY, QUALITY, listProfiles, login } from '../settings.js';
 
 const $ = (id) => document.getElementById(id);
@@ -45,8 +45,8 @@ export class UI {
     $('dialog').addEventListener('click', (e) => { if (!e.target.closest('#dlg-choices')) this._advance?.('next'); });
     document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => this.closePanel()));
     // icon cho nút menu
-    const icons = { hero: 'robe', map: 'map', continue: 'play', new: 'plus', chapters: 'book', settings: 'gear', controls: 'keys', credits: 'quill', resume: 'play', journal: 'scroll', inventory: 'bag', quit: 'door', retry: 'heart' };
-    document.querySelectorAll('.mbtn').forEach((b) => b.insertAdjacentHTML('afterbegin', icon(icons[b.dataset.act] || 'star')));
+    const icons = { hero: 'm_hero', map: 'map', continue: 'm_continue', new: 'm_new', chapters: 'm_chapter', settings: 'settings', controls: 'm_controls', credits: 'quest', resume: 'm_continue', journal: 'm_chapter', inventory: 'bag', quit: 'more', retry: 'potion_red' };
+    document.querySelectorAll('.mbtn').forEach((b) => b.insertAdjacentHTML('afterbegin', uiImg(icons[b.dataset.act] || 'title', 'mb-ic')));
   }
 
   nh(text) { return text.replaceAll('Tiêu Vân', this.heroName).replaceAll('Xiao Yun', this.heroName).replaceAll('蕭雲', this.heroName); }
@@ -129,7 +129,7 @@ export class UI {
     b('settings').onclick = () => this.openSettings(handlers.settings, handlers.onSettings);
     b('controls').onclick = () => this.openControls();
     b('credits').onclick = () => this.openCredits();
-    $('menu-profile').innerHTML = `${icon('user')}<span><b>${esc(profile.name)}</b> · ${esc(profile.hero ? 'Môn phái: ' + (handlers.className || '') : profile.title)}</span><button id="switch-prof">Đăng xuất</button>`;
+    $('menu-profile').innerHTML = `${handlers.avatar ? `<span class="av-framed"><img class="av-face" src="${handlers.avatar}" alt="" /><img class="av-frame" src="/assets/ui/frame.png" alt="" /></span>` : icon('user')}<span><b>${esc(profile.name)}</b> · ${esc(profile.hero ? 'Môn phái: ' + (handlers.className || '') : profile.title)}</span><button id="switch-prof">Đăng xuất</button>`;
     $('switch-prof').onclick = () => handlers.switchProfile();
     setTimeout(() => document.querySelector('#menu-buttons .mbtn:not(:disabled)')?.focus(), 50);
   }

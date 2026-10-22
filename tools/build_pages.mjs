@@ -6,7 +6,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT = path.join(ROOT, 'dist-pages');
-fs.rmSync(OUT, { recursive: true, force: true });
+// giữ thư mục .git của nhánh gh-pages (Vite --emptyOutDir không xoá .git)
 execSync('npx vite build --base ./ --outDir dist-pages --emptyOutDir --logLevel error', { cwd: ROOT, stdio: 'inherit' });
 const rel = (s) => s.replace(/(["'`(])\/(assets|brand)\//g, '$1./$2/');
 const A = path.join(OUT, 'assets');

@@ -1048,3 +1048,27 @@ body.mmo #topbar ~ #m-camhint, body.menus-open #m-camhint { display: none; }
 @media (max-width: 760px) { .mer { grid-template-columns: 1fr; } .mer-left { max-width: 320px; margin: 0 auto; } }
 .opt { position: relative; } .opt .opt-new { position: absolute; top: 3px; right: 3px; padding: 0 5px; font: 700 9px sans-serif; font-style: normal; color: #fff; background: linear-gradient(#e2463a, #a01a14); border-radius: 6px; }
 .opt.wpn { gap: 2px; } .opt.wpn .ico { width: 22px; height: 22px; opacity: .8; }
+
+/* ───────── Biểu tượng 3D (ảnh) ───────── */
+img.ui3d { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,.55)); pointer-events: none; }
+.mi.img .mi-ic { background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; width: 50px; height: 50px; }
+body.mmo .mi.img .mi-ic { width: 46px; height: 46px; }
+.mi.img:hover .mi-ic { transform: translateY(-3px) scale(1.1); }
+.mi.img .mi-n { color: #fff; font-weight: 700; text-shadow: -1px -1px 0 #3a1a08, 1px -1px 0 #3a1a08, -1px 1px 0 #3a1a08, 1px 1px 0 #3a1a08, 0 2px 4px #000; }
+body.mmo .mi.img .mi-n { display: block !important; font-size: 10.5px; }
+body.mmo.menus-open [data-mi="more"] .mi-ic { transform: rotate(0); filter: brightness(1.2); }
+.mbtn img.mb-ic { width: 34px; height: 34px; flex: none; }
+#m-quick button.q3d { background: radial-gradient(circle at 50% 35%, #fff8e0, #e8c070 60%, #9a6a28) !important; border: 2px solid #fff0c0 !important; padding: 5px; box-shadow: 0 3px 8px rgba(0,0,0,.5); }
+#m-quick button.q3d img.ui3d { width: 40px; height: 40px; }
+/* khung avatar vàng hoa mai */
+.m-face { overflow: visible !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+.m-face #m-face-img { position: absolute; inset: 7px; width: calc(100% - 14px); height: calc(100% - 14px); border-radius: 50%; object-fit: cover; background: radial-gradient(circle at 50% 35%, #8ac0e8, #3a6a9a); }
+.m-face .m-frame { position: absolute; inset: -10px; width: calc(100% + 20px); height: calc(100% + 20px); pointer-events: none; z-index: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+.m-face .m-lv { z-index: 2; }
+.av-framed { position: relative; width: 58px; height: 58px; flex: none; }
+.av-framed .av-face { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); border-radius: 50%; object-fit: cover; background: radial-gradient(circle at 50% 35%, #8ac0e8, #3a6a9a); }
+.av-framed .av-frame { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); }
+
+.m-auto { display: grid !important; place-items: center; background: radial-gradient(circle at 50% 35%, #fff4d0, #e0b060 55%, #8a5a20) !important; border: 2px solid #fff0c0 !important; }
+.m-auto img.auto-ic { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); }
+.m-auto span { position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); font: 800 11px var(--serif); color: #fff; text-shadow: -1px -1px 0 #3a1a08, 1px -1px 0 #3a1a08, -1px 1px 0 #3a1a08, 1px 1px 0 #3a1a08; }

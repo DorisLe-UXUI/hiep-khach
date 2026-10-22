@@ -58,3 +58,6 @@ export const icon = (name, cls = '') => {
 /** Ảnh vật phẩm chụp từ model 3D (tools/thumbs.html) */
 const THUMBS = new Set(['potion', 'qipill', 'herb', 'bounty', 'iron_sword', 'steel_sword', 'dao', 'bishui', 'cloth', 'leather', 'silk', 'charm', 'jade', 'gold', 'chest']);
 export const itemIcon = (id, fallback = 'bag') => (GEM_ITEMS[id] ? `<span class="gem-ic l${GEM_ITEMS[id].lv}" style="--gc:${GEM_ITEMS[id].color}"><i></i><b>${GEM_ITEMS[id].lv}</b></span>` : THUMBS.has(id) ? `<img class="thumb-img" src="/assets/thumbs/${id}.png" alt="" draggable="false" />` : icon(fallback));
+
+/** Biểu tượng 3D (ảnh PNG trong suốt ở /assets/ui) */
+export const uiImg = (id, cls = '') => `<img class="ui3d ${cls}" src="/assets/ui/${id}.png" alt="" draggable="false" />`;

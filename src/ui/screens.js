@@ -74,7 +74,7 @@ Object.assign(UI.prototype, {
     const h = { ...defaultHero(), ...(initial || {}) };
     return new Promise((resolve) => {
       $('create').classList.remove('hidden');
-      $('cr-title').textContent = editOnly ? 'Nhân vật & thời trang' : 'Chọn môn phái';
+      $('cr-title').textContent = editOnly ? 'Nhân vật' : 'Chọn môn phái';
       $('cr-go').textContent = editOnly ? 'Lưu thay đổi' : 'Tạo nhân vật';
       $('cr-name').classList.toggle('hidden', editOnly);
       $('cr-name').value = initial?.name || '';
@@ -97,7 +97,7 @@ Object.assign(UI.prototype, {
           <div>${icon('dash')}<b>Q</b>${c.q.name}</div><div>${icon('palm')}<b>F</b>${c.f.name}</div></div>`;
       };
       const renderCustom = () => {
-        const tabs = chibi ? [['model', 'Hình tượng', 'user'], ['weapon', 'Binh khí', 'swords'], ['fashion', 'Thời trang', 'robe']]
+        const tabs = chibi ? [['model', 'Hình tượng', 'user'], ['weapon', 'Binh khí', 'swords']]
           : [['hair', 'Kiểu tóc', 'user'], ['color', 'Màu tóc', 'lotus'], ['outfit', 'Trang phục', 'shield'], ['fashion', 'Thời trang', 'star'], ['acc', 'Phụ kiện', 'bag']];
         let body = '';
         if (tab === 'model') body = `<button class="opt ${!h.model ? 'on' : ''}" data-k="model" data-v="">${icon(CLASSES[h.cls].icon)}<span>Theo môn phái</span></button>`

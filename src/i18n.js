@@ -35,7 +35,7 @@ export const SPEAKER_NAMES = {
 // ───────── từ điển giao diện: tiếng Việt → [English, 中文] ─────────
 const UI = {
   'Tiếp tục': ['Continue', '繼續'], 'Hành trình mới': ['New Journey', '新的旅程'], 'Chọn chương': ['Chapters', '選擇章節'],
-  'Nhân vật & thời trang': ['Character & Outfits', '角色與時裝'], 'Cài đặt': ['Settings', '設定'], 'Điều khiển': ['Controls', '操作說明'], 'Ghi công': ['Credits', '製作名單'],
+  'Nhân vật': ['Character', '角色'], 'Cài đặt': ['Settings', '設定'], 'Điều khiển': ['Controls', '操作說明'], 'Ghi công': ['Credits', '製作名單'],
   'Đăng nhập': ['Sign in', '登入'], 'ĐĂNG NHẬP': ['SIGN IN', '登入'], 'Đăng ký': ['Register', '註冊'], 'Tài khoản': ['Account', '帳號'], 'Mật khẩu': ['Password', '密碼'],
   'Nhập lại mật khẩu': ['Repeat password', '再次輸入密碼'], 'Lưu tài khoản': ['Remember me', '記住帳號'], 'Lưu trên máy này': ['Saved on this device', '儲存在本機'], 'Chơi ngay': ['Play as guest', '立即遊玩'],
   'Chọn môn phái': ['Choose your School', '選擇門派'], 'Tạo nhân vật': ['Create', '建立角色'], 'Lưu thay đổi': ['Save changes', '儲存變更'], 'Hiệp danh': ['Hero name', '俠名'], 'Nam': ['Male', '男'], 'Nữ': ['Female', '女'],

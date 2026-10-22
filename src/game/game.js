@@ -79,7 +79,7 @@ for (const k in LOOKS) LOOKS[k]._role = k;
 export async function createHeroCharacter(h) {
   const cls = CLASSES[h.cls] || CLASSES.kiem;
   if (Character.chibi) {
-    const f = LOOK_OPTIONS.fashion.find((x) => x.id === h.fashion);
+    const f = null; // đã bỏ phần thời trang
     const mx = h.model?.startsWith('mx:') ? h.model : MESHY_DEFAULT[`${h.cls}:${h.gender}`];
     if (mx && meshyFile(mx)) return MeshyCharacter.create(meshyFile(mx), heroWeapon(h), { tint: f?.color || null });
     if (h.model?.startsWith('folk:')) {
@@ -1080,7 +1080,6 @@ export class Game {
       if (input.pressed('KeyN')) open(() => this.ui.openEvents(this));
       if (input.pressed('KeyP')) open(() => this.ui.openRanking(this));
       if (input.pressed('KeyG')) open(() => this.ui.openGuild(this));
-      if (input.pressed('KeyU')) open(() => this.ui.openFashion(this));
       if (input.pressed('KeyT')) open(() => this.ui.openCraft(this));
       if (input.pressed('KeyB')) open(() => this.ui.openCompanions(this));
       if (input.pressed('KeyL')) open(() => this.ui.openBestiary(this));

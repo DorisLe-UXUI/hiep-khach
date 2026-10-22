@@ -1,4 +1,4 @@
-import { icon, itemIcon } from './icons.js';
+import { icon, itemIcon, uiImg } from './icons.js';
 import { realmOf } from '../game/rpg.js';
 
 const $ = (id) => document.getElementById(id);
@@ -16,7 +16,7 @@ export class MobileHUD {
     root.id = 'mhud';
     root.innerHTML = `
       <div id="m-avatar">
-        <div class="m-face"><img id="m-face-img" alt="" /><span class="m-lv" id="m-lv">1</span></div>
+        <div class="m-face"><img id="m-face-img" alt="" /><img class="m-frame" src="/assets/ui/frame.png" alt="" /><span class="m-lv" id="m-lv">1</span></div>
         <div class="m-info">
           <div class="m-name"><span id="m-name"></span><span class="m-vip">VIP</span></div>
           <div class="m-bar hp"><div id="m-hp"></div><span id="m-hp-t"></span></div>
@@ -45,13 +45,13 @@ export class MobileHUD {
         <button class="m-sk s6" data-act="u1"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
         <button class="m-sk s7" data-act="u2"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
         <button class="m-rage" data-act="rage" title="Bộc phát nộ khí (X)"><i class="rg-fill"></i><span class="han">怒</span><b class="rg-t">0%</b></button>
-        <button class="m-auto" data-act="auto"><span>Auto</span></button>
+        <button class="m-auto" data-act="auto">${uiImg('auto', 'auto-ic')}<span>Auto</span></button>
       </div>
       <div id="m-quick">
-        <button data-act="mount" title="Thú cưỡi (H)">${icon('horse')}</button>
-        <button data-act="pet" title="Đồng hành">${icon('dog')}</button>
-        <button data-act="potion" class="pot" title="Kim sang dược (R)">${itemIcon('potion', 'potion')}<b id="mq-pot">0</b></button>
-        <button data-act="qipill" class="pot" title="Hồi khí đan">${itemIcon('qipill', 'flask')}<b id="mq-qi">0</b></button>
+        <button data-act="mount" class="q3d" title="Thú cưỡi (H)">${uiImg('mount')}</button>
+        <button data-act="pet" class="q3d" title="Linh thú">${uiImg('pet')}</button>
+        <button data-act="potion" class="pot q3d" title="Kim sang dược (R)">${uiImg('potion_red')}<b id="mq-pot">0</b></button>
+        <button data-act="qipill" class="pot q3d" title="Hồi khí đan">${uiImg('potion_blue')}<b id="mq-qi">0</b></button>
       </div>
       <div id="m-chat">
         <div class="mc-tabs">${[['all', 'Tất cả'], ['area', 'Khu vực'], ['team', 'Tổ Đội'], ['guild', 'Bang Hội']].map(([k, n]) => `<button data-ch="${k}" class="${k === 'all' ? 'on' : ''}">${n}</button>`).join('')}</div>

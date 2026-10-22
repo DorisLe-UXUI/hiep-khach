@@ -2,7 +2,7 @@ import { TITLES } from '../game/titles.js';
 import * as THREE from 'three';
 import { WORLD_SIZE, PLACES } from '../world/layout.js';
 import { ZONES } from '../game/bestiary.js';
-import { icon } from './icons.js';
+import { icon, uiImg } from './icons.js';
 import { realmOf } from '../game/rpg.js';
 
 const $ = (id) => document.getElementById(id);
@@ -59,15 +59,15 @@ export class HUD {
       ['rank', 'Xếp hạng', 'podium', 'P', () => g.ui.openRanking(g)],
       ['guild', 'Bang hội', 'pagoda', 'G', () => g.ui.openGuild(g)],
       ['team', 'Tổ đội', 'team', '', () => g.ui.openParty(g)],
-      ['fashion', 'Thời trang', 'robe', 'U', () => g.ui.openFashion(g)],
       ['craft', 'Sản xuất', 'cauldron', 'T', () => g.ui.openCraft(g)],
       ['mount', 'Ngự thú', 'horse', 'B', () => g.ui.openCompanions(g)],
       ['bestiary', 'Bách quái', 'dragon', 'L', () => g.ui.openBestiary(g)],
       ['life', 'Sinh hoạt', 'rod', '', () => g.ui.openLife(g)],
     ];
-    const btn = ([id, n, ic, key]) => `<button class="mi" data-mi="${id}" title="${n} (${key})"><span class="mi-ic">${icon(ic)}</span><span class="mi-n">${n}</span><i class="badge"></i></button>`;
+    const UI3D = { bag: 'bag', gear: 'gear', skill: 'skill', quest: 'quest', map: 'map', hub: 'settings', meridian: 'meridian', welfare: 'gift', events: 'event', rank: 'rank', guild: 'guild', team: 'team', craft: 'craft', mount: 'mount', bestiary: 'bestiary', life: 'life' };
+    const btn = ([id, n, ic, key]) => `<button class="mi ${UI3D[id] ? 'img' : ''}" data-mi="${id}" title="${n} (${key})"><span class="mi-ic">${UI3D[id] ? uiImg(UI3D[id]) : icon(ic)}</span><span class="mi-n">${n}</span><i class="badge"></i></button>`;
     $('topbar').innerHTML = top.map(btn).join('');
-    $('rail').innerHTML = rail.map(btn).join('') + `<button class="mi more" data-mi="more" title="Thêm chức năng"><span class="mi-ic">${icon('plus')}</span><span class="mi-n">Thêm</span><i class="badge"></i></button>`;
+    $('rail').innerHTML = rail.map(btn).join('') + `<button class="mi more img" data-mi="more" title="Thêm chức năng"><span class="mi-ic">${uiImg('more')}</span><span class="mi-n">Thêm</span><i class="badge"></i></button>`;
     document.querySelector('[data-mi="more"]').onclick = () => document.body.classList.toggle('menus-open');
     for (const [id, , , , fn] of [...top, ...rail]) {
       document.querySelector(`[data-mi="${id}"]`).onclick = () => { g.input.unlock(); g.cursorMode = false; document.body.classList.remove('menus-open'); fn(); };
