@@ -23,6 +23,16 @@ const BONE_MAP = [
 
 /** Các nhân vật Meshy hiện có */
 export const MESHY_MODELS = [
+  { id: 'mx:swordsman_ribbon', file: 'swordsman_ribbon', name: 'Bạch y nữ kiếm', han: '白衣女劍', gender: 'female' },
+  { id: 'mx:red_armor_warrior', file: 'red_armor_warrior', name: 'Xích giáp thương tướng', han: '赤甲槍將', gender: 'male' },
+  { id: 'mx:forest_archer', file: 'forest_archer', name: 'Lâm trung xạ thủ', han: '林中射手', gender: 'male' },
+  { id: 'mx:purple_fairy', file: 'purple_fairy', name: 'Tử y tiên tử', han: '紫衣仙子', gender: 'female' },
+  { id: 'mx:hooded_ninja', file: 'hooded_ninja', name: 'Huyết ảnh sát thủ', han: '血影殺手', gender: 'male' },
+  { id: 'mx:bandit_red_scarf', file: 'bandit_red_scarf', name: 'Hồng cân sơn tặc', han: '紅巾山賊', gender: 'male' },
+  { id: 'mx:straw_hat_boy', file: 'straw_hat_boy', name: 'Nông gia thiếu niên', han: '農家少年', gender: 'male' },
+  { id: 'mx:village_girl', file: 'village_girl', name: 'Thôn nữ', han: '村女', gender: 'female' },
+  { id: 'mx:dwarf_warrior', file: 'dwarf_warrior', name: 'Lão binh', han: '老兵', gender: 'male' },
+  { id: 'mx:old_master', file: 'old_master', name: 'Ẩn sĩ cao nhân', han: '隱士高人', gender: 'male' },
   { id: 'mx:swordsman_blue', file: 'swordsman_blue', name: 'Lam y kiếm khách', han: '藍衣劍客', gender: 'male' },
   { id: 'mx:red_fighter', file: 'red_fighter', name: 'Hồng y thương khách', han: '紅衣槍客', gender: 'female' },
   { id: 'mx:ice_assassin', file: 'ice_assassin', name: 'Băng y thích khách', han: '冰衣刺客', gender: 'female' },
@@ -37,10 +47,10 @@ export const MESHY_MODELS = [
 
 /** Ngoại hình mặc định theo môn phái + giới tính (khi người chơi chưa chọn hình tượng riêng) */
 export const MESHY_DEFAULT = {
-  'kiem:male': 'mx:swordsman_blue', 'kiem:female': 'mx:pink_maiden',
-  'thuong:male': 'mx:barbarian_warrior', 'thuong:female': 'mx:red_fighter',
-  'cung:male': 'mx:swordsman_blue', 'cung:female': 'mx:green_warrior',
-  'phap:male': 'mx:taoist_scholar', 'phap:female': 'mx:ice_assassin',
+  'kiem:male': 'mx:swordsman_blue', 'kiem:female': 'mx:swordsman_ribbon',
+  'thuong:male': 'mx:red_armor_warrior', 'thuong:female': 'mx:red_fighter',
+  'cung:male': 'mx:forest_archer', 'cung:female': 'mx:green_warrior',
+  'phap:male': 'mx:taoist_scholar', 'phap:female': 'mx:purple_fairy',
   'dao:male': 'mx:taoist_scholar', 'dao:female': 'mx:black_robes',
 };
 export const meshyFile = (id) => MESHY_MODELS.find((m) => m.id === id)?.file;

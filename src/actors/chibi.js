@@ -27,7 +27,7 @@ const MAP = {
   Hit_Chest: ['Hit_A', 1.2], Hit_Head: ['Hit_B', 1.2], Hit_Knockback: ['Hit_B', 0.9],
   Death01: ['Death_A'], Consume: ['Use_Item', 1.2], Chest_Open: ['Interact'], PickUp_Table: ['PickUp'], Interact: ['Interact'],
   Sitting_Idle_Loop: ['Sit_Floor_Idle'], Sitting_Talking_Loop: ['Sit_Floor_Idle'], Driving_Loop: ['Sit_Chair_Idle'],
-  Swim_Fwd_Loop: ['Running_A', 0.6], Swim_Idle_Loop: ['Idle_A'], Yes: ['Cheering'],
+  Attack: ['Melee_Unarmed_Attack_Punch_A', 1.1], Swim_Fwd_Loop: ['Running_A', 0.6], Swim_Idle_Loop: ['Idle_A'], Yes: ['Cheering'],
 };
 
 /** Ghi đè theo kiểu vũ khí (cung, phép, hai tay) */
@@ -224,15 +224,15 @@ export class ChibiCharacter {
 
 /** Ngoại hình chibi theo vai trò (cho NPC, địch). */
 export const CHIBI_LOOKS = {
-  guard: { model: 'barbarian', tint: '#b8a890' },
+  guard: { model: 'barbarian', tint: '#b8a890', meshy: 'dwarf_warrior' },
   innkeeper: { model: 'mage', hide: ['Mage_Hat'], tint: '#c8a070', meshy: 'merchant' },
   maiden: { model: 'rogue', tint: '#a8d0e8', meshy: 'pink_maiden' },
-  villagerM: { model: 'knight', hide: ['Helmet', 'Cape'], tint: '#c8b8a0' },
-  villagerF: { model: 'ranger', hide: ['Quiver'], tint: '#e0c0a0' },
-  bandit: { model: 'barbarian', tint: '#8a6a50' },
-  bandit2: { model: 'rogue_hooded', tint: '#7a5a3a', tintK: 0.6 },
+  villagerM: { model: 'knight', hide: ['Helmet', 'Cape'], tint: '#c8b8a0', meshy: 'straw_hat_boy' },
+  villagerF: { model: 'ranger', hide: ['Quiver'], tint: '#e0c0a0', meshy: 'village_girl' },
+  bandit: { model: 'barbarian', tint: '#8a6a50', meshy: 'bandit_red_scarf' },
+  bandit2: { model: 'rogue_hooded', tint: '#7a5a3a', tintK: 0.6, meshy: 'bandit_red_scarf', meshyTint: '#6a8a5a' },
   boss: { model: 'barbarian', tint: '#a03028', scale: 1.15, meshy: 'barbarian_warrior' },
-  assassin: { model: 'rogue_hooded', tint: '#2a2030', tintK: 0.8 },
+  assassin: { model: 'rogue_hooded', tint: '#2a2030', tintK: 0.8, meshy: 'hooded_ninja' },
   hanbang: { model: 'rogue', tint: '#3a5a98', tintK: 0.65, meshy: 'ice_assassin' },
   villain: { model: 'mage', tint: '#a01020', tintK: 0.7, scale: 1.1, meshy: 'dark_lord' },
   skeleton: { model: 'skeleton_warrior', skeleton: true },

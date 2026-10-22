@@ -127,7 +127,8 @@ export class HUD {
 
   bark(name, portrait, text, t = 4) {
     $('bark-name').textContent = name;
-    $('bark-text').textContent = this.game.ui.nh(text);
+    $('bark-text').textContent = this.game.ui.nh(this.game.ui.tr?.(text) ?? text);
+    this.game.ui.speak?.(text);
     $('bark-img').src = portrait || '';
     $('bark').classList.remove('hidden');
     this.barkT = t;

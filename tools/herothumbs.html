@@ -4,10 +4,13 @@
 <script type="module">
 import * as THREE from 'three';
 import { MeshyCharacter, MESHY_MODELS } from '/src/actors/meshy.js';
+import { MONSTERS } from '/src/game/bestiary.js';
+const MON = new URLSearchParams(location.search).get('mon');
+const LIST = MON ? Object.entries(MONSTERS).filter(([, m]) => m.meshy).map(([id, m]) => ({ file: m.meshy, out: 'mon_' + id })) : MESHY_MODELS.map((m) => ({ file: m.file, out: 'hero_' + m.file }));
 const S = 256;
 const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 r.setSize(S, S); r.setPixelRatio(1); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.15; r.setClearColor(0, 0);
-for (const m of MESHY_MODELS) {
+for (const m of LIST) {
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xfff2dc, 0x302018, 2.2));
   const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(2, 3, 4); scene.add(key);
@@ -20,7 +23,7 @@ for (const m of MESHY_MODELS) {
   cam.position.set(0, 1.05, 2.9); cam.lookAt(0, 0.92, 0);
   r.render(scene, cam);
   const blob = await new Promise((res) => r.domElement.toBlob(res, 'image/png'));
-  await fetch(`/__save?dir=thumbs&name=hero_${m.file}.png`, { method: 'POST', body: blob });
+  await fetch(`/__save?dir=thumbs&name=${m.out}.png`, { method: 'POST', body: blob });
   const img = new Image(); img.src = URL.createObjectURL(blob); img.width = 128; img.style.background = '#1a120c';
   document.getElementById('out').appendChild(img);
 }

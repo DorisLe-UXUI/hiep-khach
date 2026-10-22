@@ -5,6 +5,8 @@ export const DEFAULTS = {
   invertY: false,
   volume: 0.6,
   music: 0.5,
+  voice: 0.9,
+  lang: 'vi',
   quality: 'medium',  // low | medium | high
   fov: 55,
   difficulty: 'normal', // easy | normal | hard

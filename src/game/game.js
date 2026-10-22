@@ -35,6 +35,7 @@ import { AutoPilot } from './auto.js';
 import { MobileHUD } from '../ui/mobilehud.js';
 import { realmOf } from './rpg.js';
 import { Fury } from './fury.js';
+import { setLang, trLine, voiceOf, SPEAKER_NAMES, LANG } from '../i18n.js';
 import { Beasts, BEASTS } from './beasts.js';
 import { dropGear, RARITY, randomGem } from './gear.js';
 import { TITLES } from './titles.js';
@@ -94,7 +95,7 @@ export async function createHeroCharacter(h) {
 async function makeChar(look, weapon) {
   if (Character.chibi) {
     const cl = look._hero ? chibiHero(look._hero) : CHIBI_LOOKS[look._role] || CHIBI_LOOKS.villagerM;
-    if (cl.meshy) return MeshyCharacter.create(cl.meshy, weapon, { scale: cl.scale });
+    if (cl.meshy) return MeshyCharacter.create(cl.meshy, weapon, { scale: cl.scale, tint: cl.meshyTint });
     const hm = look._hero && MESHY_DEFAULT[`${look._hero.cls}:${look._hero.gender}`];
     if (hm) return MeshyCharacter.create(meshyFile(hm), weapon);
     return ChibiCharacter.create(cl, cl.skeleton && weapon ? (weapon === 'staff' ? 'skelstaff' : 'skelaxe') : weapon);
@@ -113,16 +114,16 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** NPC dịch vụ trong trấn (game nhập vai): mỗi người mở một màn. */
 const SERVICE_NPCS = [
-  { id: 'merchant', name: 'Tiền Đa Bảo', han: '錢多寶', model: 'mini-male-c', x: 12, z: 38, yaw: Math.PI / 2, greet: 'Hàng tốt giá rẻ, vào xem đi khách quan!', action: 'Xem hàng (tiệm tạp hoá)', open: 'openShopPanel' },
+  { id: 'merchant', name: 'Tiền Đa Bảo', han: '錢多寶', model: 'mx:merchant', x: 12, z: 38, yaw: Math.PI / 2, greet: 'Hàng tốt giá rẻ, vào xem đi khách quan!', action: 'Xem hàng (tiệm tạp hoá)', open: 'openShopPanel' },
   { id: 'smith', name: 'Thiết Ngưu', han: '鐵牛', model: 'mx:barbarian_warrior', x: 60, z: 36, yaw: -Math.PI / 2, greet: 'Đưa binh khí đây, lão Ngưu rèn cho sắc bén!', action: 'Cường hoá binh khí', open: 'openForge' },
-  { id: 'apothecary', name: 'Tô Linh', han: '蘇靈', model: 'mini-female-a', x: 4, z: 56, yaw: Math.PI / 2, greet: 'Thảo dược, cá tươi đem tới đây, tiểu nữ luyện đan nấu món cho.', action: 'Luyện đan & nấu ăn', open: 'openCraftPanel' },
-  { id: 'auctioneer', name: 'Kim lão', han: '金老', model: 'mini-male-a', x: 48, z: 46, yaw: -Math.PI / 2, greet: 'Đấu giá hội Thanh Phong sắp mở phiên mới, mời quý khách!', action: 'Vào phiên đấu giá', open: 'openAuctionPanel' },
-  { id: 'trainer', name: 'Giáo đầu Lý Hổ', han: '李虎', model: 'mini-male-d', x: 30, z: 62, yaw: Math.PI, greet: 'Đi giang hồ một mình nguy hiểm lắm. Võ quán có người giỏi, thuê theo cùng không?', action: 'Chiêu mộ đồng đội (tổ đội)', open: 'openPartyPanel' },
-  { id: 'mentor', name: 'Huyền Cơ Tử', han: '玄機子', model: 'mini-male-e', x: 14, z: 86, yaw: Math.PI, greet: 'Lão phu thấy ngươi cốt cách thanh kỳ...', action: 'Sư đồ', open: 'openMasterPanel' },
-  { id: 'herald', name: 'Lệnh sứ chiến trường', han: '戰令使', model: 'mini-male-b', x: 44, z: 92, yaw: Math.PI, greet: 'Huyết Ảnh Môn đang tập kết ở đồng cỏ phía đông nam. Thanh Phong cần người!', action: 'Ra chiến trường', open: 'openBattlePanel' },
-  { id: 'fisher', name: 'Ngư ông', han: '漁翁', model: 'mini-male-b', x: -60, z: 80, yaw: -Math.PI / 2, greet: 'Hồ Bích Thủy nhiều cá lắm. Muốn học nghề sinh hoạt không?', action: 'Hướng dẫn sinh hoạt', open: 'openLifePanel' },
-  { id: 'matchmaker', name: 'Hồng nương', han: '紅娘', model: 'mini-female-d', x: 54, z: 72, yaw: -Math.PI / 2, greet: 'Duyên phận trời định, hôn nhân người lo~', action: 'Kết duyên & gia đình', open: 'openFamilyPanel' },
-  { id: 'steward', name: 'Quản gia', han: '管家', model: 'mini-male-f', x: -24, z: 106, yaw: Math.PI, greet: 'Chủ nhân, gia viên cần tu sửa thêm ạ.', action: 'Quản lý gia viên', open: 'openHousePanel' },
+  { id: 'apothecary', name: 'Tô Linh', han: '蘇靈', model: 'mx:village_girl', x: 4, z: 56, yaw: Math.PI / 2, greet: 'Thảo dược, cá tươi đem tới đây, tiểu nữ luyện đan nấu món cho.', action: 'Luyện đan & nấu ăn', open: 'openCraftPanel' },
+  { id: 'auctioneer', name: 'Kim lão', han: '金老', model: 'mx:old_master', x: 48, z: 46, yaw: -Math.PI / 2, greet: 'Đấu giá hội Thanh Phong sắp mở phiên mới, mời quý khách!', action: 'Vào phiên đấu giá', open: 'openAuctionPanel' },
+  { id: 'trainer', name: 'Giáo đầu Lý Hổ', han: '李虎', model: 'mx:red_armor_warrior', x: 30, z: 62, yaw: Math.PI, greet: 'Đi giang hồ một mình nguy hiểm lắm. Võ quán có người giỏi, thuê theo cùng không?', action: 'Chiêu mộ đồng đội (tổ đội)', open: 'openPartyPanel' },
+  { id: 'mentor', name: 'Huyền Cơ Tử', han: '玄機子', model: 'mx:old_master', x: 14, z: 86, yaw: Math.PI, greet: 'Lão phu thấy ngươi cốt cách thanh kỳ...', action: 'Sư đồ', open: 'openMasterPanel' },
+  { id: 'herald', name: 'Lệnh sứ chiến trường', han: '戰令使', model: 'mx:forest_archer', x: 44, z: 92, yaw: Math.PI, greet: 'Huyết Ảnh Môn đang tập kết ở đồng cỏ phía đông nam. Thanh Phong cần người!', action: 'Ra chiến trường', open: 'openBattlePanel' },
+  { id: 'fisher', name: 'Ngư ông', han: '漁翁', model: 'mx:straw_hat_boy', x: -60, z: 80, yaw: -Math.PI / 2, greet: 'Hồ Bích Thủy nhiều cá lắm. Muốn học nghề sinh hoạt không?', action: 'Hướng dẫn sinh hoạt', open: 'openLifePanel' },
+  { id: 'matchmaker', name: 'Hồng nương', han: '紅娘', model: 'mx:pink_maiden', x: 54, z: 72, yaw: -Math.PI / 2, greet: 'Duyên phận trời định, hôn nhân người lo~', action: 'Kết duyên & gia đình', open: 'openFamilyPanel' },
+  { id: 'steward', name: 'Quản gia', han: '管家', model: 'mx:merchant', x: -24, z: 106, yaw: Math.PI, greet: 'Chủ nhân, gia viên cần tu sửa thêm ạ.', action: 'Quản lý gia viên', open: 'openHousePanel' },
 ];
 
 export class Game {
@@ -166,6 +167,9 @@ export class Game {
     this.auto = new AutoPilot(this);
     this.chatT = 20;
     this.beasts = new Beasts(this);
+    // lồng tiếng + phụ đề cho lời dẫn truyện và câu nói nhanh
+    this.ui.tr = (t) => trLine(t);
+    this.ui.speak = (t, isHero) => this.audio.voice(t ? voiceOf(t, isHero !== false && this.profile.hero?.gender === 'female') : null);
     this.ui.sound = (n) => this.audio.ui(n);
     document.addEventListener('pointerdown', (e) => { if (e.target.closest?.('button')) this.audio.ui('click'); }, true);
     this.companions = new Companions(this);
@@ -196,6 +200,8 @@ export class Game {
     this.camRig.invertY = s.invertY;
     this.audio.setVolume(s.volume);
     this.audio.setMusicVolume(s.music ?? 0.5);
+    this.audio.voiceVol = s.voice ?? 0.9;
+    setLang(s.lang || 'vi');
     const mmo = s.controlMode !== 'action';
     this.input.noLock = mmo;
     if (mmo && this.input.locked) this.input.unlock();
@@ -247,7 +253,7 @@ export class Game {
     }
 
     progress('Mở hàng quán, võ quán...');
-    const folk = async (model, h = 1.5) => (model.startsWith('mx:') ? MeshyCharacter.create(meshyFile(model), null) : Character.chibi ? MonsterCharacter.create({ file: `/assets/folk/${model}.glb`, height: h, folk: true }) : makeChar(LOOKS.villagerM));
+    const folk = async (model, h = 1.5, tint = null) => (model.startsWith('mx:') ? MeshyCharacter.create(meshyFile(model), null, { tint }) : Character.chibi ? MonsterCharacter.create({ file: `/assets/folk/${model}.glb`, height: h, folk: true }) : makeChar(LOOKS.villagerM));
     for (const sv of SERVICE_NPCS) {
       const n = new NPC(this, await folk(sv.model), { name: sv.name, idleAnim: 'Idle_Loop', talkAnim: 'Idle_Loop' });
       n.id = sv.id; n.role = sv; n.speaker = sv.id;
@@ -257,11 +263,12 @@ export class Game {
       this.npcs.push(n); this.npcById[sv.id] = n; this.scene.add(n.root);
       this.portraits[sv.id] = renderPortrait(this.renderer, n.char);
     }
-    const crowd = ['mini-male-a', 'mini-female-b', 'mini-male-d', 'mini-female-e', 'mini-male-c', 'mini-female-f', 'mini-female-a', 'mini-male-f'];
+    const crowd = ['mx:straw_hat_boy', 'mx:village_girl', 'mx:straw_hat_boy', 'mx:village_girl', 'mx:merchant', 'mx:village_girl', 'mx:straw_hat_boy', 'mx:village_girl'];
     const r0 = rng(77);
     for (let i = 0; i < crowd.length; i++) {
       const route = Array.from({ length: 4 }, () => [PLACES.square.x + (r0() - 0.5) * 70, PLACES.square.z + (r0() - 0.3) * 60]);
-      const n = new NPC(this, await folk(crowd[i], 1.4), { name: 'Thôn dân', route });
+      const tints = [null, '#8ab0d8', '#d89a7a', '#9ac08a', null, '#c8a0d0', '#d8c080', '#a0a0a0'];
+      const n = new NPC(this, await folk(crowd[i], 1.4, tints[i]), { name: 'Thôn dân', route });
       n.id = 'crowd' + i; n.speaker = 'villager';
       n.placeAt(route[0][0], route[0][1], 0); n.home = route[0];
       this.npcs.push(n); this.npcById[n.id] = n; this.scene.add(n.root);
@@ -511,6 +518,7 @@ export class Game {
       resolve();
     }
     this.ui.hideDialog();
+    this.audio.voice(null);
     this.camRig.cinematic = null;
     this.dialogOpen = false;
     document.body.classList.remove('in-dialog');
@@ -523,8 +531,10 @@ export class Game {
       if (Array.isArray(l)) {
         const [who, text] = l;
         const sp = SPEAKERS[who] || { name: who };
-        const name = who === 'hero' ? this.profile.name : sp.name;
-        await this.ui.line(name, this.portraits[who], this.ui.gender(text, who === 'hero'), false, sp.han && who !== 'hero' ? sp.han : '');
+        const name = who === 'hero' ? this.profile.name : LANG === 'en' ? SPEAKER_NAMES.en[who] || sp.name : LANG === 'zh' && sp.han ? sp.han : sp.name;
+        this.ui.speak(text, who === 'hero');
+        const sub = trLine(text);
+        await this.ui.line(name, this.portraits[who], sub ? this.zhGender(sub, who === 'hero') : this.ui.gender(text, who === 'hero'), false, sp.han && who !== 'hero' ? sp.han : '');
       } else if (l.choice) {
         const i = await this.ui.choose(l.choice);
         const more = l.choice[i].then?.(this);
@@ -617,6 +627,12 @@ export class Game {
     if (zn) return zn.id === 'bangho' ? 'lake' : zn.id === 'hangtuyet' || zn.id === 'thunglung' ? 'dungeon' : 'wild';
     if (Math.hypot(p.x - PLACES.square.x, p.z - PLACES.square.z) < 95) return 'town';
     return 'wild';
+  }
+
+  /** Phụ đề tiếng Trung: đổi xưng hô khi nhân vật chính là nữ */
+  zhGender(text, isHero) {
+    if (LANG !== 'zh' || this.profile.hero?.gender !== 'female') return text;
+    return isHero ? text.replaceAll('在下', '小女子') : text.replaceAll('公子', '姑娘').replaceAll('少俠', '女俠').replaceAll('大俠', '女俠');
   }
 
   checkTitles() {
@@ -899,7 +915,7 @@ export class Game {
   async spawnMonster(id, x, z, opts = {}) {
     const m = MONSTERS[id];
     const st = monsterStats(m);
-    const ch = await MonsterCharacter.create({ file: m.file, height: m.h * (opts.scale || 1), tint: m.tint });
+    const ch = m.meshy ? await MeshyCharacter.create(m.meshy, null, { scale: (m.h * (opts.scale || 1)) / 1.75 }) : await MonsterCharacter.create({ file: m.file, height: m.h * (opts.scale || 1), tint: m.tint });
     const e = new Enemy(this, ch, {
       name: m.name, hp: st.hp, dmg: st.dmg, x, z, boss: !!opts.boss, aggro: opts.aggro ?? (m.passive ? 0 : m.elite ? 14 : m.beast ? 7 : 10), speed: m.elite ? 4.2 : 3.6,
       patrol: opts.patrol, idleAnim: 'Idle_Loop', caster: m.caster, exp: st.exp, gold: st.gold, group: opts.group || 'mob:' + id, tag: id,

@@ -127,6 +127,17 @@ export class Audio {
     }
     this.rainG.gain.value = k * 0.22;
   }
+  /** Lồng tiếng: phát một câu (ngắt câu trước); name = null để dừng */
+  voice(name) {
+    if (this.voiceEl) { this.voiceEl.pause(); this.voiceEl = null; }
+    if (!name) return;
+    const a = new window.Audio(`/assets/voice/${name}.mp3`);
+    a.volume = Math.min(1, (this.vol ?? 0.5) * 1.5) * (this.voiceVol ?? 0.9);
+    a.play().catch(() => {});
+    this.voiceEl = a;
+    // nhạc nền nhỏ lại khi có người nói
+    if (this.track) { this.track.volume *= 0.45; a.onended = () => this.setMusicVolume(this.musicVol); }
+  }
   ui(name = 'click') { this.sfx(name, { vol: 0.35, jitter: 0.02 }); }
   step() { this.sfx('step', { vol: 0.18 }); }
   chime() { if (this.sfx('success', { vol: 0.45, jitter: 0 })) return; [523, 659, 784].forEach((f, i) => setTimeout(() => this.tone(f, 0.6, 0.12, 'sine'), i * 110)); }

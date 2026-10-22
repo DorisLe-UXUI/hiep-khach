@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { manager, setMaxAnisotropy } from './engine/assets.js';
 import { preloadModels } from './engine/preload.js';
 import { HeroStage } from './world/stage.js';
+import { setLang } from './i18n.js';
 import { Input } from './engine/input.js';
 import { Terrain } from './world/terrain.js';
 import { Colliders } from './world/colliders.js';
@@ -42,6 +43,7 @@ if (import.meta.env.VITE_LITE) {
 const ui = new UI();
 ui.decorate();
 const settings = loadSettings();
+setLang(settings.lang || 'vi');
 // bản rút gọn đăng claude.ai chỉ có phong cách chibi
 if (import.meta.env.VITE_LITE) settings.style = 'bright';
 Character.chibi = settings.style !== 'realistic';

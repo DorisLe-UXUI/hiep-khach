@@ -49,7 +49,7 @@ export class UI {
     document.querySelectorAll('.mbtn').forEach((b) => b.insertAdjacentHTML('afterbegin', icon(icons[b.dataset.act] || 'star')));
   }
 
-  nh(text) { return text.replaceAll('Tiêu Vân', this.heroName); }
+  nh(text) { return text.replaceAll('Tiêu Vân', this.heroName).replaceAll('Xiao Yun', this.heroName).replaceAll('蕭雲', this.heroName); }
 
   /** Đổi cách xưng hô khi nhân vật chính là nữ. */
   gender(text, isHero) {
@@ -165,8 +165,10 @@ export class UI {
       <div class="set-row">${icon('mouse')}<label>Độ nhạy chuột<small>Tốc độ xoay góc nhìn</small></label><input type="range" min="0.3" max="2.5" step="0.05" value="${s.sens}" data-k="sens"></div>
       <div class="set-row">${icon('mouse')}<label>Đảo trục dọc</label><button class="toggle ${s.invertY ? 'on' : ''}" data-k="invertY"></button></div>
       <div class="set-row">${icon('eye')}<label>Góc nhìn (FOV)</label><input type="range" min="45" max="80" step="1" value="${s.fov}" data-k="fov"></div>
+      <div class="set-row">${icon('compass')}<label>Ngôn ngữ<small>Phụ đề & giao diện · lồng tiếng tiếng Anh</small></label>${seg('lang', { vi: { label: 'Tiếng Việt' }, en: { label: 'English' }, zh: { label: '中文' } })}</div>
       <div class="set-row">${icon('volume')}<label>Âm lượng</label><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-k="volume"></div>
       <div class="set-row">${icon('book')}<label>Nhạc nền</label><input type="range" min="0" max="1" step="0.05" value="${s.music ?? 0.5}" data-k="music"></div>
+      <div class="set-row">${icon('user')}<label>Lồng tiếng</label><input type="range" min="0" max="1" step="0.05" value="${s.voice ?? 0.9}" data-k="voice"></div>
       <div class="set-row">${icon('sun')}<label>Chất lượng đồ hoạ<small>Bóng đổ, độ nét, mật độ cỏ</small></label>${seg('quality', QUALITY)}</div>
       <div class="set-row">${icon('skull')}<label>Độ khó</label>${seg('difficulty', DIFFICULTY)}</div>
       <div class="set-row">${icon('star')}<label>Hiện số sát thương</label><button class="toggle ${s.dmgNumbers ? 'on' : ''}" data-k="dmgNumbers"></button></div>`);
@@ -242,11 +244,13 @@ export class UI {
     $('narration').classList.remove('hidden');
     await this.fade(false);
     for (const l of lines) {
-      box.innerHTML = `<div class="ln">${esc(this.nh(l))}</div>`;
+      box.innerHTML = `<div class="ln">${esc(this.nh(this.tr?.(l) ?? l))}</div>`;
+      this.speak?.(l);
       const r = await new Promise((res) => (this._advance = res));
       if (r === 'skip') break;
     }
     this._advance = null;
+    this.speak?.(null);
     await this.fade(true);
     $('narration').classList.add('hidden');
   }
