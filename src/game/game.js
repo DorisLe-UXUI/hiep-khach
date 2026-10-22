@@ -29,6 +29,7 @@ import { Life } from './life.js';
 import { Social, RECRUITS } from './social.js';
 import { REVEAL } from '../world/stylized.js';
 import { MonsterCharacter } from '../actors/monster.js';
+import { MeshyCharacter, MESHY_DEFAULT, meshyFile } from '../actors/meshy.js';
 import { MONSTERS, Spawner, monsterStats } from './bestiary.js';
 import { AutoPilot } from './auto.js';
 import { MobileHUD } from '../ui/mobilehud.js';
@@ -78,6 +79,8 @@ export async function createHeroCharacter(h) {
   const cls = CLASSES[h.cls] || CLASSES.kiem;
   if (Character.chibi) {
     const f = LOOK_OPTIONS.fashion.find((x) => x.id === h.fashion);
+    const mx = h.model?.startsWith('mx:') ? h.model : !h.model && MESHY_DEFAULT[`${h.cls}:${h.gender}`];
+    if (mx && meshyFile(mx)) return MeshyCharacter.create(meshyFile(mx), cls.weapon || 'staff', { tint: f?.color || null });
     if (h.model?.startsWith('folk:')) {
       const c = await MonsterCharacter.create({ file: `/assets/folk/${h.model.slice(5)}.glb`, height: 1.55, folk: true, tint: f?.color || null });
       await c.equip(cls.weapon || 'staff');
@@ -91,6 +94,7 @@ export async function createHeroCharacter(h) {
 async function makeChar(look, weapon) {
   if (Character.chibi) {
     const cl = look._hero ? chibiHero(look._hero) : CHIBI_LOOKS[look._role] || CHIBI_LOOKS.villagerM;
+    if (cl.meshy) return MeshyCharacter.create(cl.meshy, weapon, { scale: cl.scale });
     return ChibiCharacter.create(cl, cl.skeleton && weapon ? (weapon === 'staff' ? 'skelstaff' : 'skelaxe') : weapon);
   }
   const l = { ...look };

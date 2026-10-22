@@ -204,7 +204,7 @@ export class ChibiCharacter {
 export const CHIBI_LOOKS = {
   guard: { model: 'barbarian', tint: '#b8a890' },
   innkeeper: { model: 'mage', hide: ['Mage_Hat'], tint: '#c8a070' },
-  maiden: { model: 'rogue', tint: '#a8d0e8' },
+  maiden: { model: 'rogue', tint: '#a8d0e8', meshy: 'pink_maiden' },
   villagerM: { model: 'knight', hide: ['Helmet', 'Cape'], tint: '#c8b8a0' },
   villagerF: { model: 'ranger', hide: ['Quiver'], tint: '#e0c0a0' },
   bandit: { model: 'barbarian', tint: '#8a6a50' },

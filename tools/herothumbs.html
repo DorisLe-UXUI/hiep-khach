@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8" /><title>Chụp chân dung nhân vật Meshy</title></head>
+<body style="background:#333;color:#ddd;font:14px monospace"><pre id="log">Đang chụp...</pre><div id="out" style="display:flex;gap:6px"></div>
+<script type="module">
+import * as THREE from 'three';
+import { MeshyCharacter, MESHY_MODELS } from '/src/actors/meshy.js';
+const S = 256;
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+r.setSize(S, S); r.setPixelRatio(1); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.15; r.setClearColor(0, 0);
+for (const m of MESHY_MODELS) {
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xfff2dc, 0x302018, 2.2));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(2, 3, 4); scene.add(key);
+  const c = await MeshyCharacter.create(m.file, null);
+  c.root.rotation.y = 0.35;
+  scene.add(c.root);
+  c.play('Idle_Loop', { fade: 0 });
+  c.update(0.5);
+  const cam = new THREE.PerspectiveCamera(28, 1, 0.01, 50);
+  cam.position.set(0, 1.05, 2.9); cam.lookAt(0, 0.92, 0);
+  r.render(scene, cam);
+  const blob = await new Promise((res) => r.domElement.toBlob(res, 'image/png'));
+  await fetch(`/__save?dir=thumbs&name=hero_${m.file}.png`, { method: 'POST', body: blob });
+  const img = new Image(); img.src = URL.createObjectURL(blob); img.width = 128; img.style.background = '#1a120c';
+  document.getElementById('out').appendChild(img);
+}
+document.getElementById('log').textContent = 'HOÀN TẤT';
+</script></body></html>

@@ -4,6 +4,7 @@ import { icon, itemIcon } from './icons.js';
 import { listProfiles, register, signIn, guest, saveProfile } from '../settings.js';
 import { CLASSES, LOOK_OPTIONS, defaultHero } from '../game/classes.js';
 import { CHIBI_MODELS, FOLK } from '../actors/chibi.js';
+import { MESHY_MODELS } from '../actors/meshy.js';
 import { Character } from '../actors/character.js';
 import { ITEMS, SKILLS, expNeed, realmOf } from '../game/rpg.js';
 import { WORLD_SIZE, PLACES, PATHS } from '../world/layout.js';
@@ -100,6 +101,7 @@ Object.assign(UI.prototype, {
           : [['hair', 'Kiểu tóc', 'user'], ['color', 'Màu tóc', 'lotus'], ['outfit', 'Trang phục', 'shield'], ['fashion', 'Thời trang', 'star'], ['acc', 'Phụ kiện', 'bag']];
         let body = '';
         if (tab === 'model') body = `<button class="opt ${!h.model ? 'on' : ''}" data-k="model" data-v="">${icon(CLASSES[h.cls].icon)}<span>Theo môn phái</span></button>`
+          + MESHY_MODELS.filter((m) => m.gender === h.gender).map((m) => `<button class="opt ${h.model === m.id ? 'on' : ''}" data-k="model" data-v="${m.id}"><img class="opt-thumb" src="/assets/thumbs/hero_${m.file}.png" alt="" /><span>${m.name}</span><i class="opt-new">Mới</i></button>`).join('')
           + CHIBI_MODELS.map((m) => `<button class="opt ${h.model === m.id ? 'on' : ''}" data-k="model" data-v="${m.id}"><span class="han" style="font-size:22px">${m.han}</span><span>${m.name}</span></button>`).join('')
           + FOLK.filter((m) => m.gender === 'any' || m.gender === h.gender).map((m) => `<button class="opt ${h.model === m.id ? 'on' : ''}" data-k="model" data-v="${m.id}"><img class="opt-thumb" src="/assets/thumbs/folk_${m.id.slice(5).replace(/-/g, '_')}.png" alt="" /><span>${m.name}</span></button>`).join('');
         if (tab === 'hair') body = LOOK_OPTIONS.hair[h.gender].map((x) => `<button class="opt ${h.hair === x ? 'on' : ''}" data-k="hair" data-v="${x}">${icon('user')}<span>${LOOK_OPTIONS.hairLabel[x]}</span></button>`).join('');
