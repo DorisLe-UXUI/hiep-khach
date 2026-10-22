@@ -41,6 +41,20 @@ fs.rmSync(path.join(OUT, 'brand/bg_tiny.jpg'), { force: true });
 // vân bản đồ thấp (roughness) không dùng ở chibi; giữ diff/nor
 for (const t of fs.readdirSync(path.join(A, 'textures'))) for (const f of fs.readdirSync(path.join(A, 'textures', t))) if (!/^(diff|nor)\.jpg$/.test(f)) fs.rmSync(path.join(A, 'textures', t, f));
 
+// thu nhỏ để tải nhanh: texture 512px, ảnh trong model đồ đạc 512px, ảnh nền nén lại
+const FF = path.join(ROOT, 'node_modules/ffmpeg-static/ffmpeg');
+for (const t of fs.readdirSync(path.join(A, 'textures'))) for (const f of fs.readdirSync(path.join(A, 'textures', t))) {
+  const p = path.join(A, 'textures', t, f), tmp = p + '.tmp.jpg';
+  execSync(`"${FF}" -v error -y -i "${p}" -vf scale=512:-1 -q:v 5 "${tmp}"`); fs.renameSync(tmp, p);
+}
+for (const f of fs.readdirSync(path.join(A, 'models'))) {
+  const p = path.join(A, 'models', f), tmp = p.replace(/\.glb$/, '.tmp.glb');
+  execSync(`npx gltf-transform optimize "${p}" "${tmp}" --compress meshopt --texture-compress webp --texture-size 512 --simplify false`, { cwd: ROOT, stdio: 'ignore' });
+  if (fs.existsSync(tmp) && fs.statSync(tmp).size < fs.statSync(p).size) fs.renameSync(tmp, p); else fs.rmSync(tmp, { force: true });
+}
+{ const p = path.join(OUT, 'brand/logo.png'), tmp = p + '.tmp.png'; execSync(`"${FF}" -v error -y -i "${p}" -vf scale=880:-1 -pix_fmt rgba "${tmp}"`); fs.renameSync(tmp, p); }
+{ const p = path.join(OUT, 'brand/bg.jpg'), tmp = p + '.tmp.jpg'; execSync(`"${FF}" -v error -y -i "${p}" -vf "scale='min(1600,iw)':-1" -q:v 6 "${tmp}"`); fs.renameSync(tmp, p); }
+
 // model nhị phân → base64 văn bản (claude.ai chỉ phục vụ các kiểu web chuẩn)
 const toB64 = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) toB64(p); else if (/\.(glb|fbx)$/i.test(f)) { fs.writeFileSync(p + '.b64.txt', fs.readFileSync(p).toString('base64')); fs.rmSync(p); } } };
 toB64(A);
