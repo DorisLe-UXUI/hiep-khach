@@ -48,8 +48,9 @@ export function pbr(name, repeat = 1, extra = {}) {
   const maps = {
     map: tex(base + 'diff.jpg', true),
     normalMap: tex(base + 'nor.jpg', false),
-    roughnessMap: tex(base + 'rough.jpg', false),
   };
+  // bản rút gọn (claude.ai) bỏ lớp độ nhám để bớt file
+  if (!import.meta.env.VITE_LITE) maps.roughnessMap = tex(base + 'rough.jpg', false);
   const r = Array.isArray(repeat) ? repeat : [repeat, repeat];
   // Mỗi vật liệu cần bản sao texture riêng để có repeat riêng
   for (const k in maps) {

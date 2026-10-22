@@ -18,9 +18,30 @@ import { CHAPTERS } from './story/chapters.js';
 import { PLACES } from './world/layout.js';
 import { loadSettings, currentProfile, loadSave, saveProfile, logout } from './settings.js';
 
+// Bản claude.ai không phục vụ file .glb/.fbx: model được lưu dạng base64 (.b64.txt) và giải mã khi tải.
+if (import.meta.env.VITE_LITE) {
+  const orig = THREE.FileLoader.prototype.load;
+  THREE.FileLoader.prototype.load = function (url, onLoad, onProgress, onError) {
+    if (!/\.(glb|fbx)$/i.test(url)) return orig.call(this, url, onLoad, onProgress, onError);
+    const full = this.manager.resolveURL((this.path || '') + url);
+    this.manager.itemStart(full);
+    fetch(full + '.b64.txt')
+      .then((r) => { if (!r.ok) throw new Error(`${r.status} ${full}`); return r.text(); })
+      .then((t) => {
+        const bin = atob(t.trim()), u = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        onLoad?.(u.buffer);
+        this.manager.itemEnd(full);
+      })
+      .catch((e) => { onError ? onError(e) : console.error(e); this.manager.itemError(full); this.manager.itemEnd(full); });
+  };
+}
+
 const ui = new UI();
 ui.decorate();
 const settings = loadSettings();
+// bản rút gọn đăng claude.ai chỉ có phong cách chibi
+if (import.meta.env.VITE_LITE) settings.style = 'bright';
 Character.chibi = settings.style !== 'realistic';
 // phong cách hoạt hình cho toàn bộ cảnh vật
 Terrain.stylized = GrassField.stylized = Sky.stylized = ARCH.stylized = Character.chibi;

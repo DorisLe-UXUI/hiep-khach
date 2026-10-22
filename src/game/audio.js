@@ -4,9 +4,8 @@
  */
 const SFX = {
   hit: 3, heavy: 3, clang: 3, step: 3, mine: 3, chop: 3, swing: 3, coin: 2,
-  draw: 1, book: 1, page: 1, cloth: 1, door: 1, latch: 1, drop: 1,
-  click: 1, open: 1, close: 1, confirm: 1, error: 1, select: 1, bong: 1, sparkle: 1, pluck: 1,
-  levelup: 1, quest: 1, success: 1, fail: 1, victory: 1,
+  latch: 1, click: 1, open: 1, close: 1, error: 1, sparkle: 1, pluck: 1,
+  levelup: 1, success: 1, fail: 1,
 };
 export const MUSIC = ['menu', 'town', 'wild', 'lake', 'home', 'dungeon', 'boss', 'battle'];
 

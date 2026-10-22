@@ -3,3 +3,4 @@ dist
 vendor_dl
 *.part
 tools/fetch.log
+dist-lite

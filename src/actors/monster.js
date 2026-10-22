@@ -9,7 +9,7 @@ import { loadGLTF } from '../engine/assets.js';
  */
 const fbxCache = new Map();
 async function loadSource(file) {
-  if (file.startsWith('/')) return loadGLTF(file);
+  if (/^\.?\//.test(file)) return loadGLTF(file);
   if (file.endsWith('.fbx')) {
     if (!fbxCache.has(file)) fbxCache.set(file, new FBXLoader().loadAsync(`/assets/monsters/${file}`));
     const o = await fbxCache.get(file);
