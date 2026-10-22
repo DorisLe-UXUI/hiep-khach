@@ -10,13 +10,14 @@ document.body.appendChild(r.domElement);
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x3a3530);
 scene.add(new THREE.HemisphereLight(0xfff2dc, 0x404030, 2)); const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(3, 6, 5); scene.add(sun);
 const ground = new THREE.Mesh(new THREE.CircleGeometry(12, 32).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x6a7a50 })); scene.add(ground);
-const cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 2.2, 9); cam.lookAt(0, 0.9, 0);
+const cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 2.2, 12); cam.lookAt(0, 0.9, 0);
 const q = new URLSearchParams(location.search);
 const anim = q.get('anim') || 'Idle_Loop', weapon = q.get('w') || 'sword';
 const chars = [];
-for (const [i, m] of MESHY_MODELS.entries()) {
+const list = MESHY_MODELS.slice(0, Number(q.get('n') || 6));
+for (const [i, m] of list.entries()) {
   const c = await MeshyCharacter.create(m.file, weapon);
-  c.root.position.set((i - 1.5) * 1.25, 0, 0);
+  c.root.position.set((i - (list.length - 1) / 2) * 1.15, 0, 0);
   c.root.rotation.y = Number(q.get('yaw') || 0.35);
   scene.add(c.root);
   c.play(anim);

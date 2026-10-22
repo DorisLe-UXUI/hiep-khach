@@ -23,6 +23,12 @@ const BONE_MAP = [
 
 /** Các nhân vật Meshy hiện có */
 export const MESHY_MODELS = [
+  { id: 'mx:swordsman_blue', file: 'swordsman_blue', name: 'Lam y kiếm khách', han: '藍衣劍客', gender: 'male' },
+  { id: 'mx:red_fighter', file: 'red_fighter', name: 'Hồng y thương khách', han: '紅衣槍客', gender: 'female' },
+  { id: 'mx:ice_assassin', file: 'ice_assassin', name: 'Băng y thích khách', han: '冰衣刺客', gender: 'female' },
+  { id: 'mx:dark_lord', file: 'dark_lord', name: 'Huyết y ma quân', han: '血衣魔君', gender: 'male' },
+  { id: 'mx:barbarian_warrior', file: 'barbarian_warrior', name: 'Sơn trại hảo hán', han: '山寨好漢', gender: 'male' },
+  { id: 'mx:merchant', file: 'merchant', name: 'Phú thương', han: '富商', gender: 'male' },
   { id: 'mx:black_robes', file: 'black_robes', name: 'Hắc y đạo cô', han: '黑衣道姑', gender: 'female' },
   { id: 'mx:green_warrior', file: 'green_warrior', name: 'Lục y cung thủ', han: '綠衣弓手', gender: 'female' },
   { id: 'mx:pink_maiden', file: 'pink_maiden', name: 'Phấn y thiếu nữ', han: '粉衣少女', gender: 'female' },
@@ -30,7 +36,7 @@ export const MESHY_MODELS = [
 ];
 
 /** Ngoại hình mặc định theo môn phái + giới tính (khi người chơi chưa chọn hình tượng riêng) */
-export const MESHY_DEFAULT = { 'cung:female': 'mx:green_warrior', 'dao:female': 'mx:black_robes', 'phap:male': 'mx:taoist_scholar' };
+export const MESHY_DEFAULT = { 'kiem:male': 'mx:swordsman_blue', 'thuong:female': 'mx:red_fighter', 'cung:female': 'mx:green_warrior', 'dao:female': 'mx:black_robes', 'phap:male': 'mx:taoist_scholar' };
 export const meshyFile = (id) => MESHY_MODELS.find((m) => m.id === id)?.file;
 
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
@@ -81,7 +87,23 @@ export class MeshyCharacter {
     for (const [s, t] of BONE_MAP) {
       const sb = driver.bones[s], tb = this.bones[t];
       if (!sb || !tb) continue;
-      this.pairs.push({ s: sb, t: tb, sBind: sb.getWorldQuaternion(new THREE.Quaternion()).invert(), tBind: tb.getWorldQuaternion(new THREE.Quaternion()) });
+      this.pairs.push({ name: s, s: sb, t: tb, sBind: sb.getWorldQuaternion(new THREE.Quaternion()).invert(), tBind: tb.getWorldQuaternion(new THREE.Quaternion()) });
+    }
+    // Tư thế gốc khác nhau (KayKit dang tay chữ T, Meshy tay chếch chữ A): xoay hướng xương Meshy
+    // trùng hướng xương KayKit trước, nếu không tay sẽ bị hạ hai lần và quặt ra sau lưng.
+    const byName = Object.fromEntries(this.pairs.map((p) => [p.name, p]));
+    const CHILD = { hips: 'spine', spine: 'chest', chest: 'head', upperarml: 'lowerarml', lowerarml: 'wristl', upperarmr: 'lowerarmr', lowerarmr: 'wristr', upperlegl: 'lowerlegl', lowerlegl: 'footl', upperlegr: 'lowerlegr', lowerlegr: 'footr', footl: 'toesl', footr: 'toesr' };
+    const PARENT = { head: 'chest', wristl: 'lowerarml', wristr: 'lowerarmr', toesl: 'footl', toesr: 'footr' };
+    const pos = (b) => b.getWorldPosition(new THREE.Vector3());
+    for (const p of this.pairs) {
+      const c = byName[CHILD[p.name]];
+      if (!c) continue;
+      const sDir = pos(c.s).sub(pos(p.s)).normalize(), tDir = pos(c.t).sub(pos(p.t)).normalize();
+      p.align = new THREE.Quaternion().setFromUnitVectors(tDir, sDir);
+    }
+    for (const p of this.pairs) {
+      p.align ??= byName[PARENT[p.name]]?.align || new THREE.Quaternion();
+      p.tBind.premultiply(p.align);
     }
     const sh = driver.bones.hips, th = this.bones.Hips;
     // vị trí hông gốc tính trong hệ của từng model (để game nâng model lên khi cưỡi ngựa vẫn đúng)

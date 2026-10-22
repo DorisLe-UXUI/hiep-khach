@@ -95,6 +95,8 @@ async function makeChar(look, weapon) {
   if (Character.chibi) {
     const cl = look._hero ? chibiHero(look._hero) : CHIBI_LOOKS[look._role] || CHIBI_LOOKS.villagerM;
     if (cl.meshy) return MeshyCharacter.create(cl.meshy, weapon, { scale: cl.scale });
+    const hm = look._hero && !look._hero.model && MESHY_DEFAULT[`${look._hero.cls}:${look._hero.gender}`];
+    if (hm) return MeshyCharacter.create(meshyFile(hm), weapon);
     return ChibiCharacter.create(cl, cl.skeleton && weapon ? (weapon === 'staff' ? 'skelstaff' : 'skelaxe') : weapon);
   }
   const l = { ...look };
