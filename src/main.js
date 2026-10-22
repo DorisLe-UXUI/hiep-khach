@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { manager, setMaxAnisotropy } from './engine/assets.js';
+import { preloadModels } from './engine/preload.js';
 import { Input } from './engine/input.js';
 import { Terrain } from './world/terrain.js';
 import { Colliders } from './world/colliders.js';
@@ -67,6 +68,8 @@ let game = null;
 const preview = { char: null, token: 0, angle: 0 };
 
 async function boot() {
+  // chibi: tải song song mọi model của màn hình chính ngay từ đầu
+  if (Character.chibi) preloadModels();
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0xb7c0c2, 0.003);
   const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeight, 0.3, 1500);
@@ -96,7 +99,7 @@ async function boot() {
   scene.add(arch.group);
 
   step('Bày biện khách điếm...', 26);
-  const props = await buildProps(terrain, colliders, arch.spots);
+  const props = buildProps(terrain, colliders, arch.spots); // đồ đạc tải nền, không chặn màn hình chính
   scene.add(props.group);
 
   step('Trồng rừng trúc, rừng thông...', 40);

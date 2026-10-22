@@ -38,38 +38,45 @@ const CAMP_PROPS = [
 
 async function place(list, toWorld, terrain, colliders, floorY = null) {
   const g = new THREE.Group();
-  for (const [name, lx, lz, yaw = 0, scale = 1, yOff = 0, coll = 0] of list) {
+  const models = await Promise.all(list.map(([name]) => loadModel(name))); // tải song song
+  list.forEach(([, lx, lz, yaw = 0, scale = 1, yOff = 0, coll = 0], i) => {
     const [x, z, rot] = toWorld(lx, lz);
-    const m = (await loadModel(name)).clone(true);
+    const m = models[i].clone(true);
     const y = (floorY ?? terrain.heightAt(x, z)) + yOff;
     m.position.set(x, y, z);
     m.rotation.y = yaw + rot;
     m.scale.setScalar(scale);
     g.add(m);
     if (coll) colliders.circle(x, z, coll * scale, y + 1.2);
-  }
+  });
   return g;
 }
 
-export async function buildProps(terrain, colliders, spots) {
+/**
+ * Đồ đạc trong trấn, khách điếm, trại, Kiếm Mộ. Trả về ngay (không chờ tải) để màn hình chính hiện sớm;
+ * model được tải song song ở nền rồi gắn vào `group` khi xong (`ready`).
+ */
+export function buildProps(terrain, colliders, spots) {
   const root = new THREE.Group();
   root.name = 'props';
-  const I = PLACES.inn;
-  root.add(await place(INN_PROPS, (x, z) => [I.x + x, I.z + z, 0], terrain, colliders, spots.innFloor));
-  // bàn ghế trong khách điếm cũng chắn đường
-  for (const [n, x, z] of INN_PROPS) if (n === 'chinese_tea_table') colliders.circle(I.x + x, I.z + z, 0.7, spots.innFloor + 0.8);
-  root.add(await place(VILLAGE_PROPS, (x, z) => [x, z, 0], terrain, colliders));
-  const Cp = PLACES.camp;
-  root.add(await place(CAMP_PROPS, (x, z) => [Cp.x + x, Cp.z + z, 0], terrain, colliders));
-  // rương báu trong rừng trúc (dùng cho nhiệm vụ)
-  const chest = (await loadModel('treasure_chest')).clone(true);
+  const I = PLACES.inn, Cp = PLACES.camp, T = PLACES.tomb;
+  // rương báu trong rừng trúc (dùng cho nhiệm vụ): khung đặt sẵn, model gắn vào sau
+  const chest = new THREE.Group();
   chest.position.set(PLACES.chest.x, terrain.heightAt(PLACES.chest.x, PLACES.chest.z), PLACES.chest.z);
   chest.rotation.y = 0.6;
   root.add(chest);
   colliders.circle(PLACES.chest.x, PLACES.chest.z, 0.7, chest.position.y + 1);
+  for (const [n, x, z] of INN_PROPS) if (n === 'chinese_tea_table') colliders.circle(I.x + x, I.z + z, 0.7, spots.innFloor + 0.8);
+  const ready = (async () => {
+  const [inn, village, camp, chestModel, ...swords] = await Promise.all([
+    place(INN_PROPS, (x, z) => [I.x + x, I.z + z, 0], terrain, colliders, spots.innFloor),
+    place(VILLAGE_PROPS, (x, z) => [x, z, 0], terrain, colliders),
+    place(CAMP_PROPS, (x, z) => [Cp.x + x, Cp.z + z, 0], terrain, colliders),
+    loadModel('treasure_chest'), loadModel('antique_katana_01'), loadModel('wooden_handle_saber'),
+  ]);
+  root.add(inn, village, camp);
+  chest.add(chestModel.clone(true));
   // Kiếm Mộ: kiếm gỉ cắm nghiêng khắp nơi
-  const T = PLACES.tomb;
-  const swords = [await loadModel('antique_katana_01'), await loadModel('wooden_handle_saber')];
   for (let i = 0; i < 46; i++) {
     const a = i * 2.39996, d = 7 + (i % 9) * 2.2;
     const x = T.x + Math.cos(a) * d, z = T.z + Math.sin(a) * d;
@@ -85,6 +92,7 @@ export async function buildProps(terrain, colliders, spots) {
     holder.scale.setScalar(1.3);
     root.add(holder);
   }
+  })();
   // vị trí đèn (để thắp sáng ban đêm)
   const lights = [
     ...VILLAGE_PROPS.filter((p) => p[0] === 'wooden_lantern_01').map((p) => [p[1], p[2], 1.4]),
@@ -93,5 +101,5 @@ export async function buildProps(terrain, colliders, spots) {
     [Cp.x, Cp.z + 2, 0.8], [Cp.x - 5, Cp.z - 14, 1.2], [Cp.x + 5, Cp.z - 14, 1.2],
     [T.x - 3, T.z - 3.2, 1.6], [T.x + 3, T.z - 3.2, 1.6],
   ].map(([x, z, h]) => new THREE.Vector3(x, (x === I.x - 2.5 || x === I.x + 3 || x === I.x ? spots.innFloor : terrain.heightAt(x, z)) + h, z));
-  return { group: root, chest, lights };
+  return { group: root, chest, lights, ready };
 }
