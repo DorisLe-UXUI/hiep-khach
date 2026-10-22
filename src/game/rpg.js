@@ -161,7 +161,9 @@ export class RPG {
     if (!it || it.type !== 'equip' || !this.owned.has(id)) return;
     this.equip[it.slot] = id;
     this.apply();
-    if (it.slot === 'weapon') this.g.player.char.swapWeapon(it.model, it.tint);
+    // binh khí ngoại hình người chơi đã chọn được giữ nguyên; chỉ Kiếm Khách để mặc định mới đổi theo kiếm đang trang bị
+    const h = this.g.profile.hero;
+    if (it.slot === 'weapon' && h.cls === 'kiem' && !h.weapon) this.g.player.char.swapWeapon(it.model, it.tint);
     this.g.audio.clang();
   }
 

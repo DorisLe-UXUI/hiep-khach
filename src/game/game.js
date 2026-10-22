@@ -9,7 +9,7 @@ import { Combat } from './combat.js';
 import { FX } from './fx.js';
 import { Audio } from './audio.js';
 import { RPG, ITEMS } from './rpg.js';
-import { CLASSES, heroLook } from './classes.js';
+import { CLASSES, heroLook, heroWeapon } from './classes.js';
 import { CHAPTERS, SPEAKERS, AMBIENT } from '../story/chapters.js';
 import { HUD } from '../ui/hud.js';
 import { renderPortrait } from '../ui/portraits.js';
@@ -80,7 +80,7 @@ export async function createHeroCharacter(h) {
   if (Character.chibi) {
     const f = LOOK_OPTIONS.fashion.find((x) => x.id === h.fashion);
     const mx = h.model?.startsWith('mx:') ? h.model : MESHY_DEFAULT[`${h.cls}:${h.gender}`];
-    if (mx && meshyFile(mx)) return MeshyCharacter.create(meshyFile(mx), cls.weapon || 'staff', { tint: f?.color || null });
+    if (mx && meshyFile(mx)) return MeshyCharacter.create(meshyFile(mx), heroWeapon(h), { tint: f?.color || null });
     if (h.model?.startsWith('folk:')) {
       const c = await MonsterCharacter.create({ file: `/assets/folk/${h.model.slice(5)}.glb`, height: 1.55, folk: true, tint: f?.color || null });
       await c.equip(cls.weapon || 'staff');

@@ -52,8 +52,19 @@ const WEAPONS = {
   spear: [{ obj: 'Spear', hand: 'r', len: 1.9, grip: 0.4 }],
   skelaxe: [{ file: 'w_skeleton_axe', hand: 'r' }],
   skelstaff: [{ file: 'w_skeleton_staff', hand: 'r' }],
+  // binh khí cho người chơi chọn
+  katana: [{ obj: 'Sword_2', hand: 'r', len: 1.15, grip: 0.14 }],
+  goldsword: [{ obj: 'Sword_Golden', hand: 'r', len: 1.15, grip: 0.14 }],
+  greatsword: [{ file: 'w_sword_2handed', hand: 'r' }],
+  claymore: [{ obj: 'Claymore', hand: 'r', len: 1.55, grip: 0.12 }],
+  halberd: [{ file: 'w_axe_2handed', hand: 'r' }],
+  bow_wood: [{ obj: 'Bow_Wooden', hand: 'l', len: 1.25, grip: 0.5 }],
+  bow_hunt: [{ obj: 'Bow_Wooden2', hand: 'l', len: 1.25, grip: 0.5 }],
+  wand: [{ file: 'w_wand', hand: 'r' }],
+  spellbook: [{ file: 'w_wand', hand: 'r' }, { file: 'w_spellbook_open', hand: 'l' }],
+  twinblade: [{ file: 'w_skeleton_blade', hand: 'r' }, { file: 'w_skeleton_blade', hand: 'l' }],
 };
-const STYLE_OF = { bow: 'bow', staff: 'staff', spear: 'spear', dagger: 'dual', golden: 'spear' };
+const STYLE_OF = { bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
 
 let clipsP = null;
 function loadClips() {

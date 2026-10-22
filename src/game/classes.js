@@ -92,3 +92,42 @@ export function heroLook(h) {
   if (f?.color) look.outfitColor = f.color;
   return look;
 }
+
+/** Binh khí người chơi chọn theo môn phái (chỉ đổi ngoại hình, động tác đi theo loại vũ khí). */
+export const WEAPON_SKINS = {
+  kiem: [
+    { id: 'sword', name: 'Thanh phong kiếm', han: '青鋒劍', icon: 'sword' },
+    { id: 'katana', name: 'Đường đao', han: '唐刀', icon: 'sword' },
+    { id: 'goldsword', name: 'Kim long kiếm', han: '金龍劍', icon: 'sword' },
+    { id: 'saber', name: 'Đao & thuẫn', han: '刀盾', icon: 'shield' },
+    { id: 'greatsword', name: 'Trọng kiếm', han: '重劍', icon: 'swords' },
+    { id: 'claymore', name: 'Trảm mã kiếm', han: '斬馬劍', icon: 'swords' },
+  ],
+  thuong: [
+    { id: 'spear', name: 'Hồng anh thương', han: '紅纓槍', icon: 'spear' },
+    { id: 'halberd', name: 'Phương thiên kích', han: '方天戟', icon: 'axe' },
+    { id: 'golden', name: 'Thanh long đao', han: '青龍刀', icon: 'swords' },
+  ],
+  cung: [
+    { id: 'bow', name: 'Trường cung', han: '長弓', icon: 'bow' },
+    { id: 'bow_wood', name: 'Mộc cung', han: '木弓', icon: 'bow' },
+    { id: 'bow_hunt', name: 'Liệp cung', han: '獵弓', icon: 'bow' },
+  ],
+  phap: [
+    { id: '', name: 'Tay không (chưởng)', han: '空掌', icon: 'palm' },
+    { id: 'staff', name: 'Pháp trượng', han: '法杖', icon: 'wizard' },
+    { id: 'wand', name: 'Phù trượng', han: '符杖', icon: 'sparkles' },
+    { id: 'spellbook', name: 'Thiên thư', han: '天書', icon: 'book' },
+  ],
+  dao: [
+    { id: 'dagger', name: 'Song chủy thủ', han: '雙匕首', icon: 'dash' },
+    { id: 'twinblade', name: 'Song loan đao', han: '雙彎刀', icon: 'swords' },
+    { id: 'staff', name: 'Đạo trượng', han: '道杖', icon: 'wizard' },
+  ],
+};
+/** Binh khí đang dùng của nhân vật (đã kiểm tra hợp với môn phái) */
+export function heroWeapon(h) {
+  const list = WEAPON_SKINS[h.cls] || [];
+  const ok = h.weapon !== undefined && list.some((w) => w.id === h.weapon);
+  return ok ? h.weapon || null : CLASSES[h.cls]?.weapon || null;
+}

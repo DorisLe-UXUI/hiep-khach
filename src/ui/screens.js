@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { listProfiles, register, signIn, guest, saveProfile } from '../settings.js';
-import { CLASSES, LOOK_OPTIONS, defaultHero } from '../game/classes.js';
+import { CLASSES, LOOK_OPTIONS, defaultHero, WEAPON_SKINS, heroWeapon } from '../game/classes.js';
 import { CHIBI_MODELS, FOLK } from '../actors/chibi.js';
 import { MESHY_MODELS } from '../actors/meshy.js';
 import { Character } from '../actors/character.js';
@@ -97,7 +97,7 @@ Object.assign(UI.prototype, {
           <div>${icon('dash')}<b>Q</b>${c.q.name}</div><div>${icon('palm')}<b>F</b>${c.f.name}</div></div>`;
       };
       const renderCustom = () => {
-        const tabs = chibi ? [['model', 'Hình tượng', 'user'], ['fashion', 'Thời trang', 'robe'], ['acc', 'Phụ kiện', 'hood']]
+        const tabs = chibi ? [['model', 'Hình tượng', 'user'], ['weapon', 'Binh khí', 'swords'], ['fashion', 'Thời trang', 'robe']]
           : [['hair', 'Kiểu tóc', 'user'], ['color', 'Màu tóc', 'lotus'], ['outfit', 'Trang phục', 'shield'], ['fashion', 'Thời trang', 'star'], ['acc', 'Phụ kiện', 'bag']];
         let body = '';
         if (tab === 'model') body = `<button class="opt ${!h.model ? 'on' : ''}" data-k="model" data-v="">${icon(CLASSES[h.cls].icon)}<span>Theo môn phái</span></button>`
@@ -105,6 +105,10 @@ Object.assign(UI.prototype, {
         if (tab === 'hair') body = LOOK_OPTIONS.hair[h.gender].map((x) => `<button class="opt ${h.hair === x ? 'on' : ''}" data-k="hair" data-v="${x}">${icon('user')}<span>${LOOK_OPTIONS.hairLabel[x]}</span></button>`).join('');
         if (tab === 'color') body = LOOK_OPTIONS.hairColors.map((x) => `<button class="swatch ${h.hairColor === x ? 'on' : ''}" data-k="hairColor" data-v="${x}" style="background:${x}"></button>`).join('');
         if (tab === 'outfit') body = LOOK_OPTIONS.outfits[h.gender].map((x) => `<button class="opt ${h.outfit === x ? 'on' : ''}" data-k="outfit" data-v="${x}">${icon('shield')}<span>${LOOK_OPTIONS.outfitLabel[x]}</span></button>`).join('');
+        if (tab === 'weapon') {
+          const cur = heroWeapon(h) || '';
+          body = WEAPON_SKINS[h.cls].map((w) => `<button class="opt wpn ${cur === w.id ? 'on' : ''}" data-k="weapon" data-v="${w.id}"><span class="han" style="font-size:20px">${w.han}</span>${icon(w.icon)}<span>${w.name}</span></button>`).join('');
+        }
         if (tab === 'fashion') body = LOOK_OPTIONS.fashion.map((f) => `<button class="opt fashion ${h.fashion === f.id ? 'on' : ''}" data-k="fashion" data-v="${f.id}"><i class="dot" style="background:${f.color || 'linear-gradient(135deg,#6b5a3a,#2d3b2a)'}"></i><span>${f.name}</span>${f.price ? `<small>${icon('star')}${f.price}</small>` : ''}</button>`).join('');
         if (tab === 'acc') body = `<button class="opt ${h.hood ? 'on' : ''}" data-k="hood" data-v="${!h.hood}">${icon('hood')}<span>${chibi ? 'Mũ / mặt nạ' : 'Mũ trùm'}</span></button>` + (h.gender === 'male' && !chibi ? `<button class="opt ${h.beard ? 'on' : ''}" data-k="beard" data-v="${!h.beard}">${icon('user')}<span>Râu</span></button>` : '');
         $('cr-custom').innerHTML = `<div class="ctabs">${tabs.map(([id, n, ic]) => `<button class="${tab === id ? 'on' : ''}" data-t="${id}">${icon(ic)}<span>${n}</span></button>`).join('')}</div><div class="cbody">${body}</div>`;
