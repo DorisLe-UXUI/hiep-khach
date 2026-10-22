@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { manager, setMaxAnisotropy } from './engine/assets.js';
 import { preloadModels } from './engine/preload.js';
+import { HeroStage } from './world/stage.js';
 import { Input } from './engine/input.js';
 import { Terrain } from './world/terrain.js';
 import { Colliders } from './world/colliders.js';
@@ -142,9 +143,9 @@ async function boot() {
       else if (avg < 14 && pr < maxPR()) renderer.setPixelRatio(Math.min(maxPR(), pr + 0.1));
     }
     window.__fps = Math.round(1000 / avg);
-    if (mode === 'create') updatePreview(dt, camera);
+    if (mode === 'create') updatePreview(dt);
     else game.update(dt, clock.elapsedTime);
-    renderer.render(scene, camera);
+    if (mode === 'create' && stage) renderer.render(stage.scene, stage.camera); else renderer.render(scene, camera);
     input.endFrame();
   });
   window.__game = game;
@@ -170,19 +171,17 @@ async function flow() {
   await ui.fade(false);
 }
 
-const STAGE = { x: PLACES.pavilion.x - 4, z: PLACES.pavilion.z + 30 };
+let stage = null; // sân khấu tạo nhân vật (cảnh riêng)
 
 async function createHero(initial, editOnly = false) {
   mode = 'create';
   ui.hideMenu();
-  if (!createHero.cleared) { game.grass.exclude(STAGE.x + 2, STAGE.z, 6); createHero.cleared = true; }
-  await game.sky.set('sunrise');
+  stage ??= new HeroStage();
   await ui.fade(false);
   const hero = await ui.createCharacter(initial, (h) => buildPreview(h), { editOnly });
-  if (preview.char) game.scene.remove(preview.char.root);
+  if (preview.char) preview.char.root.removeFromParent();
   preview.char = null;
   mode = 'menu';
-  await game.sky.set('morning');
   return hero;
 }
 
@@ -192,12 +191,12 @@ async function buildPreview(h) {
   const c = await createHeroCharacter(h);
   if (token !== preview.token) return;
   if (!Character.chibi) c.model.traverse((o) => { if (o.isMesh && /hood/i.test(o.name)) o.visible = !!h.hood; });
-  if (preview.char) game.scene.remove(preview.char.root);
+  if (preview.char) preview.char.root.removeFromParent();
   preview.char = c;
-  const y = game.terrain.heightAt(STAGE.x, STAGE.z);
-  c.root.position.set(STAGE.x, y, STAGE.z);
-  c.root.rotation.y = Math.PI / 2 + preview.angle;
-  game.scene.add(c.root);
+  c.root.position.set(0, stage.topY, 0);
+  c.root.rotation.y = preview.angle;
+  stage.setColor(cls.color || '#d6b062');
+  stage.scene.add(c.root);
   c.play(cls.attack === 'melee' ? 'Sword_Idle' : 'Idle_Loop', { fade: 0 });
 }
 
@@ -206,19 +205,13 @@ addEventListener('pointerdown', (e) => { if (mode === 'create' && e.target === c
 addEventListener('pointermove', (e) => { if (dragX !== null) { preview.angle += (e.clientX - dragX) * 0.01; dragX = e.clientX; } });
 addEventListener('pointerup', () => (dragX = null));
 
-function updatePreview(dt, camera) {
-  const y = game.terrain.heightAt(STAGE.x, STAGE.z);
-  // nhân vật ở giữa-trái khung hình, nền là hồ Bích Thủy
-  camera.position.set(STAGE.x + 4.4, y + 1.3, STAGE.z);
-  camera.lookAt(STAGE.x, y + 1.05, STAGE.z);
-  for (const n of game.npcs) n.char.update(dt);
+function updatePreview(dt) {
+  stage.frame(innerWidth / innerHeight);
+  stage.update(dt, performance.now() / 1000);
   if (preview.char) {
-    preview.char.root.rotation.y = Math.PI / 2 + preview.angle;
+    preview.char.root.rotation.y = preview.angle;
     preview.char.update(dt);
   }
-  game.sky.update(camera.position, 0);
-  game.updateSun(new THREE.Vector3(STAGE.x, y, STAGE.z));
-  game.grass.update(STAGE.x, STAGE.z, performance.now() / 1000);
 }
 
 function showMenu(profile) {

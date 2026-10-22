@@ -79,7 +79,7 @@ export async function createHeroCharacter(h) {
   const cls = CLASSES[h.cls] || CLASSES.kiem;
   if (Character.chibi) {
     const f = LOOK_OPTIONS.fashion.find((x) => x.id === h.fashion);
-    const mx = h.model?.startsWith('mx:') ? h.model : !h.model && MESHY_DEFAULT[`${h.cls}:${h.gender}`];
+    const mx = h.model?.startsWith('mx:') ? h.model : MESHY_DEFAULT[`${h.cls}:${h.gender}`];
     if (mx && meshyFile(mx)) return MeshyCharacter.create(meshyFile(mx), cls.weapon || 'staff', { tint: f?.color || null });
     if (h.model?.startsWith('folk:')) {
       const c = await MonsterCharacter.create({ file: `/assets/folk/${h.model.slice(5)}.glb`, height: 1.55, folk: true, tint: f?.color || null });
@@ -95,7 +95,7 @@ async function makeChar(look, weapon) {
   if (Character.chibi) {
     const cl = look._hero ? chibiHero(look._hero) : CHIBI_LOOKS[look._role] || CHIBI_LOOKS.villagerM;
     if (cl.meshy) return MeshyCharacter.create(cl.meshy, weapon, { scale: cl.scale });
-    const hm = look._hero && !look._hero.model && MESHY_DEFAULT[`${look._hero.cls}:${look._hero.gender}`];
+    const hm = look._hero && MESHY_DEFAULT[`${look._hero.cls}:${look._hero.gender}`];
     if (hm) return MeshyCharacter.create(meshyFile(hm), weapon);
     return ChibiCharacter.create(cl, cl.skeleton && weapon ? (weapon === 'staff' ? 'skelstaff' : 'skelaxe') : weapon);
   }
@@ -114,12 +114,12 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 /** NPC dịch vụ trong trấn (game nhập vai): mỗi người mở một màn. */
 const SERVICE_NPCS = [
   { id: 'merchant', name: 'Tiền Đa Bảo', han: '錢多寶', model: 'mini-male-c', x: 12, z: 38, yaw: Math.PI / 2, greet: 'Hàng tốt giá rẻ, vào xem đi khách quan!', action: 'Xem hàng (tiệm tạp hoá)', open: 'openShopPanel' },
-  { id: 'smith', name: 'Thiết Ngưu', han: '鐵牛', model: 'blocky-o', x: 60, z: 36, yaw: -Math.PI / 2, greet: 'Đưa binh khí đây, lão Ngưu rèn cho sắc bén!', action: 'Cường hoá binh khí', open: 'openForge' },
+  { id: 'smith', name: 'Thiết Ngưu', han: '鐵牛', model: 'mx:barbarian_warrior', x: 60, z: 36, yaw: -Math.PI / 2, greet: 'Đưa binh khí đây, lão Ngưu rèn cho sắc bén!', action: 'Cường hoá binh khí', open: 'openForge' },
   { id: 'apothecary', name: 'Tô Linh', han: '蘇靈', model: 'mini-female-a', x: 4, z: 56, yaw: Math.PI / 2, greet: 'Thảo dược, cá tươi đem tới đây, tiểu nữ luyện đan nấu món cho.', action: 'Luyện đan & nấu ăn', open: 'openCraftPanel' },
-  { id: 'auctioneer', name: 'Kim lão', han: '金老', model: 'blocky-i', x: 48, z: 46, yaw: -Math.PI / 2, greet: 'Đấu giá hội Thanh Phong sắp mở phiên mới, mời quý khách!', action: 'Vào phiên đấu giá', open: 'openAuctionPanel' },
-  { id: 'trainer', name: 'Giáo đầu Lý Hổ', han: '李虎', model: 'blocky-j', x: 30, z: 62, yaw: Math.PI, greet: 'Đi giang hồ một mình nguy hiểm lắm. Võ quán có người giỏi, thuê theo cùng không?', action: 'Chiêu mộ đồng đội (tổ đội)', open: 'openPartyPanel' },
+  { id: 'auctioneer', name: 'Kim lão', han: '金老', model: 'mini-male-a', x: 48, z: 46, yaw: -Math.PI / 2, greet: 'Đấu giá hội Thanh Phong sắp mở phiên mới, mời quý khách!', action: 'Vào phiên đấu giá', open: 'openAuctionPanel' },
+  { id: 'trainer', name: 'Giáo đầu Lý Hổ', han: '李虎', model: 'mini-male-d', x: 30, z: 62, yaw: Math.PI, greet: 'Đi giang hồ một mình nguy hiểm lắm. Võ quán có người giỏi, thuê theo cùng không?', action: 'Chiêu mộ đồng đội (tổ đội)', open: 'openPartyPanel' },
   { id: 'mentor', name: 'Huyền Cơ Tử', han: '玄機子', model: 'mini-male-e', x: 14, z: 86, yaw: Math.PI, greet: 'Lão phu thấy ngươi cốt cách thanh kỳ...', action: 'Sư đồ', open: 'openMasterPanel' },
-  { id: 'herald', name: 'Lệnh sứ chiến trường', han: '戰令使', model: 'blocky-k', x: 44, z: 92, yaw: Math.PI, greet: 'Huyết Ảnh Môn đang tập kết ở đồng cỏ phía đông nam. Thanh Phong cần người!', action: 'Ra chiến trường', open: 'openBattlePanel' },
+  { id: 'herald', name: 'Lệnh sứ chiến trường', han: '戰令使', model: 'mini-male-b', x: 44, z: 92, yaw: Math.PI, greet: 'Huyết Ảnh Môn đang tập kết ở đồng cỏ phía đông nam. Thanh Phong cần người!', action: 'Ra chiến trường', open: 'openBattlePanel' },
   { id: 'fisher', name: 'Ngư ông', han: '漁翁', model: 'mini-male-b', x: -60, z: 80, yaw: -Math.PI / 2, greet: 'Hồ Bích Thủy nhiều cá lắm. Muốn học nghề sinh hoạt không?', action: 'Hướng dẫn sinh hoạt', open: 'openLifePanel' },
   { id: 'matchmaker', name: 'Hồng nương', han: '紅娘', model: 'mini-female-d', x: 54, z: 72, yaw: -Math.PI / 2, greet: 'Duyên phận trời định, hôn nhân người lo~', action: 'Kết duyên & gia đình', open: 'openFamilyPanel' },
   { id: 'steward', name: 'Quản gia', han: '管家', model: 'mini-male-f', x: -24, z: 106, yaw: Math.PI, greet: 'Chủ nhân, gia viên cần tu sửa thêm ạ.', action: 'Quản lý gia viên', open: 'openHousePanel' },
@@ -247,7 +247,7 @@ export class Game {
     }
 
     progress('Mở hàng quán, võ quán...');
-    const folk = async (model, h = 1.5) => (Character.chibi ? MonsterCharacter.create({ file: `/assets/folk/${model}.glb`, height: h, folk: true }) : makeChar(LOOKS.villagerM));
+    const folk = async (model, h = 1.5) => (model.startsWith('mx:') ? MeshyCharacter.create(meshyFile(model), null) : Character.chibi ? MonsterCharacter.create({ file: `/assets/folk/${model}.glb`, height: h, folk: true }) : makeChar(LOOKS.villagerM));
     for (const sv of SERVICE_NPCS) {
       const n = new NPC(this, await folk(sv.model), { name: sv.name, idleAnim: 'Idle_Loop', talkAnim: 'Idle_Loop' });
       n.id = sv.id; n.role = sv; n.speaker = sv.id;
@@ -257,7 +257,7 @@ export class Game {
       this.npcs.push(n); this.npcById[sv.id] = n; this.scene.add(n.root);
       this.portraits[sv.id] = renderPortrait(this.renderer, n.char);
     }
-    const crowd = ['mini-male-a', 'mini-female-b', 'mini-male-d', 'mini-female-e', 'blocky-d', 'mini-female-f', 'blocky-h', 'mini-male-f'];
+    const crowd = ['mini-male-a', 'mini-female-b', 'mini-male-d', 'mini-female-e', 'mini-male-c', 'mini-female-f', 'mini-female-a', 'mini-male-f'];
     const r0 = rng(77);
     for (let i = 0; i < crowd.length; i++) {
       const route = Array.from({ length: 4 }, () => [PLACES.square.x + (r0() - 0.5) * 70, PLACES.square.z + (r0() - 0.3) * 60]);

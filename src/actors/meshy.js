@@ -36,7 +36,13 @@ export const MESHY_MODELS = [
 ];
 
 /** Ngoại hình mặc định theo môn phái + giới tính (khi người chơi chưa chọn hình tượng riêng) */
-export const MESHY_DEFAULT = { 'kiem:male': 'mx:swordsman_blue', 'thuong:female': 'mx:red_fighter', 'cung:female': 'mx:green_warrior', 'dao:female': 'mx:black_robes', 'phap:male': 'mx:taoist_scholar' };
+export const MESHY_DEFAULT = {
+  'kiem:male': 'mx:swordsman_blue', 'kiem:female': 'mx:pink_maiden',
+  'thuong:male': 'mx:barbarian_warrior', 'thuong:female': 'mx:red_fighter',
+  'cung:male': 'mx:swordsman_blue', 'cung:female': 'mx:green_warrior',
+  'phap:male': 'mx:taoist_scholar', 'phap:female': 'mx:ice_assassin',
+  'dao:male': 'mx:taoist_scholar', 'dao:female': 'mx:black_robes',
+};
 export const meshyFile = (id) => MESHY_MODELS.find((m) => m.id === id)?.file;
 
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
