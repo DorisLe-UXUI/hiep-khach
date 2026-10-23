@@ -138,6 +138,7 @@ async function boot() {
   const clock = new THREE.Clock();
   // độ phân giải tự động: giữ khoảng 50+ khung hình/giây
   let avg = 16, adjT = 0, slowT = 0;
+  const loopErrs = new Set();
   const maxPR = () => Math.min(devicePixelRatio, ({ low: 0.75, medium: 1, high: 1.5 })[game.settings.quality] || 1);
   renderer.setAnimationLoop(() => {
     fit();
@@ -159,9 +160,14 @@ async function boot() {
       }
     }
     window.__fps = Math.round(1000 / avg);
-    if (mode === 'create') updatePreview(dt);
-    else game.update(dt, clock.elapsedTime);
-    if (mode === 'create' && stage) renderer.render(stage.scene, stage.camera); else renderer.render(scene, camera);
+    // một lỗi lẻ trong khung hình không được làm dừng cả vòng lặp (three.js ngừng gọi tiếp nếu hàm ném lỗi)
+    try {
+      if (mode === 'create') updatePreview(dt);
+      else game.update(dt, clock.elapsedTime);
+      if (mode === 'create' && stage) renderer.render(stage.scene, stage.camera); else renderer.render(scene, camera);
+    } catch (err) {
+      if (!loopErrs.has(String(err))) { loopErrs.add(String(err)); console.error('Lỗi trong khung hình (game vẫn chạy tiếp):', err); }
+    }
     input.endFrame();
   });
   window.__game = game;

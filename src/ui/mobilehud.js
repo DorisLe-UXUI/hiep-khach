@@ -119,7 +119,19 @@ export class MobileHUD {
     if (act === 'auto') { g.auto.toggle(); return; }
     if (act === 'rage') { if (!g.fury.activate()) g.toast('Nộ khí chưa đầy — đánh trúng hoặc trúng đòn để tích nộ', 1.5); return; }
     if (act === 'mount') g.toggleMount();
-    if (act === 'pet') { if (g.beasts.s.pet) { g.sys.s.petOut = g.sys.s.petOut === false; g.spawnPet(); } else g.ui.openCompanions(g, 'pet'); }
+    if (act === 'pet') {
+      if (!g.beasts.s.pet) return g.ui.openCompanions(g, 'pet');
+      // bấm để đổi chế độ: Đánh phụ → Chủ động → Nghỉ → (cất linh thú) → Đánh phụ
+      const order = ['assist', 'aggro', 'rest', 'hide'];
+      const cur = g.sys.s.petOut === false ? 'hide' : g.sys.s.petMode || 'assist';
+      const next = order[(order.indexOf(cur) + 1) % order.length];
+      if (next === 'hide') g.sys.s.petOut = false;
+      else { g.sys.s.petOut = true; g.sys.s.petMode = next; }
+      g.spawnPet();
+      const name = g.beasts.petDef?.()?.name || 'Linh thú';
+      g.toast({ assist: `${name}: <b>Đánh phụ</b> — cắn kẻ ngươi đang đánh`, aggro: `${name}: <b>Chủ động</b> — tự lao vào quái gần đó`, rest: `${name}: <b>Nghỉ</b> — chỉ đi theo`, hide: 'Đã cất linh thú' }[next], 2);
+      this.renderPetMode();
+    }
     if (act === 'qipill') g.rpg.use('qipill');
   }
 
@@ -176,6 +188,17 @@ export class MobileHUD {
     el.classList.remove('run'); void el.offsetWidth; el.classList.add('run');
   }
 
+  /** chữ nhỏ trên nút linh thú cho biết chế độ đang dùng */
+  renderPetMode() {
+    const b = document.querySelector('#m-quick [data-act="pet"]');
+    if (!b) return;
+    const s = this.g.sys.s, mode = !this.g.beasts.s.pet ? '' : s.petOut === false ? 'Cất' : { assist: 'Phụ', aggro: 'Công', rest: 'Nghỉ' }[s.petMode || 'assist'];
+    let tag = b.querySelector('.pm');
+    if (!tag) { tag = document.createElement('em'); tag.className = 'pm'; b.appendChild(tag); }
+    tag.textContent = mode;
+    b.classList.toggle('off', s.petOut === false);
+  }
+
   /** thanh buff/hiệu ứng dưới avatar (vẽ lại khi đổi, đếm giây mỗi lần cập nhật) */
   renderBuffs(rebuild) {
     const st = this.g.status, box = $('m-buffs');
@@ -196,6 +219,7 @@ export class MobileHUD {
 
   update() {
     this.renderBuffs();
+    if (!this._pmT || performance.now() - this._pmT > 1000) { this._pmT = performance.now(); this.renderPetMode(); }
     const g = this.g, p = g.player, r = g.rpg;
     $('m-face-img').src = g.portraits.hero || '';
     $('m-lv').textContent = r.level;

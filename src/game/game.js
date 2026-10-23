@@ -373,6 +373,14 @@ export class Game {
     }
     this.sys.load(save?.sys);
     this.running = true;
+    // linh thú khởi đầu: ai chưa có con nào được tặng Tiểu Hoàng để có bạn đánh phụ ngay từ đầu
+    const bs = this.beasts.s;
+    if (!Object.keys(bs.owned).some((k) => BEASTS[k]?.pet)) {
+      bs.owned.shiba_inu = { lv: 1, exp: 0 };
+      bs.pet = 'shiba_inu';
+      this.sys.s.petOut = true;
+      setTimeout(() => { this.toast('<b>Tiểu Hoàng</b> 小黃 theo ngươi hành tẩu giang hồ! Bấm nút linh thú để đổi chế độ <b>Đánh phụ / Chủ động / Nghỉ</b>.', 5); this.mhud?.log('system', 'Nhận linh thú <b class="cp">Tiểu Hoàng</b>.'); }, 6000);
+    }
     this.companions.spawnPet();
     await this.spawnAllies();
     await this.spawnChild();

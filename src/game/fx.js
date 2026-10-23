@@ -134,7 +134,8 @@ export class FX {
     const c = this.trailOwner;
     if (c?.weaponTip) {
       const tip = c.weaponTip.getWorldPosition(new THREE.Vector3());
-      const base = c.weaponBase.getWorldPosition(new THREE.Vector3());
+      // nhân vật Meshy chỉ có mũi kiếm: lấy chuôi = bàn tay (hoặc lùi từ mũi về phía thân)
+      const base = (c.weaponBase || c.handBone || c.root).getWorldPosition(new THREE.Vector3());
       this.trailHist.unshift([base, tip]);
       if (this.trailHist.length > this.trailN) this.trailHist.pop();
     }

@@ -130,6 +130,7 @@ export class MeshyCharacter {
   get current() { return this.driver.current; }
   get currentName() { return this.driver.currentName; }
   get weaponTip() { return this.driver.weaponTip; }
+  get weaponBase() { return this.driver.weaponBase; }
   get weaponMounts() { return this.driver.weaponMounts; }
   get weaponKind() { return this.driver.weaponKind; }
   resolve(n) { return this.driver.resolve(n); }

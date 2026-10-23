@@ -119,7 +119,8 @@ export class Companions {
 
   petAtk() {
     const d = BEASTS[this.petId];
-    return Math.round((6 + this.g.rpg.level * 2 + this.g.beasts.lv(this.petId) * 2.5) * (d?.pet.atk || 1));
+    // mạnh lên theo cấp chủ, cấp linh thú và 40% Công của chủ (để đánh phụ có ý nghĩa)
+    return Math.round((8 + this.g.rpg.level * 2.5 + this.g.beasts.lv(this.petId) * 3 + this.g.rpg.atk() * 0.4) * (d?.pet.atk || 1));
   }
 
   update(dt) {
@@ -138,9 +139,17 @@ export class Companions {
     if (!this.pet || !this.pet.root.visible) return;
     const d = BEASTS[this.petId], sk = d.pet.skill;
     this.petCool -= dt; this.skillCool -= dt;
-    // mục tiêu: kẻ địch chủ đang đánh, hoặc kẻ đang đánh chủ
-    let foe = g.lastTarget && !g.lastTarget.dead && g.lastTarget.pos.distanceTo(p.pos) < 14 ? g.lastTarget : null;
-    if (!foe) for (const e of g.enemies) if (!e.dead && e.alerted && !e.beast && e.pos.distanceTo(p.pos) < 9) { foe = e; break; }
+    // mục tiêu theo chế độ: đánh phụ (kẻ chủ đang đánh / kẻ đang đánh chủ), chủ động (quái gần nhất), nghỉ (không đánh)
+    const mode = g.sys.s.petMode || 'assist';
+    let foe = null;
+    if (mode !== 'rest') {
+      foe = g.lastTarget && !g.lastTarget.dead && g.lastTarget.pos.distanceTo(p.pos) < 14 ? g.lastTarget : null;
+      if (!foe) for (const e of g.enemies) if (!e.dead && e.alerted && !e.beast && e.pos.distanceTo(p.pos) < 9) { foe = e; break; }
+      if (!foe && mode === 'aggro') {
+        let best = 13;
+        for (const e of g.enemies) { if (e.dead || e.beast || e.passive) continue; const d = e.pos.distanceTo(p.pos); if (d < best) { best = d; foe = e; } }
+      }
+    }
     let target, close = 1.2;
     if (foe && !p.dead) { target = foe.pos.clone(); close = foe.radius + 0.9; }
     else target = p.pos.clone().addScaledVector(p.forward(), -1.4).add(new THREE.Vector3(Math.cos(p.yaw) * 0.8, 0, -Math.sin(p.yaw) * 0.8));
@@ -158,7 +167,12 @@ export class Companions {
     if (foe && dist <= close + 0.3 && this.petCool <= 0) {
       this.petCool = 1.4;
       this.pet.play('attack', 1.3);
-      setTimeout(() => { if (!foe.dead) { g.combat.hurtEnemy(this, foe, this.petAtk() * (0.85 + Math.random() * 0.3), { knock: false }); g.audio.hit(); } }, 280);
+      setTimeout(() => {
+        if (foe.dead) return;
+        g.combat.hurtEnemy(this, foe, this.petAtk() * (0.85 + Math.random() * 0.3), { knock: false });
+        g.audio.hit();
+        if (foe.dead) g.beasts.gainExp(this.petId, 25); // linh thú lên cấp khi hạ quái
+      }, 280);
     } else this.pet.play(speed > 5 ? 'run' : speed ? 'walk' : 'idle');
     // kỹ năng linh thú
     if (this.skillCool <= 0) {
