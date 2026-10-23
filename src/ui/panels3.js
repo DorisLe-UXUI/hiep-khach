@@ -211,7 +211,7 @@ Object.assign(UI.prototype, {
           <polyline points="${[[x0, y0], ...pts].map((p) => p.join(',')).join(' ')}" fill="none" stroke="#4a3a24" stroke-width="3"/>
           ${n ? `<polyline points="${[[x0, y0], ...pts.slice(0, n)].map((p) => p.join(',')).join(' ')}" fill="none" stroke="${mm.color}" stroke-width="3" filter="url(#mer-glow)"/>` : ''}
           ${pts.map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${k < n ? 7 : 6}" fill="${k < n ? mm.color : '#1a140c'}" stroke="${k < n ? '#fff' : k === n && i === mi ? mm.color : '#6a5434'}" stroke-width="${k === n && i === mi ? 2.5 : 1.2}" ${k < n ? 'filter="url(#mer-glow)"' : ''}/>`).join('')}
-          <text x="${pos(i, 6.4)[0]}" y="${pos(i, 6.4)[1] + 5}" text-anchor="middle" class="mer-lbl" fill="${lock ? '#5a4a3a' : mm.color}">${mm.han}</text>
+          <text x="${pos(i, 6.4)[0]}" y="${pos(i, 6.4)[1] + 5}" text-anchor="middle" class="mer-lbl" fill="${lock ? '#8a7660' : mm.color}">${mm.han}</text>
         </g>`; }).join('')}
       <circle cx="${C}" cy="${C}" r="30" fill="#1a120a" stroke="#c8a060" stroke-width="1.5"/>
       <text x="${C}" y="${C - 2}" text-anchor="middle" class="mer-c">經脈</text>

@@ -1004,11 +1004,11 @@ body.mmo #topbar ~ #m-camhint, body.menus-open #m-camhint { display: none; }
 .bst-cell .lv { position: absolute; right: 4px; top: 3px; font: 800 11px sans-serif; font-style: normal; color: #8affc0; text-shadow: 0 1px 2px #000; }
 .bst-cell .eq { position: absolute; left: 4px; top: 2px; font-style: normal; color: #ffd27a; font-weight: 900; }
 .bst-cell.on { border-color: var(--gold); box-shadow: 0 0 12px rgba(255,200,90,.5); }
-.bst-cell.locked img { filter: brightness(.25) saturate(0); }
+.bst-cell.locked img { filter: saturate(.35) brightness(.7); opacity: .85; }
 .bst-cell.rare { border-color: #c070ff; }
 .bst-detail { display: flex; flex-direction: column; gap: 8px; }
 .bst-art { position: relative; height: 130px; border-radius: 12px; background: radial-gradient(circle at 50% 60%, rgba(140,255,190,.18), transparent 70%), linear-gradient(180deg, #1e2a18, #0e120a); display: grid; place-items: center; overflow: hidden; }
-.bst-art img { height: 120px; position: relative; z-index: 1; } .bst-art img.silhouette { filter: brightness(0) drop-shadow(0 0 6px #8affc0); opacity: .6; }
+.bst-art img { height: 120px; position: relative; z-index: 1; } .bst-art img.silhouette { filter: saturate(.4) brightness(.75) drop-shadow(0 0 6px rgba(138,255,192,.5)); opacity: .9; }
 .bst-art .han { position: absolute; opacity: .18; font-size: 84px; }
 .bst-detail h3 { margin: 0; } .bst-detail h3 small { font-size: 12px; color: #8affc0; margin-left: 6px; }
 .bst-exp { display: flex; align-items: center; gap: 8px; } .bst-exp .statbar { flex: 1; } .bst-exp small { font-size: 11px; color: var(--ink-faint); }
@@ -1127,3 +1127,61 @@ body.mmo.menus-open [data-mi="more"] .mi-ic { transform: rotate(0); filter: brig
 .gsalv { flex-wrap: wrap; } .gsalv button { white-space: nowrap; }
 .ggrid { max-height: 260px; }
 .gcell .thumb-img { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 1px rgba(255,236,190,.85)) drop-shadow(0 2px 3px rgba(0,0,0,.6)); pointer-events: none; }
+/* xếp hạng: chân dung */
+.pod-av { overflow: hidden; } .pod-av img { width: 100%; height: 100%; object-fit: cover; }
+.lad-av { width: 40px; height: 40px; flex: none; border-radius: 50%; overflow: hidden; border: 2px solid #c8a050; background: radial-gradient(circle at 50% 30%, #4a3a2a, #1a120c); }
+.lad-av img { width: 100%; height: 100%; object-fit: cover; }
+.pod-av img.full, .lad-av img.full { object-position: 50% 0; transform: scale(2.3); transform-origin: 50% 14%; }
+.lad { grid-template-columns: auto auto 1fr auto; }
+/* tổ đội: chân dung đồng đội */
+.pslot img.full { object-fit: cover; object-position: 50% 0; background: radial-gradient(circle at 50% 30%, #4a3a2a, #1a120c); object-view-box: inset(4% 30% 52% 30%); }
+.pslot { overflow: hidden; }
+.pslot.empty { font-size: 14px; } .pslot.empty .plus { font-size: 40px; line-height: 1; color: var(--gold); opacity: .6; }
+.rec-av { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; border: 2px solid #c8a050; background: radial-gradient(circle at 50% 30%, #4a3a2a, #1a120c); }
+.rec-av img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: scale(2.3); transform-origin: 50% 14%; }
+/* thanh nút trên: chữ không dính nhau */
+body.mmo #rail { gap: 4px; }
+body.mmo #rail .mi { width: 56px; }
+body.mmo #rail .mi-n { max-width: 56px; overflow: hidden; text-overflow: ellipsis; text-align: center; letter-spacing: -.2px; }
+@media (max-width: 900px) { body.mmo #rail .mi { width: 46px; } body.mmo #rail .mi-n { max-width: 46px; font-size: 9px; } }
+/* thanh cuộn hợp tông */
+* { scrollbar-width: thin; scrollbar-color: #8a6a3a rgba(0,0,0,.25); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,.25); border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #c8a050, #7a5a2a); border-radius: 8px; border: 1px solid #3a2a14; }
+.hub-i .mi-ic.img { background: none; border: 0; box-shadow: none; }
+.hub-i .mi-ic.img { width: 48px; height: 48px; overflow: visible; } .hub-i .mi-ic.img .ui3d { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
+.mail-rw span { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; overflow: hidden; }
+.mail-rw .thumb-img, .mail-rw .ico, .mail-rw .gem-ic { width: 32px !important; height: 32px !important; object-fit: contain; }
+.mail-rw i { position: absolute; right: 2px; bottom: 0; font: 700 10px sans-serif; font-style: normal; color: #fff; text-shadow: 0 1px 2px #000; }
+
+/* ───────── điện thoại nằm ngang (màn hình thấp): HUD gọn, không chồng nhau ───────── */
+@media (max-height: 520px) {
+  #nav { top: 8px !important; right: 10px !important; width: 116px !important; }
+  #minimap { width: 106px !important; height: 106px !important; margin-left: 4px !important; }
+  #compass-n { display: none; }
+  body.mmo #rail { top: 6px !important; right: 132px !important; gap: 2px !important; }
+  body.mmo #rail .mi { width: 38px !important; } body.mmo #rail .mi-ic { width: 34px !important; height: 34px !important; }
+  body.mmo #rail .mi-n { display: none !important; }
+  #m-avatar { transform: scale(.78); transform-origin: top left; }
+  #m-quest { top: 76px !important; width: 186px !important; max-height: 118px; overflow-y: auto !important; font-size: 11px; }
+  #m-chat { left: 10px !important; bottom: 22px !important; transform: none !important; width: 230px !important; max-height: 70px; overflow: hidden; font-size: 10.5px; }
+  #m-chat > :first-child { display: none; }
+  #m-status { font-size: 10px; bottom: 4px; }
+  #m-actions { transform: scale(.66) !important; transform-origin: bottom right; right: 10px !important; bottom: 8px !important; }
+  #m-quick { top: 50px !important; bottom: auto !important; right: 132px !important; gap: 5px !important; }
+  #m-quick button { width: 38px !important; height: 38px !important; }
+  #m-quick .thumb-img, #m-quick .ui3d { width: 26px !important; height: 26px !important; }
+  #m-joy { transform: scale(.8); transform-origin: bottom left; }
+  .zone-banner, #zone-banner { transform: scale(.65) !important; }
+  #m-camhint { top: 96px; font-size: 10px; }
+  #m-ann { top: 100px !important; font-size: 11px; }
+}
+@media (max-height: 520px) {
+  .sheet { max-height: 96vh !important; width: min(1000px, 98vw) !important; }
+  .sheet header { padding: 8px 16px !important; } .sheet h2 { font-size: 20px !important; }
+  .sheet .x { width: 28px; height: 28px; }
+  .sheet footer { display: none !important; }
+  #panel-body { padding: 10px 14px !important; }
+  .sheet::before, .sheet::after { width: 26px !important; height: 26px !important; }
+}

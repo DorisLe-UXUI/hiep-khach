@@ -71,6 +71,18 @@ export const RECIPES = [
   { id: 'potion', name: 'Kim sang dược', need: { herb: 2 }, gold: 5 },
   { id: 'qipill', name: 'Hồi khí đan', need: { herb: 3 }, gold: 10 },
   { id: 'grilled', name: 'Cá nướng', need: { fish: 1, wood: 1 }, gold: 0 },
+  // nấu ăn: món rẻ quái rơi + nguyên liệu → món quý
+  { id: 'fried_fish', name: 'Cá chiên giòn', need: { fish: 1, wood: 1 }, gold: 2 },
+  { id: 'meat_skewer', name: 'Xiên thịt', need: { roast_meat: 1, wood: 1 }, gold: 3 },
+  { id: 'herb_porridge', name: 'Cháo thuốc', need: { herb: 2, rice_sack: 1 }, gold: 5 },
+  { id: 'chicken_soup', name: 'Canh gà hầm', need: { herb: 1, cabbage: 1, radish: 1 }, gold: 6 },
+  { id: 'steamer', name: 'Lồng bánh bao', need: { mantou: 2, dim_sum: 1 }, gold: 6 },
+  { id: 'longjing', name: 'Trà Long Tỉnh', need: { herb: 2 }, gold: 12 },
+  { id: 'roast_chicken', name: 'Gà quay', need: { wood: 2, honey: 1 }, gold: 15 },
+  { id: 'mooncake', name: 'Bánh trung thu', need: { mantou: 1, honey: 1, boiled_egg: 1 }, gold: 10 },
+  { id: 'nuerhong', name: 'Nữ Nhi Hồng', need: { wine_jar: 1, cherries: 1 }, gold: 20 },
+  { id: 'zhuyeqing', name: 'Trúc Diệp Thanh', need: { bandit_wine: 2, snow_pear: 1 }, gold: 20 },
+  { id: 'hotpot', name: 'Lẩu thập cẩm', need: { fish: 1, cabbage: 1, radish: 1, spirit_mushroom: 1 }, gold: 25 },
 ];
 
 export const ENCOUNTERS = [

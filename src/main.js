@@ -123,17 +123,24 @@ async function boot() {
   await renderer.compileAsync(scene, camera);
   step('Sẵn sàng.', 100);
 
-  addEventListener('resize', () => {
+  // khớp khung vẽ với cửa sổ; bỏ qua lúc cửa sổ tạm có cỡ 0 (bị ẩn) và tự sửa ở khung hình sau
+  const size = new THREE.Vector2();
+  const fit = () => {
+    if (!innerWidth || !innerHeight) return;
+    renderer.getSize(size);
+    if (size.x === innerWidth && size.y === innerHeight) return;
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
-  });
+  };
+  addEventListener('resize', fit);
 
   const clock = new THREE.Clock();
   // độ phân giải tự động: giữ khoảng 50+ khung hình/giây
   let avg = 16, adjT = 0;
   const maxPR = () => Math.min(devicePixelRatio, ({ low: 0.75, medium: 1, high: 1.5 })[game.settings.quality] || 1);
   renderer.setAnimationLoop(() => {
+    fit();
     const raw = clock.getDelta();
     const dt = Math.min(raw, 1 / 20);
     avg = avg * 0.95 + raw * 1000 * 0.05;

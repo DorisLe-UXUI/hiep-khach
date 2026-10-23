@@ -5,11 +5,11 @@ import { PLACES } from '../world/layout.js';
  * tổ đội (đồng đội máy), sư đồ, gia viên, đấu giá, chiến trường phe phái, con cái.
  */
 export const RECRUITS = [
-  { id: 'tieuhoa', name: 'Tiểu Hoả', han: '小火', cls: 'Đao khách', model: 'barbarian', weapon: 'axe', ranged: false, hp: 420, atk: 22, price: 120, color: 0xffa040 },
-  { id: 'baclang', name: 'Bạch Lang', han: '白狼', cls: 'Kiếm khách', model: 'knight', weapon: 'sword', ranged: false, hp: 380, atk: 24, price: 150, color: 0xbfe8ff },
-  { id: 'lamtuyet', name: 'Lam Tuyết', han: '藍雪', cls: 'Cung thủ', model: 'ranger', weapon: 'bow', ranged: true, hp: 300, atk: 20, price: 140, color: 0xffe6a0 },
-  { id: 'huyenco', name: 'Huyền Cơ', han: '玄機', cls: 'Pháp sư', model: 'mage', weapon: 'staff', ranged: true, hp: 280, atk: 26, price: 180, color: 0xb7a8ff },
-  { id: 'anhanh', name: 'Ảnh Ảnh', han: '影影', cls: 'Thích khách', model: 'rogue_hooded', weapon: 'dagger', ranged: false, hp: 320, atk: 28, price: 200, color: 0x9fe8c8 },
+  { id: 'tieuhoa', meshy: 'red_fighter', name: 'Tiểu Hoả', han: '小火', cls: 'Đao khách', model: 'barbarian', weapon: 'axe', ranged: false, hp: 420, atk: 22, price: 120, color: 0xffa040 },
+  { id: 'baclang', meshy: 'swordsman_blue', name: 'Bạch Lang', han: '白狼', cls: 'Kiếm khách', model: 'knight', weapon: 'sword', ranged: false, hp: 380, atk: 24, price: 150, color: 0xbfe8ff },
+  { id: 'lamtuyet', meshy: 'forest_archer', name: 'Lam Tuyết', han: '藍雪', cls: 'Cung thủ', model: 'ranger', weapon: 'bow', ranged: true, hp: 300, atk: 20, price: 140, color: 0xffe6a0 },
+  { id: 'huyenco', meshy: 'purple_fairy', name: 'Huyền Cơ', han: '玄機', cls: 'Pháp sư', model: 'mage', weapon: 'staff', ranged: true, hp: 280, atk: 26, price: 180, color: 0xb7a8ff },
+  { id: 'anhanh', meshy: 'hooded_ninja', name: 'Ảnh Ảnh', han: '影影', cls: 'Thích khách', model: 'rogue_hooded', weapon: 'dagger', ranged: false, hp: 320, atk: 28, price: 200, color: 0x9fe8c8 },
 ];
 
 export const MASTER_TASKS = [

@@ -964,7 +964,7 @@ export class Game {
     const ids = this.social.party();
     for (let i = 0; i < ids.length; i++) {
       const r = RECRUITS.find((x) => x.id === ids[i]);
-      const ch = Character.chibi ? await ChibiCharacter.create({ model: r.model, hide: ['Helmet', 'BearHat', 'Mage_Hat'] }, r.weapon) : await makeChar(LOOKS.villagerM, 'sword');
+      const ch = await MeshyCharacter.create(r.meshy, r.weapon);
       const lvK = 1 + (this.rpg.level - 1) * 0.12;
       const a = new Ally(this, ch, { name: r.name, hp: Math.round(r.hp * lvK), atk: Math.round(r.atk * lvK), ranged: r.ranged, color: r.color, slot: i });
       a.placeAt(this.player.pos.x + (i - 1) * 1.5, this.player.pos.z - 2, this.player.yaw);
@@ -1017,10 +1017,10 @@ export class Game {
     const B = PLACES.battle;
     for (const a of this.allies.filter((x) => x.battle)) this.scene.remove(a.root);
     this.allies = this.allies.filter((x) => !x.battle);
-    const side = [['knight', 'sword'], ['barbarian', 'axe'], ['ranger', 'bow'], ['mage', 'staff']];
+    const side = [['swordsman_ribbon', 'sword'], ['green_warrior', 'axe'], ['forest_archer', 'bow'], ['taoist_scholar', 'staff']];
     for (let i = 0; i < side.length; i++) {
       const [model, w] = side[i];
-      const ch = Character.chibi ? await ChibiCharacter.create({ model, tint: '#7ab8ff', tintK: 0.3, hide: ['Helmet', 'BearHat', 'Mage_Hat'] }, w) : await makeChar(LOOKS.villagerM, 'sword');
+      const ch = await MeshyCharacter.create(model, w);
       const a = new Ally(this, ch, { name: 'Thanh Phong đệ tử', hp: 500 + this.rpg.level * 40, atk: 18 + this.rpg.level * 2, ranged: w === 'bow' || w === 'staff', slot: 4 + i, anchor: new THREE.Vector3(B.x, 0, B.z), color: 0x7ab8ff });
       a.battle = true;
       a.placeAt(B.x - 4 + i * 2.5, B.z + 6, Math.PI);

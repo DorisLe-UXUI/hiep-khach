@@ -89,9 +89,12 @@ Object.assign(UI.prototype, {
   openRanking(g) {
     const list = g.sys.ranking(), top = list.slice(0, 3);
     const order = [top[1], top[0], top[2]].filter(Boolean);
+    // chân dung: người chơi dùng ảnh thật, cao thủ NPC lấy ảnh anh hùng theo tên
+    const HEROES = ['swordsman_blue', 'pink_maiden', 'ice_assassin', 'purple_fairy', 'red_fighter', 'old_master', 'forest_archer', 'hooded_ninja', 'swordsman_ribbon', 'taoist_scholar', 'green_warrior', 'red_armor_warrior', 'black_robes', 'village_girl'];
+    const av = (r) => `<img class="${r.me ? "" : "full"}" src="${r.me ? g.portraits.hero : `/assets/thumbs/hero_${HEROES[[...r.name].reduce((h, c) => h * 31 + c.charCodeAt(0), 7) % HEROES.length]}.png`}" alt="" draggable="false" />`;
     const body = this.openPanel('Bảng xếp hạng', `
-      <div class="podium">${order.map((r) => { const i = list.indexOf(r); return `<div class="pod p${i + 1} ${r.me ? 'me' : ''}"><div class="medal">${i + 1}</div><div class="pod-av">${icon(r.me ? 'user' : CLASSES[r.cls].icon)}</div><b>${esc(r.name)}</b><small>Lực chiến ${r.power}</small></div>`; }).join('')}</div>
-      <div class="ladder">${list.slice(3).map((r, k) => `<div class="lad ${r.me ? 'me' : ''}"><span class="rk">${k + 4}</span><div><b>${esc(r.name)}</b><small>${r.me ? r.cls : CLASSES[r.cls].name} · Cấp ${r.lv}</small></div><span class="pw">${icon('crown')} ${r.power}</span></div>`).join('')}</div>`);
+      <div class="podium">${order.map((r) => { const i = list.indexOf(r); return `<div class="pod p${i + 1} ${r.me ? 'me' : ''}"><div class="medal">${i + 1}</div><div class="pod-av">${av(r)}</div><b>${esc(r.name)}</b><small>Lực chiến ${r.power}</small></div>`; }).join('')}</div>
+      <div class="ladder">${list.slice(3).map((r, k) => `<div class="lad ${r.me ? 'me' : ''}"><span class="rk">${k + 4}</span><span class="lad-av">${av(r)}</span><div><b>${esc(r.name)}</b><small>${r.me ? r.cls : CLASSES[r.cls].name} · Cấp ${r.lv}</small></div><span class="pw">${icon('crown')} ${r.power}</span></div>`).join('')}</div>`);
     this.relock(g);
     return body;
   },
@@ -140,12 +143,12 @@ Object.assign(UI.prototype, {
     const sy = g.sys, r = g.rpg;
     let html = '';
     if (tab === 'craft') {
-      html = `<div class="shop">${RECIPES.map((c) => { const ok = r.gold >= c.gold && Object.entries(c.need).every(([k, n]) => (r.bag[k] || 0) >= n); return `<div class="ware"><div class="ic">${itemIcon(c.id, ITEMS[c.id].icon)}</div><div class="wi"><b>${c.name}</b><small>Cần: ${Object.entries(c.need).map(([k, n]) => `${ITEMS[k].name} ×${n} (có ${r.bag[k] || 0})`).join(', ')} · ${c.gold} lượng</small></div><div></div><button class="primary sm" data-cr="${c.id}" ${ok ? '' : 'disabled'}>Luyện</button></div>`; }).join('')}</div>`;
+      html = `<div class="shop">${RECIPES.map((c) => { const ok = r.gold >= c.gold && Object.entries(c.need).every(([k, n]) => (r.bag[k] || 0) >= n); return `<div class="ware"><div class="ic">${itemIcon(c.id, ITEMS[c.id].icon)}</div><div class="wi"><b>${c.name}</b><small>Cần: ${Object.entries(c.need).map(([k, n]) => `${ITEMS[k].name} ×${n} (có ${r.bag[k] || 0})`).join(', ')} · ${c.gold} lượng</small></div><div></div><button class="primary sm" data-cr="${c.id}" ${ok ? '' : 'disabled'}>${c.id === 'potion' || c.id === 'qipill' ? 'Luyện' : 'Nấu'}</button></div>`; }).join('')}</div>`;
     } else {
       const goods = ['potion', 'qipill', 'herb', 'bounty', 'steel_sword', 'leather', 'charm'];
       html = `<p class="muted">Chợ Thanh Phong: giá thay đổi mỗi ngày. (Đấu giá giữa người chơi cần máy chủ.)</p><div class="shop">${goods.map((id) => { const p = sy.marketPrice(id), it = ITEMS[id], owned = it.type === 'equip' && r.owned.has(id); return `<div class="ware"><div class="ic">${itemIcon(id, it.icon)}</div><div class="wi"><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.desc}</small></div><div class="wp">${icon('coins')}${p}</div><button class="primary sm" data-mk="${id}" data-p="${p}" ${owned || r.gold < p ? 'disabled' : ''}>${owned ? 'Đã có' : 'Mua'}</button></div>`; }).join('')}</div>`;
     }
-    const body = this.openPanel('Sản xuất & chợ', `<div class="with-side">${sideTabs([['craft', 'Luyện đan', 'cauldron'], ['market', 'Chợ', 'scales']], tab)}<div class="side-body"><div class="subtabs"><span class="gold">${icon('coins')} ${r.gold} lượng</span></div>${html}</div></div>`);
+    const body = this.openPanel('Sản xuất & chợ', `<div class="with-side">${sideTabs([['craft', 'Luyện đan · Nấu ăn', 'cauldron'], ['market', 'Chợ', 'scales']], tab)}<div class="side-body"><div class="subtabs"><span class="gold">${icon('coins')} ${r.gold} lượng</span></div>${html}</div></div>`);
     this.bindSide(body, (t) => this.openCraft(g, t));
     body.querySelectorAll('[data-cr]').forEach((b) => (b.onclick = () => { if (sy.craft(b.dataset.cr)) { g.audio.chime(); g.toast(`Luyện thành <b>${ITEMS[b.dataset.cr].name}</b>`); } this.openCraft(g, tab); }));
     body.querySelectorAll('[data-mk]').forEach((b) => (b.onclick = () => { const id = b.dataset.mk, p = Number(b.dataset.p); if (r.gold >= p) { r.gold -= p; ITEMS[id].type === 'equip' ? r.owned.add(id) : r.add(id); g.audio.coin(); } this.openCraft(g, tab); }));

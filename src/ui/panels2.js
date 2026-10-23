@@ -1,5 +1,5 @@
 import { UI } from './ui.js';
-import { icon, itemIcon } from './icons.js';
+import { icon, itemIcon, uiImg } from './icons.js';
 import { ITEMS } from '../game/rpg.js';
 import { RECRUITS, MASTER_TASKS, HOUSE_LEVELS } from '../game/social.js';
 import { CHAPTERS } from '../story/chapters.js';
@@ -15,6 +15,8 @@ const reward = (r) => Object.entries(r).map(([k, v]) => `<span class="rw" title=
 Object.assign(UI.prototype, {
   // ───────────── TRUNG TÂM CHỨC NĂNG ─────────────
   openHub(g) {
+    // icon 3D giống thanh nút trên màn hình
+    const HUB3D = { bag: 'bag', meditation: 'skill', horse: 'mount', crown: 'gear', qi: 'meridian', quill: 'quest', map: 'map', dragon: 'bestiary', calendar: 'event', present: 'gift', podium: 'rank', team: 'team', pagoda: 'guild', rod: 'life', cauldron: 'craft', scales: 'shop', gavel: 'coin', anvil: 'gem', scroll: 'title' };
     const F = [
       ['Nhân vật', [['bag', 'Túi đồ', 'I', () => this.openBag(g)], ['meditation', 'Võ học', 'K', () => this.openSkills(g)], ['horse', 'Ngự thú', 'B', () => this.openCompanions(g)], ['crown', 'Trang bị & danh hiệu', '', () => this.openGear(g)], ['qi', 'Kinh mạch', '', () => this.openMeridian(g)], ['anvil', 'Cường hoá', '', () => this.openEnhance(g, g.rpg.equip.weapon)]]],
       ['Giang hồ', [['quill', 'Nhiệm vụ', 'J', () => this.openQuests(g)], ['map', 'Bản đồ', 'M', () => this.openMap(g)], ['dragon', 'Bách quái phổ', 'L', () => this.openBestiary(g)], ['scroll', 'Nhật ký', '', () => this.openJournal(CHAPTERS, g.chapterIdx, g.flags)]]],
@@ -22,7 +24,7 @@ Object.assign(UI.prototype, {
       ['Xã hội', [['team', 'Tổ đội', '', () => this.openParty(g)], ['pagoda', 'Bang hội', 'G', () => this.openGuild(g)], ['wizard', 'Sư đồ', '', () => this.openMaster(g)], ['rings', 'Kết duyên', '', () => this.openBond(g)], ['baby', 'Gia đình', '', () => this.openFamily(g)]]],
       ['Sinh hoạt', [['rod', 'Sinh hoạt', '', () => this.openLife(g)], ['cauldron', 'Luyện đan & nấu ăn', 'T', () => this.openCraft(g)], ['scales', 'Chợ', '', () => this.openCraft(g, 'market')], ['gavel', 'Đấu giá', '', () => this.openAuction(g)], ['home', 'Gia viên', '', () => this.openHouse(g)]]],
     ];
-    const body = this.openPanel('Chức năng', F.map(([t, list]) => `<h4 class="sub-h">${t}</h4><div class="hub">${list.map(([ic, n, k], i) => `<button class="hub-i" data-h="${t}|${i}"><span class="mi-ic">${icon(ic)}</span><span>${n}</span>${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('')}</div>`).join(''));
+    const body = this.openPanel('Chức năng', F.map(([t, list]) => `<h4 class="sub-h">${t}</h4><div class="hub">${list.map(([ic, n, k], i) => `<button class="hub-i" data-h="${t}|${i}"><span class="mi-ic ${HUB3D[ic] ? 'img' : ''}">${HUB3D[ic] ? uiImg(HUB3D[ic]) : icon(ic)}</span><span>${n}</span>${k ? `<kbd>${k}</kbd>` : ''}</button>`).join('')}</div>`).join(''));
     body.querySelectorAll('[data-h]').forEach((b) => (b.onclick = () => { const [t, i] = b.dataset.h.split('|'); F.find((x) => x[0] === t)[1][Number(i)][3](); }));
     this.relock(g);
   },
@@ -35,13 +37,13 @@ Object.assign(UI.prototype, {
       <div class="party-slots">
         <div class="pslot me"><img src="${g.portraits.hero}" /><b>${esc(g.profile.name)}</b><small>Đội trưởng</small></div>
         ${[0, 1, 2].map((i) => { const r = RECRUITS.find((x) => x.id === party[i]); const a = g.allies.find((x) => x.name === r?.name);
-          return r ? `<div class="pslot"><span class="han">${r.han}</span><b>${r.name}</b><small>${r.cls}</small><div class="mini-hp"><div style="width:${a ? (a.hp / a.maxHp) * 100 : 100}%"></div></div><button class="ghost" data-dis="${r.id}">Cho rời đội</button></div>`
-            : '<div class="pslot empty">+<small>Trống</small></div>'; }).join('')}
+          return r ? `<div class="pslot"><img src="/assets/thumbs/hero_${r.meshy}.png" class="full" /><b>${r.name}</b><small>${r.cls}</small><div class="mini-hp"><div style="width:${a ? (a.hp / a.maxHp) * 100 : 100}%"></div></div><button class="ghost" data-dis="${r.id}">Cho rời đội</button></div>`
+            : '<div class="pslot empty"><span class="plus">+</span><small>Trống</small></div>'; }).join('')}
       </div>
       <h4 class="sub-h">Võ quán: cao thủ có thể chiêu mộ</h4>
       <div class="shop">${RECRUITS.map((r) => { const inP = party.includes(r.id); return `
-        <div class="ware"><div class="ic"><span class="han" style="font-size:24px">${r.han}</span></div>
-        <div class="wi"><b>${r.name}</b> · ${r.cls}<small>Khí huyết ${r.hp} · Công ${r.atk} · ${r.ranged ? 'Tầm xa' : 'Cận chiến'}</small></div>
+        <div class="ware"><div class="ic rec-av"><img src="/assets/thumbs/hero_${r.meshy}.png" alt="" /></div>
+        <div class="wi"><b>${r.name}</b> <span class="han">${r.han}</span> · ${r.cls}<small>Khí huyết ${r.hp} · Công ${r.atk} · ${r.ranged ? 'Tầm xa' : 'Cận chiến'}</small></div>
         <div class="wp">${icon('coins')}${r.price}</div>
         <button class="primary sm" data-rec="${r.id}" ${inP || party.length >= 3 || g.rpg.gold < r.price ? 'disabled' : ''}>${inP ? 'Trong đội' : 'Chiêu mộ'}</button></div>`; }).join('')}</div>`);
     body.querySelectorAll('[data-rec]').forEach((b) => (b.onclick = async () => { b.disabled = true; await g.social.recruit(b.dataset.rec); this.openParty(g); }));
@@ -89,7 +91,7 @@ Object.assign(UI.prototype, {
         <div class="lc">${icon('rod')}<b>Câu cá</b><small>Bến câu có phao đỏ quanh hồ Bích Thủy. Bấm E thả câu, khi cá cắn câu bấm E thật nhanh.</small></div>
         <div class="lc">${icon('mining')}<b>Khai khoáng</b><small>Mỏ có tinh thể xanh ở Hàn Băng Cốc, Thung lũng Yêu Ma. Ngọc thạch ở Hỏa Diệm Sơn.</small></div>
         <div class="lc">${icon('axe')}<b>Đốn gỗ</b><small>Thân cây khô trong Rừng Nấm và Đồi Gió.</small></div>
-        <div class="lc">${icon('meal')}<b>Nấu ăn</b><small>Cá + gỗ = Cá nướng (hồi khí huyết, nội lực). Gặp Tô Linh hoặc bảng Sản xuất.</small></div>
+        <div class="lc">${icon('meal')}<b>Nấu ăn</b><small>Cá + gỗ = Cá nướng; rau củ, mật ong, rượu quái rơi nấu thành Lẩu, Gà quay, Nữ Nhi Hồng… ở bảng Sản xuất.</small></div>
       </div>
       <h4 class="sub-h">Kho nguyên liệu · đã khai thác ${n} lần</h4>
       <div class="grid">${items.map((id) => `<div class="cell thumb" title="${ITEMS[id].name}">${itemIcon(id, ITEMS[id].icon)}<span class="n">${g.rpg.bag[id] || 0}</span></div>`).join('')}</div></div>`);

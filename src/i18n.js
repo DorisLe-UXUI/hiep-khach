@@ -59,13 +59,13 @@ for (const [vi, [en, zh]] of Object.entries(UI)) { REV[en] = vi; REV[zh] = vi; }
 function translateNode(n) {
   if (n.nodeType === 3) {
     const raw = n.nodeValue, t = raw.trim();
-    if (!t) return;
+    if (!t || n.parentElement?.closest('.han, .no-i18n')) return; // chữ Hán trang trí giữ nguyên
     const vi = UI[t] ? t : REV[t];
     if (!vi) return;
     const out = LANG === 'vi' ? vi : UI[vi][LANG === 'en' ? 0 : 1];
     if (out !== t) n.nodeValue = raw.replace(t, out);
   } else if (n.nodeType === 1) {
-    if (n.tagName === 'SCRIPT' || n.tagName === 'STYLE' || n.classList?.contains('no-i18n')) return;
+    if (n.tagName === 'SCRIPT' || n.tagName === 'STYLE' || n.classList?.contains('no-i18n') || n.classList?.contains('han')) return;
     const ph = n.getAttribute?.('placeholder');
     if (ph) { const vi = UI[ph] ? ph : REV[ph]; if (vi) n.setAttribute('placeholder', LANG === 'vi' ? vi : UI[vi][LANG === 'en' ? 0 : 1]); }
     for (const c of n.childNodes) translateNode(c);
