@@ -1,0 +1,14 @@
+{
+  "name": "Thiên Kiếm Giang Hồ · Thanh Phong Kiếm Ký",
+  "short_name": "Thiên Kiếm",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1a120c",
+  "theme_color": "#1a120c",
+  "icons": [
+    { "src": "brand/app_192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "brand/app_512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
