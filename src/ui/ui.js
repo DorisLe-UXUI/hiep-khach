@@ -22,7 +22,11 @@ export const SUMMARIES = {
   c3: 'Phá Hắc Phong trại, giải cứu dân lành; bức thư trong người Đồ Bá mang con dấu của Duyệt Lai khách điếm.',
   c4: 'Đêm trăng máu: Lưu chưởng quỹ thú tội; Tiêu Vân đánh lui Huyết Ảnh sát thủ, bảo vệ Uyển Nhi.',
   c5: 'Trên Kiếm Mộ, Tiêu Vân đối mặt Mộ Dung Huyết, đệ tử phản đồ của Thanh Phong kiếm phái.',
-  epilogue: 'Gió đã yên trên hồ Bích Thủy.',
+  epilogue: 'Gió đã yên trên hồ Bích Thủy. Cho tới khi một phong thư mực đỏ được gửi tới.',
+  c6: 'Hồi II. Xác Mộ Dung Huyết biến mất. Ở Hàn Băng Cốc, Tiêu Vân và Uyển Nhi gặp Hàn Tuyết, em gái của Hàn Băng.',
+  c7: 'Yêu Ma Cốc: ba tế đàn Huyết Hồn Tế và Hữu sứ Hồng Liên, con gái nuôi của Mộ Dung Huyết.',
+  c8: 'Trên Hỏa Diệm Sơn, Huyết Ma sống lại từ Huyết Phách. Ai đứng cạnh Tiêu Vân tuỳ vào những gì chàng đã chọn.',
+  epilogue2: 'Chính tà một niệm. Kết cục tuỳ theo đạo tâm của Tiêu Vân.',
 };
 
 export class UI {

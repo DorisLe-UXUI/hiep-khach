@@ -61,6 +61,9 @@ export const LOOKS = {
   skeletonMage: { outfit: 'male_ranger', base: 'male', hair: [], outfitColor: '#6a5a8a' },
   skeletonKing: { outfit: 'male_ranger', base: 'male', hair: [], outfitColor: '#8a2a20' },
   villain: { outfit: 'male_ranger', base: 'male', hair: ['hair_long'], brows: 'eyebrows_regular', outfitColor: '#4a0d12', hairColor: '#d8d2c8', hideHood: true },
+  hanxue: { outfit: 'female_ranger', base: 'female', hair: ['hair_long'], brows: 'eyebrows_female', outfitColor: '#d8e4f0', hairColor: '#e8eef4', hideHood: true },
+  honglian: { outfit: 'female_ranger', base: 'female', hair: ['hair_buns'], brows: 'eyebrows_female', outfitColor: '#7a1428', hairColor: '#0c0a0a', hideHood: true },
+  huyetma: { outfit: 'male_ranger', base: 'male', hair: ['hair_long'], brows: 'eyebrows_regular', outfitColor: '#2a0006', hairColor: '#ff3030', hideHood: true },
 };
 
 const ENEMY_TYPES = {
@@ -73,6 +76,10 @@ const ENEMY_TYPES = {
   skeletonMage: { look: 'skeletonMage', name: 'Âm hồn pháp sư', hp: 90, dmg: 16, exp: 70, gold: 18, weapon: 'staff', caster: true },
   skeletonKing: { look: 'skeletonKing', name: 'Kiếm Mộ Vương', hp: 3000, dmg: 24, exp: 900, gold: 600, weapon: 'axe' },
   villain: { look: 'villain', name: 'Mộ Dung Huyết', hp: 1100, dmg: 22, exp: 900, gold: 500, weapon: 'golden', scale: 1.08, caster: true },
+  // Hồi II
+  hanxue: { look: 'hanxue', name: 'Hàn Tuyết', hp: 1500, dmg: 24, exp: 1200, gold: 400, weapon: 'sword', speed: 6.6 },
+  honglian: { look: 'honglian', name: 'Hồng Liên', hp: 2000, dmg: 27, exp: 1600, gold: 600, weapon: 'sword', speed: 6.4, caster: true },
+  huyetma: { look: 'huyetma', name: 'Huyết Ma · Mộ Dung Huyết', hp: 3400, dmg: 32, exp: 3000, gold: 1200, weapon: 'golden', scale: 1.3, caster: true },
 };
 
 for (const k in LOOKS) LOOKS[k]._role = k;
@@ -409,6 +416,7 @@ export class Game {
     await this.ui.fade(true);
     // dọn kẻ địch cũ
     this.spawner.clear();
+    this.dropStoryAllies();
     for (const e of this.enemies) this.scene.remove(e.root);
     this.enemies = [];
     this.clearLoot();
@@ -423,8 +431,10 @@ export class Game {
       n.root.visible = !n.hidden;
       if (n.home) n.placeAt(n.home[0], n.home[1], n.homeYaw);
     }
-    this.npcById.maiden.hidden = ch.id === 'c5';
-    this.npcById.maiden.root.visible = ch.id !== 'c5';
+    // Uyển Nhi vắng mặt ở trấn khi ở Kiếm Mộ hoặc đang đồng hành Hồi II
+    const away = ['c5', 'c6', 'c7', 'c8'].includes(ch.id);
+    this.npcById.maiden.hidden = away;
+    this.npcById.maiden.root.visible = !away;
     this.chestOpened = this.chapterIdx > 2;
     this.freedCages.clear();
     for (const c of this.spots.cages) c.userData.bars.visible = true;
@@ -436,7 +446,7 @@ export class Game {
     this.save();
     const narration = typeof ch.narration === 'function' ? ch.narration(this) : ch.narration;
     if (narration) {
-      this.ui.narrBg = ['town', 'bamboo', 'lake', 'valley', 'ice', 'fire'][this.chapterIdx % 6];
+      this.ui.narrBg = ch.bg || ['town', 'bamboo', 'lake', 'valley', 'ice', 'fire'][this.chapterIdx % 6];
       await this.ui.narrate(narration);
     }
     await this.ui.fade(false);
@@ -472,6 +482,32 @@ export class Game {
   // ─────────────────── API dùng trong kịch bản ───────────────────
   npc(id) { return this.npcById[id]; }
   flag(name) { this.flags[name] = true; }
+  /** Đạo tâm: dương = Chính, âm = Tà. Lựa chọn trong truyện cộng/trừ, ảnh hưởng chỉ số, giá tiệm và kết cục. */
+  karma(n) {
+    const before = this.flags.karma || 0;
+    this.flags.karma = before + n;
+    this.toast(n > 0 ? `<span class="han" style="color:#8fd8ff">正</span> Chính khí <b>+${n}</b>` : `<span class="han" style="color:#ff6a5a">邪</span> Tà khí <b>+${-n}</b>`, 2.2);
+    this.mhud?.log('system', n > 0 ? `Đạo tâm nghiêng về <b class="cy">Chính</b> (${this.flags.karma})` : `Đạo tâm nghiêng về <b style="color:#ff6a5a">Tà</b> (${this.flags.karma})`);
+    this.rpg.apply();
+    this.sys.checkAchievements?.();
+  }
+  get karmaVal() { return this.flags.karma || 0; }
+  v3(x, y, z) { return new THREE.Vector3(x, y, z); }
+  /** Bạn đồng hành trong truyện (Uyển Nhi, Hàn Tuyết...) đánh cùng như đồng đội */
+  async storyAlly(id, look, name, weapon, opts = {}) {
+    if (this.allies.some((a) => a.storyId === id)) return;
+    const ch = await makeChar(LOOKS[look], weapon);
+    const lvK = 1 + (this.rpg.level - 1) * 0.12;
+    const a = new Ally(this, ch, { name, hp: Math.round((opts.hp || 600) * lvK), atk: Math.round((opts.atk || 26) * lvK), ranged: !!opts.ranged, color: opts.color || 0xbfe6ff, slot: 4 + this.allies.length });
+    a.storyId = id;
+    a.placeAt(this.player.pos.x + 1.5, this.player.pos.z - 1.5, this.player.yaw);
+    this.scene.add(ch.root);
+    this.allies.push(a);
+  }
+  dropStoryAllies() {
+    for (const a of this.allies.filter((x) => x.storyId)) this.scene.remove(a.root);
+    this.allies = this.allies.filter((x) => !x.storyId);
+  }
   count(k) { return this.counts[k] || 0; }
   killCount(group) { return this.kills[group] || 0; }
   unlock(k) { this.unlocks[k] = true; }
@@ -974,8 +1010,8 @@ export class Game {
 
   /** Đồng đội theo tổ đội đã chiêu mộ. */
   async spawnAllies() {
-    for (const a of this.allies) if (!a.battle) this.scene.remove(a.root);
-    this.allies = this.allies.filter((a) => a.battle);
+    for (const a of this.allies) if (!a.battle && !a.storyId) this.scene.remove(a.root);
+    this.allies = this.allies.filter((a) => a.battle || a.storyId);
     const ids = this.social.party();
     for (let i = 0; i < ids.length; i++) {
       const r = RECRUITS.find((x) => x.id === ids[i]);

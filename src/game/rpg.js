@@ -76,6 +76,11 @@ export class RPG {
     v += this.g.meridian?.stat(key) || 0;
     v += TITLES.find((t) => t.id === this.title)?.stats[key] || 0;
     if (key === 'atk' || key === 'crit' || key === 'spd') v += this.g.status?.val(key) || 0;
+    // đạo tâm: Chính vững vàng (giảm sát thương), Tà hung bạo (công, bạo kích)
+    const k = this.g.flags?.karma || 0;
+    if (k >= 3 && key === 'def') v += Math.min(0.06, k * 0.01);
+    if (k <= -3 && key === 'crit') v += Math.min(0.08, -k * 0.01);
+    if (k <= -3 && key === 'atk') v += Math.min(10, -k);
     return key === 'atk' || key === 'hp' || key === 'mp' ? Math.round(v) : v;
   }
 
@@ -190,11 +195,17 @@ export class RPG {
     return true;
   }
 
+  /** giá mua: người Chính được dân trấn bớt 10%, kẻ Tà bị nâng giá 15% */
+  priceOf(id) {
+    const k = this.g.flags?.karma || 0, p = ITEMS[id]?.price || 0;
+    return Math.round(p * (k >= 3 ? 0.9 : k <= -3 ? 1.15 : 1));
+  }
+
   buy(id) {
     const it = ITEMS[id];
-    if (!it || this.gold < it.price) return false;
+    if (!it || this.gold < this.priceOf(id)) return false;
     if (it.type === 'equip' && this.owned.has(id)) return false;
-    this.gold -= it.price;
+    this.gold -= this.priceOf(id);
     if (it.type === 'equip') this.owned.add(id); else this.add(id);
     this.g.audio.coin();
     return true;

@@ -325,7 +325,7 @@ Object.assign(UI.prototype, {
     const sellable = Object.entries(r.bag).filter(([id, n]) => n > 0 && ITEMS[id].sell);
     const body = this.openPanel('Tiệm Duyệt Lai', `
       <div class="subtabs">${[['buy', 'Mua'], ['sell', 'Bán']].map(([t, n]) => `<button class="${tab === t ? 'on' : ''}" data-t="${t}">${n}</button>`).join('')}${tab === 'sell' && sellable.some(([id]) => ITEMS[id].loot) ? '<button class="ghost sm" id="sell-junk">Bán hết tạp vật</button>' : ''}<span class="gold">${icon('coins')} ${r.gold} lượng</span></div>
-      <div class="shop">${(tab === 'buy' ? stock.map((id) => [id, ITEMS[id].price]) : sellable.map(([id, n]) => [id, ITEMS[id].sell, n])).map(([id, price, n]) => {
+      <div class="shop">${(tab === 'buy' ? stock.map((id) => [id, r.priceOf(id)]) : sellable.map(([id, n]) => [id, ITEMS[id].sell, n])).map(([id, price, n]) => {
         const it = ITEMS[id], owned = it.type === 'equip' && r.owned.has(id);
         return `<div class="ware"><div class="ic">${itemIcon(id, it.icon)}</div><div class="wi"><b>${it.name}</b> <span class="han">${it.han}</span><small>${it.desc}</small></div>
           <div class="wp">${icon('coins')}${price}${n ? ` <small>×${n}</small>` : ''}</div>

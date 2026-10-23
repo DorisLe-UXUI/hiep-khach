@@ -274,6 +274,8 @@ Object.assign(UI.prototype, {
       ['Thú cưỡi', mount ? `${mount.name} Lv.${g.beasts.lv(bs.mount)}` : '—'], ['Linh thú', pet ? `${pet.name} Lv.${g.beasts.lv(bs.pet)}` : '—'],
       ['Kinh mạch', `${g.meridian?.total() || 0}/48 huyệt`], ['Bách quái phổ', `${killed}/${totalMon} loại`],
       ['Thành tựu', `${sy.s.achDone?.length || 0}/${ACHIEVEMENTS.length}`], ['Lượng bạc', r.gold.toLocaleString('vi')],
+      ['Đạo tâm', (() => { const k = g.flags.karma || 0; return k >= 3 ? `<span style="color:#8fd8ff">正 Chính đạo (+${k})</span>` : k <= -3 ? `<span style="color:#ff6a5a">邪 Tà đạo (${k})</span>` : `Trung dung (${k >= 0 ? '+' : ''}${k})`; })()],
+      ['Hồi truyện', g.chapter ? `${g.chapter.title} · ${g.chapter.subtitle}` : '—'],
     ];
     const body = this.openPanel('Hồ sơ nhân vật', `
       <div class="pf">
