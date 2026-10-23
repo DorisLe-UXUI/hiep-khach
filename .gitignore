@@ -5,3 +5,4 @@ vendor_dl
 tools/fetch.log
 dist-lite
 dist-pages
+.cache-pages/

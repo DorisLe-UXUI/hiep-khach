@@ -84,7 +84,7 @@ Object.assign(UI.prototype, {
       const renderClasses = () => {
         $('cr-classes').innerHTML = Object.entries(CLASSES).map(([id, c]) => `
           <button class="cls ${h.cls === id ? 'on' : ''}" data-c="${id}" ${editOnly ? 'disabled' : ''} style="--c:${c.color}">
-            <span class="emblem">${icon(c.icon)}</span><span class="nm">${c.name}</span><span class="hz">${c.han}</span>
+            <span class="emblem img"><img src="/assets/ui/cls_${id}.png" alt="" /></span><span class="nm">${c.name}</span><span class="hz">${c.han}</span>
           </button>`).join('');
         $('cr-classes').querySelectorAll('.cls').forEach((b) => (b.onclick = () => { h.cls = b.dataset.c; renderClasses(); refresh(); }));
       };
@@ -93,8 +93,7 @@ Object.assign(UI.prototype, {
         const c = CLASSES[h.cls];
         $('cr-info').innerHTML = `<div class="cls-han">${c.han}</div><h3>${c.name}</h3><p>${c.desc}</p>
           <div class="stats4"><span>Công</span>${bar(c.stats.atk)}<span>Thủ</span>${bar(c.stats.def)}<span>Tốc</span>${bar(c.stats.spd)}<span>Tầm</span>${bar(c.stats.range)}</div>
-          <div class="cls-skills"><div>${icon('sword')}<b>Đòn thường</b>${c.attack === 'melee' ? 'Liên chiêu cận chiến' : c.attack === 'arrow' ? 'Bắn tên' : 'Chưởng khí'}</div>
-          <div>${icon('dash')}<b>Q</b>${c.q.name}</div><div>${icon('palm')}<b>F</b>${c.f.name}</div></div>`;
+          <div class="cls-sk3d">${[['q', 'Q'], ['f', 'F'], ['u1', 'Cấp 4'], ['u2', 'Cấp 8']].map(([k, t]) => `<div title="${c[k].name}"><img src="/assets/ui/sk_${h.cls}_${k}.png" alt="" /><b>${c[k].name}</b><small>${t}</small></div>`).join('')}</div>`;
       };
       const renderCustom = () => {
         const tabs = chibi ? [['model', 'Hình tượng', 'user'], ['weapon', 'Binh khí', 'swords']]
@@ -308,7 +307,9 @@ Object.assign(UI.prototype, {
       <div class="sk-head">${icon(c.icon)}<div><b>${c.name}</b> <span class="han">${c.han}</span><small>Điểm võ học còn lại: <b>${r.points}</b> · Lên cấp để nhận thêm</small></div></div>
       <div class="skill-list">${Object.entries(SKILLS).map(([id, s]) => {
         const lv = r.skills[id] || 0;
-        return `<div class="skill"><div class="ic">${icon(s.icon)}</div><div><b>${s.name}</b> <span class="han">${s.han}</span>
+        const cid = g.profile.hero?.cls || 'kiem';
+        const art = { sword: cid === 'kiem' ? 'sk_atk' : `cls_${cid}`, dash: `sk_${cid}_q`, palm: `sk_${cid}_f`, qinggong: 'sk_jump', guard: 'sk_block' }[id];
+        return `<div class="skill"><div class="ic ${art ? 'art' : ''}">${art ? `<img src="/assets/ui/${art}.png" alt="" />` : icon(s.icon)}</div><div><b>${s.name}</b> <span class="han">${s.han}</span>
           <div class="pips">${Array.from({ length: s.max }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</div>
           <p>${s.desc(lv)}${lv < s.max ? ` → <span class="up">${s.desc(lv + 1)}</span>` : ' (tối đa)'}</p></div>
           <button class="primary sm" data-s="${id}" ${r.points <= 0 || lv >= s.max ? 'disabled' : ''}>Lĩnh ngộ</button></div>`;

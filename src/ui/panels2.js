@@ -16,7 +16,7 @@ Object.assign(UI.prototype, {
   // ───────────── TRUNG TÂM CHỨC NĂNG ─────────────
   openHub(g) {
     // icon 3D giống thanh nút trên màn hình
-    const HUB3D = { bag: 'bag', meditation: 'skill', horse: 'mount', crown: 'gear', qi: 'meridian', quill: 'quest', map: 'map', dragon: 'bestiary', calendar: 'event', present: 'gift', podium: 'rank', team: 'team', pagoda: 'guild', rod: 'life', cauldron: 'craft', scales: 'shop', gavel: 'coin', anvil: 'gem', scroll: 'title' };
+    const HUB3D = { bag: 'bag', meditation: 'skill', horse: 'mount', crown: 'gear', qi: 'meridian', quill: 'quest', map: 'map', dragon: 'bestiary', calendar: 'event', present: 'gift', podium: 'rank', team: 'team', pagoda: 'guild', rod: 'life', cauldron: 'craft', scales: 'shop', gavel: 'auction', anvil: 'enhance', scroll: 'journal', swords: 'battlefield', duel: 'duel', wizard: 'master', rings: 'marry', baby: 'family', home: 'house' };
     const F = [
       ['Nhân vật', [['bag', 'Túi đồ', 'I', () => this.openBag(g)], ['meditation', 'Võ học', 'K', () => this.openSkills(g)], ['horse', 'Ngự thú', 'B', () => this.openCompanions(g)], ['crown', 'Trang bị & danh hiệu', '', () => this.openGear(g)], ['qi', 'Kinh mạch', '', () => this.openMeridian(g)], ['anvil', 'Cường hoá', '', () => this.openEnhance(g, g.rpg.equip.weapon)]]],
       ['Giang hồ', [['quill', 'Nhiệm vụ', 'J', () => this.openQuests(g)], ['map', 'Bản đồ', 'M', () => this.openMap(g)], ['dragon', 'Bách quái phổ', 'L', () => this.openBestiary(g)], ['scroll', 'Nhật ký', '', () => this.openJournal(CHAPTERS, g.chapterIdx, g.flags)]]],

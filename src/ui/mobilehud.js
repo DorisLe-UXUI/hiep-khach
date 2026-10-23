@@ -39,12 +39,12 @@ export class MobileHUD {
         <button class="m-atk" data-act="atk"><span class="ico-wrap"></span></button>
         <button class="m-sk s1" data-act="q"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em></button>
         <button class="m-sk s2" data-act="f"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em></button>
-        <button class="m-sk s3" data-act="roll"><span class="ico-wrap">${icon('roll')}</span><i class="cd"></i></button>
-        <button class="m-sk s4" data-act="jump"><span class="ico-wrap">${icon('cloud')}</span><i class="cd"></i></button>
-        <button class="m-sk s5" data-act="block"><span class="ico-wrap">${icon('shield')}</span></button>
+        <button class="m-sk s3 art" data-act="roll"><span class="ico-wrap">${uiImg('sk_roll', 'sk-art')}</span><i class="cd"></i></button>
+        <button class="m-sk s4 art" data-act="jump"><span class="ico-wrap">${uiImg('sk_jump', 'sk-art')}</span><i class="cd"></i></button>
+        <button class="m-sk s5 art" data-act="block"><span class="ico-wrap">${uiImg('sk_block', 'sk-art')}</span></button>
         <button class="m-sk s6" data-act="u1"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
         <button class="m-sk s7" data-act="u2"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
-        <button class="m-rage" data-act="rage" title="Bộc phát nộ khí (X)"><i class="rg-fill"></i><span class="han">怒</span><b class="rg-t">0%</b></button>
+        <button class="m-rage" data-act="rage" title="Bộc phát nộ khí (X)">${uiImg('sk_rage', 'rg-art')}<i class="rg-fill"></i><span class="han">怒</span><b class="rg-t">0%</b></button>
         <button class="m-auto" data-act="auto">${uiImg('auto', 'auto-ic')}<span>Auto</span></button>
       </div>
       <div id="m-quick">
@@ -78,24 +78,30 @@ export class MobileHUD {
       this.renderChat();
     }));
     $('m-quest').onclick = () => { if (!this.g.dialogOpen) this.g.ui.openQuests(this.g); };
+    $('m-avatar').onclick = () => { if (!this.g.dialogOpen) this.g.ui.openProfile(this.g); };
+    $('m-avatar').title = 'Hồ sơ nhân vật';
     this.bindJoystick();
   }
 
   setClass(cls, def) {
     const atk = { kiem: 'sword', thuong: 'spear', cung: 'bow', phap: 'fist', dao: 'shuriken' }[cls] || 'sword';
     const qi = { dash: 'dash', nova: 'sparkles', volley: 'bow', heal: 'heart', orb: 'palm', bigorb: 'palm', backflip: 'roll' };
-    const set = (sel, ic, name) => {
+    // ảnh chiêu thức 3D theo môn phái (sk_<môn>_<phím>); thiếu ảnh thì dùng icon nét
+    const ART = new Set(['kiem', 'thuong', 'cung', 'phap', 'dao']);
+    const set = (sel, ic, name, art) => {
       const b = document.querySelector(sel);
-      b.querySelector('.ico-wrap').innerHTML = icon(ic);
+      b.classList.toggle('art', !!art);
+      b.querySelector('.ico-wrap').innerHTML = art ? uiImg(art, 'sk-art') : icon(ic);
       const nm = b.querySelector('.nm');
       if (nm) nm.textContent = name || '';
     };
-    set('.m-atk', atk);
-    set('.m-sk.s1', qi[def.q.kind] || 'dash', def.q.name);
-    set('.m-sk.s2', qi[def.f.kind] || 'palm', def.f.name);
+    const has = ART.has(cls);
+    set('.m-atk', atk, '', has ? (cls === 'kiem' ? 'sk_atk' : `cls_${cls}`) : null);
+    set('.m-sk.s1', qi[def.q.kind] || 'dash', def.q.name, has && `sk_${cls}_q`);
+    set('.m-sk.s2', qi[def.f.kind] || 'palm', def.f.name, has && `sk_${cls}_f`);
     const uic = { wave: 'shuriken', volley7: 'bow', ult: 'sparkles' };
-    set('.m-sk.s6', uic[def.u1.kind] || 'sparkles', def.u1.name);
-    set('.m-sk.s7', 'dragon', def.u2.name);
+    set('.m-sk.s6', uic[def.u1.kind] || 'sparkles', def.u1.name, has && `sk_${cls}_u1`);
+    set('.m-sk.s7', 'dragon', def.u2.name, has && `sk_${cls}_u2`);
     this.def = def;
   }
 
@@ -206,7 +212,7 @@ export class MobileHUD {
     // nộ khí & liên kích
     const fu = g.fury, rb = document.querySelector('.m-rage');
     const rk = fu.burst > 0 ? fu.burst / 10 : fu.rage / 100;
-    rb.querySelector('.rg-fill').style.background = `conic-gradient(${fu.burst > 0 ? '#ffd27a' : '#ff5a2a'} ${rk * 360}deg, rgba(0,0,0,.55) 0)`;
+    rb.querySelector('.rg-fill').style.background = `conic-gradient(${fu.burst > 0 ? 'rgba(255,210,122,.35)' : 'transparent'} ${rk * 360}deg, rgba(10,4,2,.68) 0)`; // phần đã nạp lộ ảnh lửa
     rb.querySelector('.rg-t').textContent = fu.burst > 0 ? Math.ceil(fu.burst) + 's' : Math.floor(fu.rage) + '%';
     rb.classList.toggle('full', fu.rage >= 100 && !fu.burst);
     rb.classList.toggle('on', fu.burst > 0);

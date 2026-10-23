@@ -1,4 +1,8 @@
-import { ITEMS } from '../game/rpg.js';
+import { ITEMS, realmOf, expNeed } from '../game/rpg.js';
+import { CLASSES } from '../game/classes.js';
+import { MESHY_DEFAULT } from '../actors/meshy.js';
+import { MONSTERS } from '../game/bestiary.js';
+import { ACHIEVEMENTS, GUILD } from '../game/systems.js';
 import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { SLOTS, RARITY, STAT_NAME, fmtStat, gearScore, GEM_ITEMS, GEM_TYPES, GEM_MAX, socketsOf, parseGem, gemValue, gemId } from '../game/gear.js';
@@ -14,9 +18,11 @@ const statLines = (it, cmp) => Object.entries(it.stats).map(([k, v]) => {
   const diff = o === null ? '' : val > o + 1e-6 ? '<i class="up">▲</i>' : val < o - 1e-6 ? '<i class="dn">▼</i>' : '';
   return `<div class="gs"><span>${STAT_NAME[k]}</span><b>${fmtStat(k, k === 'def' || k === 'crit' || k === 'spd' ? val : Math.round(val))}</b>${diff}</div>`;
 }).join('');
+/** ảnh 3D cho từng ô trang bị (vũ khí cũ chưa có ảnh riêng dùng ảnh kiếm) */
+const EQ3D = { weapon: 'sk_atk', helm: 'eq_helm', armor: 'eq_armor', belt: 'eq_belt', boots: 'eq_boots', ring: 'eq_ring', trinket: 'eq_trinket' };
 const gcell = (it, extra = '') => {
   const R = RARITY[it.rarity];
-  return `<button class="gcell r${it.rarity}" style="--rc:${R.color}" data-uid="${it.uid}" ${extra}>${it.thumb ? `<img class="thumb-img" src="/assets/thumbs/${it.thumb}.png" alt="" draggable="false" />` : icon(SLOTS.find((s) => s.id === it.slot).icon)}<span class="gh">${it.han}</span>${it.enh ? `<span class="ge">+${it.enh}</span>` : ''}<span class="gl">${it.lv}</span></button>`;
+  return `<button class="gcell r${it.rarity}" style="--rc:${R.color}" data-uid="${it.uid}" ${extra}><img class="thumb-img" src="${it.thumb ? `/assets/thumbs/${it.thumb}.png` : `/assets/ui/${EQ3D[it.slot]}.png`}" alt="" draggable="false" /><span class="gh">${it.han}</span>${it.enh ? `<span class="ge">+${it.enh}</span>` : ''}<span class="gl">${it.lv}</span></button>`;
 };
 
 Object.assign(UI.prototype, {
@@ -31,7 +37,7 @@ Object.assign(UI.prototype, {
       <div class="gear">
         <div class="gear-doll">
           <div class="gp">${icon('crown')} Lực chiến <b>${g.sys.power().toLocaleString('vi')}</b></div>
-          <div class="gslots">${SLOTS.map((s) => { const it = r.gear[s.id]; return `<div class="gslot">${it ? gcell(it, 'data-eq="1"') : `<div class="gcell empty">${icon(s.icon)}</div>`}<small>${s.name}</small></div>`; }).join('')}</div>
+          <div class="gslots">${SLOTS.map((s) => { const it = r.gear[s.id]; return `<div class="gslot">${it ? gcell(it, 'data-eq="1"') : `<div class="gcell empty"><img class="slot-ghost" src="/assets/ui/${EQ3D[s.id]}.png" alt="" /></div>`}<small>${s.name}</small></div>`; }).join('')}</div>
           <div class="statgrid">${Object.keys(STAT_NAME).map((k) => `<span>${STAT_NAME[k]}</span><b>${fmtStat(k, r.stat(k))}</b>`).join('')}</div>
           <div class="gp sm">${itemIcon('essence', 'nugget')} Tinh thạch <b>${r.bag.essence || 0}</b> · ${icon('coins')} <b>${r.gold}</b></div>
         </div>
@@ -247,6 +253,57 @@ Object.assign(UI.prototype, {
   },
 
   // ───────────── HỘP THƯ ─────────────
+  // ───────────── HỒ SƠ NHÂN VẬT (bấm vào avatar) ─────────────
+  openProfile(g) {
+    const r = g.rpg, sy = g.sys, h = g.profile.hero || {}, c = CLASSES[h.cls] || CLASSES.kiem;
+    const mx = (h.model?.startsWith('mx:') ? h.model : MESHY_DEFAULT[`${h.cls}:${h.gender}`] || 'mx:swordsman_blue').slice(3);
+    const title = TITLES.find((t) => t.id === r.title);
+    const bs = g.beasts?.s || {}, mount = BEASTS[bs.mount], pet = BEASTS[bs.pet];
+    const killed = Object.keys(sy.s.bestiary || {}).length, totalMon = Object.keys(MONSTERS).length;
+    const stat = (k) => fmtStat(k, r.stat(k)).replace('+', '');
+    const p = g.player;
+    const slot = (sl) => {
+      const it = r.gear[sl.id];
+      if (!it) return `<div class="pf-slot empty" title="${sl.name}"><img src="/assets/ui/${{ weapon: 'sk_atk', helm: 'eq_helm', armor: 'eq_armor', belt: 'eq_belt', boots: 'eq_boots', ring: 'eq_ring', trinket: 'eq_trinket' }[sl.id]}.png" alt="" /><small>${sl.name}</small></div>`;
+      return `<div class="pf-slot" style="--rc:${RARITY[it.rarity].color}" title="${it.name} · ${RARITY[it.rarity].name}">${gcell(it)}<small>${it.name}${it.enh ? ' +' + it.enh : ''}</small></div>`;
+    };
+    const info = [
+      ['Cảnh giới', realmOf(r.level)], ['Danh hiệu', title ? title.name : '—'],
+      ['Bang hội', sy.s.guild ? `${GUILD.name} · ${sy.guildRank()}` : 'Chưa gia nhập'], ['Tổ đội', `${g.social?.party().length || 0}/3 đồng đội`],
+      ['Thú cưỡi', mount ? `${mount.name} Lv.${g.beasts.lv(bs.mount)}` : '—'], ['Linh thú', pet ? `${pet.name} Lv.${g.beasts.lv(bs.pet)}` : '—'],
+      ['Kinh mạch', `${g.meridian?.total() || 0}/48 huyệt`], ['Bách quái phổ', `${killed}/${totalMon} loại`],
+      ['Thành tựu', `${sy.s.achDone?.length || 0}/${ACHIEVEMENTS.length}`], ['Lượng bạc', r.gold.toLocaleString('vi')],
+    ];
+    const body = this.openPanel('Hồ sơ nhân vật', `
+      <div class="pf">
+        <div class="pf-hero" style="--c:${c.color}">
+          <div class="pf-stage"><img class="pf-full" src="/assets/thumbs/hero_${mx}.png" alt="" /></div>
+          <img class="pf-emblem" src="/assets/ui/cls_${h.cls || 'kiem'}.png" alt="" />
+          <div class="pf-name"><b>${g.profile.name}</b><span class="m-vip">VIP</span></div>
+          <div class="pf-sub">${c.name} <span class="han">${c.han}</span> · Cấp ${r.level}</div>
+          ${title ? `<div class="pf-title">${title.name}</div>` : ''}
+          <div class="pf-exp"><div style="width:${Math.min(100, (r.exp / expNeed(r.level)) * 100)}%"></div></div>
+        </div>
+        <div class="pf-right">
+          <div class="pf-power">${icon('crown')} Lực chiến <b>${sy.power().toLocaleString('vi')}</b></div>
+          <div class="pf-stats">
+            <div><span>Khí huyết</span><b>${p.maxHp}</b></div><div><span>Nội lực</span><b>${p.maxMp}</b></div>
+            <div><span>Công</span><b>${r.atk()}</b></div><div><span>Bạo kích</span><b>${Math.round(r.crit() * 100)}%</b></div>
+            <div><span>Giảm sát thương</span><b>${Math.round(r.def() * 100)}%</b></div><div><span>Thân pháp</span><b>${stat('spd')}</b></div>
+          </div>
+          <h4 class="sub-h">Trang bị đang mặc</h4>
+          <div class="pf-gear">${SLOTS.map(slot).join('')}</div>
+          <h4 class="sub-h">Giang hồ lộ</h4>
+          <div class="pf-info">${info.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>
+          <div class="pf-acts"><button class="primary sm" data-go="gear">Trang bị</button><button class="ghost sm" data-go="skill">Võ học</button><button class="ghost sm" data-go="meridian">Kinh mạch</button><button class="ghost sm" data-go="title">Danh hiệu</button></div>
+        </div>
+      </div>`);
+    const go = { gear: () => this.openGear(g), skill: () => this.openSkills(g), meridian: () => this.openMeridian(g), title: () => this.openTitles(g) };
+    body.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => go[b.dataset.go]()));
+    body.querySelectorAll('.pf-slot .gcell').forEach((b) => (b.onclick = () => this.openGear(g, 'gear', b.dataset.uid)));
+    this.relock?.(g);
+  },
+
   openMail(g, after) {
     const list = g.sys.mails();
     const body = this.openPanel('Hộp thư', `<div class="mail-list">${list.map((m) => `
