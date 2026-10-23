@@ -1213,7 +1213,8 @@ body.mmo #rail .mi-n { max-width: 56px; overflow: hidden; text-overflow: ellipsi
 .pf-hero { position: relative; display: flex; flex-direction: column; align-items: center; padding: 14px 12px 16px; border: 1px solid var(--edge); border-radius: 10px;
   background: radial-gradient(ellipse at 50% 78%, color-mix(in srgb, var(--c) 45%, transparent), transparent 60%), radial-gradient(circle at 50% 30%, #3a2a3a, #140c10 75%); overflow: hidden; }
 .pf-stage::before { content: ""; position: absolute; left: 50%; bottom: -8px; width: 230px; height: 46px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(255,220,140,.6), rgba(255,200,100,.15) 50%, transparent 70%); box-shadow: 0 0 0 2px rgba(255,210,120,.25); }
-.pf-stage { position: relative; width: 100%; height: 330px; display: grid; place-items: end center; }
+.pf-stage { position: relative; width: calc(100% + 24px); margin: -14px -12px 0; height: 400px; display: grid; place-items: end center; border-radius: 10px 10px 0 0; overflow: hidden; }
+.pf-stage canvas { position: absolute; inset: 0; } .pf-stage.live .pf-full, .pf-stage.live::before { display: none; }
 .pf-full { position: relative; height: 340px; width: auto; object-fit: contain; filter: drop-shadow(0 10px 14px rgba(0,0,0,.6)); animation: pfFloat 4s ease-in-out infinite; }
 @keyframes pfFloat { 50% { transform: translateY(-6px); } }
 .pf-emblem { position: absolute; left: 12px; top: 12px; width: 60px; height: 60px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
@@ -1233,4 +1234,4 @@ body.mmo #rail .mi-n { max-width: 56px; overflow: hidden; text-overflow: ellipsi
 .pf-slot.empty img { width: 58px; height: 58px; padding: 8px; object-fit: contain; border: 1px dashed var(--edge-soft); border-radius: 8px; opacity: .45; filter: grayscale(.6); }
 .pf-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 @media (max-width: 760px) { .pf { grid-template-columns: 1fr; } .pf-stage { height: 220px; } .pf-full { height: 230px; } .pf-gear { grid-template-columns: repeat(4, 1fr); } }
-@media (max-height: 520px) { .pf { grid-template-columns: 220px 1fr; gap: 12px; } .pf-stage { height: 190px; } .pf-full { height: 200px; }  }
+@media (max-height: 520px) { .pf { grid-template-columns: 220px 1fr; gap: 12px; } .pf-stage { height: 230px; } .pf-full { height: 200px; } }

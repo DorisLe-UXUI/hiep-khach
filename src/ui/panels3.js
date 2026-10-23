@@ -277,7 +277,7 @@ Object.assign(UI.prototype, {
     const body = this.openPanel('Hồ sơ nhân vật', `
       <div class="pf">
         <div class="pf-hero" style="--c:${c.color}">
-          <div class="pf-stage"><img class="pf-full" src="/assets/thumbs/hero_${mx}.png" alt="" /></div>
+          <div class="pf-stage" id="pf-stage"><img class="pf-full" src="/assets/thumbs/hero_${mx}.png" alt="" /></div>
           <img class="pf-emblem" src="/assets/ui/cls_${h.cls || 'kiem'}.png" alt="" />
           <div class="pf-name"><b>${g.profile.name}</b><span class="m-vip">VIP</span></div>
           <div class="pf-sub">${c.name} <span class="han">${c.han}</span> · Cấp ${r.level}</div>
@@ -298,6 +298,8 @@ Object.assign(UI.prototype, {
           <div class="pf-acts"><button class="primary sm" data-go="gear">Trang bị</button><button class="ghost sm" data-go="skill">Võ học</button><button class="ghost sm" data-go="meridian">Kinh mạch</button><button class="ghost sm" data-go="title">Danh hiệu</button></div>
         </div>
       </div>`);
+    // sân khấu 3D: nhân vật thật trên bệ ngọc (ảnh tĩnh hiện tạm trong lúc dựng)
+    import('./profileStage.js').then(({ mountProfileStage }) => mountProfileStage($('pf-stage'), h, c.color)).then(() => $('pf-stage')?.classList.add('live')).catch((e) => console.warn('hồ sơ 3D', e));
     const go = { gear: () => this.openGear(g), skill: () => this.openSkills(g), meridian: () => this.openMeridian(g), title: () => this.openTitles(g) };
     body.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => go[b.dataset.go]()));
     body.querySelectorAll('.pf-slot .gcell').forEach((b) => (b.onclick = () => this.openGear(g, 'gear', b.dataset.uid)));
