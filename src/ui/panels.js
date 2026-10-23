@@ -1,3 +1,7 @@
+import { SIDE_QUESTS } from '../story/sidequests.js';
+import { LORE } from '../story/lore.js';
+import { SPEAKERS } from '../story/chapters.js';
+const SPEAKER_NAME = (id) => ({ hanxue_npc: 'Hàn Tuyết', honglian_npc: 'Hồng Liên' }[id] || SPEAKERS[id]?.name || id);
 import { UI, SUMMARIES } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { ITEMS } from '../game/rpg.js';
@@ -38,10 +42,19 @@ Object.assign(UI.prototype, {
     } else if (tab === 'daily') {
       html = `<div class="activity"><span>Điểm sôi nổi: <b>${sy.s.activity}</b></span><div class="act-track"><div style="width:${sy.s.activity}%"></div>${ACTIVITY_CHESTS.map((n, i) => `<button class="act-chest ${sy.s.claimedChests.includes(i) ? 'got' : sy.s.activity >= n ? 'ready' : ''}" data-c="${i}" style="left:${n}%">${icon('chest')}<small>${n}</small></button>`).join('')}</div></div>
         <div class="tasks">${DAILY.map((t) => { const v = sy.s.daily[t.id] || 0; return `<div class="task ${v >= t.goal ? 'ok' : ''}">${icon(t.icon)}<div><b>${t.name}</b> <small>(${v}/${t.goal})</small><div class="tbar"><div style="width:${(v / t.goal) * 100}%"></div></div></div><div class="rws">${rewardIcons(t.reward)}</div><span class="pts">+${t.pts}</span></div>`; }).join('')}</div>`;
+    } else if (tab === 'side') {
+      const sd = g.side.s;
+      const row = (q, state) => `<div class="task side-q ${state}"><span class="han sq-han">${q.han}</span><div><b>${q.name}</b> <small>${state === 'done' ? 'Đã hoàn thành' : state === 'active' ? this.nh(g.side.step(q.id)?.objective(g, g.side.api(q.id)) || '') : state === 'open' ? `Gặp ${SPEAKER_NAME(q.giver)} để nhận` : 'Chưa tới lúc'}</small><p class="muted sm">${state === 'locked' ? '???' : q.summary}</p></div></div>`;
+      html = `<p class="muted">Kỳ duyên là những câu chuyện riêng của người giang hồ. Có nhân vật chỉ xuất hiện nếu trước đó ngươi chọn tha cho họ.</p>
+        <div class="tasks">${SIDE_QUESTS.map((q) => row(q, sd.done.includes(q.id) ? 'done' : q.id in sd.active ? 'active' : q.unlock(g) ? 'open' : 'locked')).join('')}</div>`;
+    } else if (tab === 'lore') {
+      const got = g.lore.got;
+      html = `<p class="muted">Thanh Phong kiếm phổ tàn trang: <b>${got.length}/12</b>. Trang phát sáng trắng, rải khắp bản đồ.</p>
+        <div class="lore-list">${LORE.map((L, i) => got.includes(i) ? `<div class="lore-p"><b>${i + 1}. ${L.title}</b><p>${L.text}</p></div>` : `<div class="lore-p locked"><b>${i + 1}. ???</b><p class="muted">Chưa tìm thấy.</p></div>`).join('')}</div>`;
     } else {
       html = `<div class="tasks">${ACHIEVEMENTS.map((a) => { const v = Math.min(a.goal, sy.statValue(a.stat)), ok = sy.s.achDone.includes(a.id); return `<div class="task ${ok ? 'ok' : ''}">${icon(ok ? 'check' : 'star')}<div><b>${a.name}</b> <small>${a.desc} (${v}/${a.goal})</small><div class="tbar"><div style="width:${(v / a.goal) * 100}%"></div></div></div><div class="rws">${rewardIcons(a.reward)}</div></div>`; }).join('')}</div>`;
     }
-    const body = this.openPanel('Nhiệm vụ', `<div class="with-side">${sideTabs([['main', 'Chính tuyến', 'scroll'], ['daily', 'Hằng ngày', 'calendar'], ['ach', 'Thành tựu', 'trophy']], tab)}<div class="side-body">${html}</div></div>`);
+    const body = this.openPanel('Nhiệm vụ', `<div class="with-side">${sideTabs([['main', 'Chính tuyến', 'scroll'], ['side', 'Kỳ duyên', 'lotus'], ['lore', 'Tàn trang', 'book'], ['daily', 'Hằng ngày', 'calendar'], ['ach', 'Thành tựu', 'trophy']], tab)}<div class="side-body">${html}</div></div>`);
     this.bindSide(body, (t) => this.openQuests(g, t));
     body.querySelector('#q-map')?.addEventListener('click', () => { this.closePanel(); this.openMap(g); });
     body.querySelectorAll('.act-chest.ready').forEach((b) => (b.onclick = () => { const r = sy.claimChest(Number(b.dataset.c)); if (r) g.toast('Nhận: ' + r); this.openQuests(g, 'daily'); }));

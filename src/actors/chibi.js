@@ -235,6 +235,7 @@ export const CHIBI_LOOKS = {
   assassin: { model: 'rogue_hooded', tint: '#2a2030', tintK: 0.8, meshy: 'hooded_ninja' },
   hanbang: { model: 'rogue', tint: '#3a5a98', tintK: 0.65, meshy: 'ice_assassin' },
   villain: { model: 'mage', tint: '#a01020', tintK: 0.7, scale: 1.1, meshy: 'dark_lord' },
+  tieuho: { model: 'knight', hide: ['Helmet', 'Cape'], tint: '#d0a070', meshy: 'straw_hat_boy', meshyTint: '#f0c890', scale: 0.85 },
   hanxue: { model: 'rogue', tint: '#c8e0ff', tintK: 0.5, meshy: 'ice_assassin', meshyTint: '#dcecff' },
   honglian: { model: 'rogue', tint: '#c03050', tintK: 0.6, meshy: 'purple_fairy', meshyTint: '#e0607a' },
   huyetma: { model: 'mage', tint: '#600010', tintK: 0.85, scale: 1.3, meshy: 'dark_lord', meshyTint: '#ff6060' },

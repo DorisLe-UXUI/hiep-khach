@@ -291,6 +291,7 @@ export class MobileHUD {
     const zn = g.spawner.zoneAt(g.player.pos.x, g.player.pos.z);
     $('mq-body').innerHTML = main + `
       <div class="mq-item main">${icon('scroll')}<div><b>[Chính] ${ch.subtitle}</b><span>${st ? g.ui.nh(st.objective(g)) : 'Đã hoàn thành'}</span></div></div>
+      ${g.side.tracker().map((q) => `<div class="mq-item side">${icon('lotus')}<div><b>[Kỳ duyên] ${q.name}</b><span>${g.ui.nh(q.text)}</span></div></div>`).join('')}
       <div class="mq-item">${icon('skull')}<div><b>[Ngày] Diệt trừ ác đồ</b><span>(${kills}/20)</span></div></div>
       <div class="mq-item">${icon('herb')}<div><b>[Ngày] Hái Linh chi thảo</b><span>(${daily.herb || 0}/5)</span></div></div>
       ${zn ? `<div class="mq-item zone">${icon('dragon')}<div><b>[Khu vực] ${zn.name}</b><span>Đang săn quái · Bách quái phổ (L)</span></div></div>` : ''}`;

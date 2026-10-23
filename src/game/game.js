@@ -40,6 +40,8 @@ import { Beasts, BEASTS } from './beasts.js';
 import { dropGear, RARITY, randomGem } from './gear.js';
 import { randomFood, randomMat } from './loot.js';
 import { Status } from './status.js';
+import { SideQuests, STORY_NPCS, STORY_SPEAKERS } from '../story/sidequests.js';
+import { Lore } from '../story/lore.js';
 import { TITLES } from './titles.js';
 import { Meridian } from './meridian.js';
 import { Telegraphs } from './telegraph.js';
@@ -61,6 +63,7 @@ export const LOOKS = {
   skeletonMage: { outfit: 'male_ranger', base: 'male', hair: [], outfitColor: '#6a5a8a' },
   skeletonKing: { outfit: 'male_ranger', base: 'male', hair: [], outfitColor: '#8a2a20' },
   villain: { outfit: 'male_ranger', base: 'male', hair: ['hair_long'], brows: 'eyebrows_regular', outfitColor: '#4a0d12', hairColor: '#d8d2c8', hideHood: true },
+  tieuho: { outfit: 'male_peasant', base: 'male', hair: ['hair_simpleparted'], brows: 'eyebrows_regular', outfitColor: '#c08a50', hairColor: '#1a1410' },
   hanxue: { outfit: 'female_ranger', base: 'female', hair: ['hair_long'], brows: 'eyebrows_female', outfitColor: '#d8e4f0', hairColor: '#e8eef4', hideHood: true },
   honglian: { outfit: 'female_ranger', base: 'female', hair: ['hair_buns'], brows: 'eyebrows_female', outfitColor: '#7a1428', hairColor: '#0c0a0a', hideHood: true },
   huyetma: { outfit: 'male_ranger', base: 'male', hair: ['hair_long'], brows: 'eyebrows_regular', outfitColor: '#2a0006', hairColor: '#ff3030', hideHood: true },
@@ -170,6 +173,8 @@ export class Game {
     this.social = new Social(this);
     this.fury = new Fury(this);
     this.status = new Status(this);
+    this.side = new SideQuests(this);
+    this.lore = new Lore(this);
     this.meridian = new Meridian(this);
     this.telegraphs = new Telegraphs(this);
     this.clock = new Clock(this);
@@ -286,6 +291,17 @@ export class Game {
 
     progress('Rải mỏ quặng, bến câu...');
     await this.life.build();
+
+    // nhân vật Kỳ duyên: ẩn cho tới khi câu chuyện cho phép (refreshStoryNpcs)
+    Object.assign(SPEAKERS, STORY_SPEAKERS);
+    for (const sn of STORY_NPCS) {
+      const n = await add(sn.id, sn.look, { name: sn.name, idleAnim: 'Idle_Loop' }, sn.x, sn.z, sn.yaw);
+      if (sn.speaker) n.speaker = sn.speaker;
+      n.storyNpc = sn;
+      n.hidden = true;
+      n.root.visible = false;
+    }
+    await this.lore.build();
 
     progress('Vẽ chân dung...');
     for (const [id, sp] of Object.entries(SPEAKERS)) {
@@ -425,6 +441,7 @@ export class Game {
     // NPC theo chương
     const night = ch.time === 'night';
     for (const n of this.npcs) {
+      if (n.storyNpc) continue; // nhân vật Kỳ duyên do refreshStoryNpcs quyết định
       n.hidden = false;
       if (n.id.startsWith('villager')) n.hidden = night || ch.id === 'c5';
       if (n.id.startsWith('captive')) n.hidden = true;
@@ -454,6 +471,8 @@ export class Game {
     this.input.lock();
     await this.ui.chapterCard(`${ch.han} · ${ch.title}`, ch.subtitle, ch.hanSub);
     this.enterStep();
+    this.refreshStoryNpcs();
+    this.side.reenter();
   }
 
   enterStep() {
@@ -529,7 +548,48 @@ export class Game {
   markerPos() {
     if (this.activity) return this.nearestOf(this.activity.group);
     const st = this.step;
-    try { return st?.marker?.(this) || null; } catch { return null; }
+    let m = null;
+    try { m = st?.marker?.(this) || null; } catch { m = null; }
+    return m || this.side?.marker() || null; // hết việc chính thì chỉ đường Kỳ duyên
+  }
+
+  /** Hảo cảm Uyển Nhi: tặng quà, mỗi mốc 25/50/75/100 có một đoạn tâm sự và phần thưởng */
+  maidenExtra() {
+    const s = this.sys.s;
+    s.affection ??= 0;
+    const LIKES = { longjing: 10, mooncake: 12, tea_set: 14, snow_pear: 6, honey: 6, cherries: 5, jade_ore: 15, ivory_chopsticks: 8, goldfish: 18, wild_berry: 4, herb: 3 };
+    const gifts = Object.keys(LIKES).filter((id) => (this.rpg.bag[id] || 0) > 0).slice(0, 4);
+    const STORIES = [
+      [25, [['maiden', 'Hồi nhỏ, phụ thân hay cõng tiểu nữ ra đình này ngắm trăng. Người nói trăng trên hồ Bích Thủy là trăng đẹp nhất thiên hạ.'], ['maiden', 'Tiểu nữ không tin. Giờ thì tin rồi... vì có người ngắm cùng.']], (g) => { g.player.storyMp += 20; g.toast('Hảo cảm Uyển Nhi đạt 25 · Nội lực +20', 3); }],
+      [50, [['maiden', '(đưa ra một chiếc nút thắt đỏ) Đồng tâm kết. Tiểu nữ thắt cả đêm qua, tay vụng quá.'], ['maiden', 'Mẹ tiểu nữ nói, người đeo nó đi xa cỡ nào cũng tìm được đường về.']], (g) => { g.player.storyHp += 60; g.toast('Nhận <b>Đồng tâm kết</b> · Khí huyết +60', 3); }],
+      [75, [['maiden', 'Đêm phụ thân mất, người bảo tiểu nữ trốn dưới gầm đình. Tiểu nữ nghe hết. Người không van xin. Người chỉ nói: "Huyết đệ, dừng lại đi."'], ['maiden', 'Tới phút cuối, phụ thân vẫn gọi hắn là sư đệ.'], ['hero', '...Sư phụ ta cũng vậy.']], (g) => { g.player.attackBonus += 5; g.toast('Hảo cảm Uyển Nhi đạt 75 · Công +5', 3); }],
+      [100, [['maiden', 'Công tử... không, Tiêu Vân.'], ['maiden', 'Giang hồ rộng lắm. Nhưng nếu được chọn, tiểu nữ muốn đi cùng một người thôi.'], ['hero', '(Gió trên hồ thổi qua, mang theo mùi trà và hoa sen.)']], (g) => { g.flag('maidenBond'); g.player.storyHp += 100; g.player.storyMp += 50; g.toast('<b>Tri kỷ</b> · Hảo cảm Uyển Nhi tối đa · Khí huyết +100 · Nội lực +50', 5); }],
+    ];
+    const out = [];
+    if (this.chapter?.id === 'c5') return out;
+    if (gifts.length) out.push({ choice: [
+      ...gifts.map((id) => ({ text: `Tặng ${ITEMS[id].name} (Hảo cảm +${LIKES[id]})`, then: (g) => {
+        g.rpg.remove(id, 1);
+        const before = s.affection;
+        s.affection = Math.min(100, s.affection + LIKES[id]);
+        const lines = [['maiden', LIKES[id] >= 12 ? 'Cái này... quý quá. Tiểu nữ sẽ giữ thật kỹ.' : 'Cảm ơn công tử. Tiểu nữ thích lắm.']];
+        for (const [mark, talk, rw] of STORIES) if (before < mark && s.affection >= mark) { lines.push(...talk, { run: (gg) => { rw(gg); gg.rpg.apply(true); } }); }
+        lines.push({ run: (gg) => gg.toast(`Hảo cảm Uyển Nhi <b>${s.affection}/100</b>`, 2) });
+        return lines;
+      } })),
+      { text: 'Chỉ ghé thăm', then: () => [['maiden', `(mỉm cười) Hảo cảm hiện tại: ${s.affection}/100.`]] },
+    ] });
+    return out;
+  }
+
+  /** hiện/ẩn nhân vật Kỳ duyên theo diễn biến truyện */
+  refreshStoryNpcs() {
+    for (const n of this.npcs) {
+      if (!n.storyNpc) continue;
+      const show = !!n.storyNpc.show(this);
+      n.hidden = !show;
+      n.root.visible = show;
+    }
   }
 
   async spawn(type, x, z, opts = {}) {
@@ -601,7 +661,11 @@ export class Game {
     const st = this.step;
     const id = npc.speaker || npc.id;
     const scripted = st?.talk?.[npc.id];
+    // Kỳ duyên: bước nhiệm vụ phụ hoặc lời mời nhận nhiệm vụ (sau thoại truyện chính)
+    const side = !scripted && this.side.talkFor(npc.id);
+    if (side) return this.dialog(side, npc);
     let lines = scripted ? scripted(this) : (AMBIENT[id] || AMBIENT.villager)(this);
+    if (npc.id === 'maiden' && (!scripted || ['epilogue', 'epilogue2'].includes(this.chapter?.id))) lines = [...lines, ...this.maidenExtra()];
     if (!scripted && npc.role) {
       const r = npc.role;
       lines = [[npc.id, r.greet], { choice: [{ text: r.action, then: (g) => { g[r.open]?.(); } }, { text: 'Cáo từ', then: () => null }] }];
@@ -652,6 +716,7 @@ export class Game {
   // ─────────────────── chiến đấu, phần thưởng ───────────────────
   onEnemyKilled(e) {
     if (e.group) this.kills[e.group] = (this.kills[e.group] || 0) + 1;
+    this.side?.onKill(e);
     if (e.group === 'doba') this.dobaSpot = { x: e.pos.x, z: e.pos.z };
     this.rpg.gainExp(Math.round(e.exp * (this.sys.buff('exp') ? 1.1 : 1)));
     this.sys.progress('kill');
@@ -1181,6 +1246,8 @@ export class Game {
     this.combat.update(adt);
     this.fx.update(dt);
     this.fury.update(dt);
+    this.side.update(dt);
+    this.lore.update(dt);
     this.status.update(dt);
     this.telegraphs.update(dt);
     this.clock.update(dt);
