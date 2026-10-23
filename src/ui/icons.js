@@ -50,7 +50,10 @@ if (typeof document !== 'undefined' && !document.getElementById('gi-defs')) {
 }
 
 /** Icon game-icons.net (nếu có) hoặc icon nét. */
+/** vài icon nét được thay bằng ảnh 3D */
+const IMG_ICON = { coins: 'rs_silver' };
 export const icon = (name, cls = '') => {
+  if (IMG_ICON[name]) return `<img class="ico img3d ${cls}" src="/assets/ui/${IMG_ICON[name]}.png" alt="" draggable="false" />`;
   const d = GAME_ICONS[name];
   if (d) return `<i class="ico gi ${cls}"><svg viewBox="0 0 512 512"><path d="${d}"/></svg></i>`;
   return `<i class="ico ${cls}">${ICONS[name] || ''}</i>`;
@@ -59,7 +62,7 @@ export const icon = (name, cls = '') => {
 /** Ảnh vật phẩm chụp từ model 3D (tools/thumbs.html) */
 const THUMBS = new Set(['potion', 'qipill', 'herb', 'bounty', 'iron_sword', 'steel_sword', 'dao', 'bishui', 'cloth', 'leather', 'silk', 'charm', 'jade', 'gold', 'chest']);
 /** vật phẩm sinh hoạt dùng chung ảnh với đồ quái rơi */
-const ALIAS = { fish: 'lt_big_carp', goldfish: 'lt_big_carp', ore: 'lt_dark_stone', wood: 'lt_planks', grilled: 'lt_fried_fish' };
+const ALIAS = { essence: '../ui/rs_crystal', bounty: '../ui/rs_bounty', gold: '../ui/rs_gold', fish: 'lt_big_carp', goldfish: 'lt_big_carp', ore: 'lt_dark_stone', wood: 'lt_planks', grilled: 'lt_fried_fish' };
 export const itemIcon = (id, fallback = 'bag') => (GEM_ITEMS[id] ? `<span class="gem-ic l${GEM_ITEMS[id].lv}" style="--gc:${GEM_ITEMS[id].color}"><i></i><b>${GEM_ITEMS[id].lv}</b></span>` : THUMBS.has(id) || LOOT_ITEMS[id] || ALIAS[id] ? `<img class="thumb-img" src="/assets/thumbs/${LOOT_ITEMS[id]?.thumb || ALIAS[id] || id}.png" alt="" draggable="false" />` : icon(fallback));
 
 /** Biểu tượng 3D (ảnh PNG trong suốt ở /assets/ui) */

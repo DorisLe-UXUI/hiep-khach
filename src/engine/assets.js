@@ -24,8 +24,11 @@ export function loadGLTF(url) {
 /** Model tĩnh Poly Haven (đã tối ưu thành .glb). Bật bóng đổ cho mọi mesh. */
 export async function loadModel(name) {
   const gltf = await loadGLTF(`/assets/models/${name}.glb`);
+  // đồ vật nhỏ (bát, chén, thanh kiếm…) không đổ bóng: bóng của chúng gần như không thấy mà tốn một lượt vẽ
+  const size = new THREE.Box3().setFromObject(gltf.scene).getSize(new THREE.Vector3());
+  const big = Math.max(size.x, size.y, size.z) > 1.2;
   gltf.scene.traverse((o) => {
-    if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    if (o.isMesh) { o.castShadow = big; o.receiveShadow = true; }
   });
   return gltf.scene;
 }
@@ -96,6 +99,8 @@ export function loadKitOBJ(name) {
 /** Đạo cụ Quaternius đã đóng gói trong /assets/kit/<tên>.glb */
 export async function loadKit(name) {
   const g = await loadGLTF(`/assets/kit/${name}.glb`);
-  g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  const size = new THREE.Box3().setFromObject(g.scene).getSize(new THREE.Vector3());
+  const big = Math.max(size.x, size.y, size.z) > 1.2;
+  g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = big; o.receiveShadow = true; } });
   return g.scene;
 }

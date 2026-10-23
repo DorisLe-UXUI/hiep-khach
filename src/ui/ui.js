@@ -249,6 +249,7 @@ export class UI {
 
   async narrate(lines) {
     const box = $('narr-text');
+    $('narration').style.setProperty('--nbg', `url(/brand/bg_${this.narrBg || 'town'}.jpg)`);
     $('narration').classList.remove('hidden');
     await this.fade(false);
     for (const l of lines) {
@@ -317,6 +318,8 @@ export class UI {
     const lv = z.mobs ? '' : '';
     el.innerHTML = `<div class="zb-han">${z.han}</div><div class="zb-line"></div><div class="zb-name">${z.name}${lv}</div>`;
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    // nhớ vùng vừa tới: lần sau mở game, màn tải dùng tranh vùng này
+    try { localStorage.setItem('hk_bg', ZONE_BG[z.id] || 'town'); } catch {}
   }
 
   hideDialog() { $('dialog').classList.add('hidden'); }
@@ -324,6 +327,9 @@ export class UI {
   showPause(chapterLabel) { $('pause-chapter').textContent = chapterLabel; $('pause').classList.remove('hidden'); }
   hidePause() { $('pause').classList.add('hidden'); }
 }
+
+/** tranh nền theo vùng (màn tải, màn kể chuyện) */
+export const ZONE_BG = { dongco: 'town', rungnam: 'bamboo', bangho: 'lake', doigio: 'town', thunglung: 'valley', hangtuyet: 'ice', hoason: 'fire' };
 
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 

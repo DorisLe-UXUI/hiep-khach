@@ -1,4 +1,7 @@
 /** Danh hiệu: mở khoá theo thành tích, đeo 1 danh hiệu để nhận chỉ số. */
+/** huy hiệu 3D cho từng danh hiệu */
+export const TITLE_BADGE = { newbie: 'bd_bronze', slayer: 'bd_silver', reaper: 'bd_gold', combo: 'bd_silver', hunter: 'bd_hunter', collector: 'bd_crown', fisher: 'bd_jade', rich: 'rs_gold', master: 'bd_jade', tamer: 'bd_tamer', beastking: 'bd_tamer', swallow: 'bd_phoenix', meridian: 'bd_meridian', gem: 'bd_gem', fury: 'bd_gold' };
+
 export const TITLES = [
   { id: 'newbie', name: 'Giang hồ tân tú', han: '江湖新秀', color: '#c8c8c8', cond: () => true, req: 'Có sẵn', stats: { hp: 20 } },
   { id: 'slayer', name: 'Bách nhân trảm', han: '百人斬', color: '#6fd86a', cond: (s) => s.stats.kills >= 100, req: 'Hạ 100 kẻ địch', stats: { atk: 4 } },

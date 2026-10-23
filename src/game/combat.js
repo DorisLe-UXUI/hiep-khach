@@ -1,3 +1,4 @@
+import { onHitEffect } from './status.js';
 import * as THREE from 'three';
 
 export class Combat {
@@ -77,6 +78,8 @@ export class Combat {
     const dmg = Math.round(a.dmg * (0.85 + Math.random() * 0.3));
     const dealt = p.takeDamage(dmg, e, { heavy: a.heavy });
     if (dealt > 0) this.game.hud.damage(p.pos.clone().setY(p.pos.y + 1.9), dealt, 'player');
+    // độc, bỏng, băng, chảy máu, choáng tuỳ loại quái
+    if (dealt > 0 && p.state !== 'block') { const fx = onHitEffect(e); if (fx) this.game.status.add(fx[0], fx[1]); }
     p.inCombat = 8;
   }
 

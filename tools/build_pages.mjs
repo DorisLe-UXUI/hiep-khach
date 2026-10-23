@@ -49,9 +49,11 @@ for (const f of walk(path.join(OUT, 'brand')).filter((f) => f.endsWith('.png')))
   jobs.push([f, 'brand', (b) => sharp(b).resize({ width: 1100, withoutEnlargement: true }).png({ palette: true, quality: 90, effort: 8 }).toBuffer()]);
 // đồ vật Polyhaven: ảnh trong glb thu về 512
 for (const f of [...walk(path.join(A, 'models')), ...walk(path.join(A, 'nature'))].filter((f) => f.endsWith('.glb')))
-  jobs.push([f, 'glbopt512', (b, file) => {
+  jobs.push([f, 'glbopt512s', (b, file) => {
     const tmp = path.join(CACHE, 'tmp_' + path.basename(file));
-    execSync(`npx gltf-transform optimize "${file}" "${tmp}" --compress meshopt --texture-compress webp --texture-size 512`, { cwd: ROOT, stdio: 'ignore' });
+    // giản lược lưới: đồ vật Polyhaven rất chi tiết (vd. thanh katana 20k đỉnh) → ~1/5 mà nhìn không khác
+    const err = file.includes('/models/') ? 0.004 : 0.002;
+    execSync(`npx gltf-transform optimize "${file}" "${tmp}" --compress meshopt --texture-compress webp --texture-size 512 --simplify-error ${err}`, { cwd: ROOT, stdio: 'ignore' });
     const out = fs.readFileSync(tmp); fs.rmSync(tmp); return out;
   }]);
 for (const [f] of jobs) before += fs.statSync(f).size;

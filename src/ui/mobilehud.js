@@ -1,4 +1,5 @@
 import { icon, itemIcon, uiImg } from './icons.js';
+import { STATUS } from '../game/status.js';
 import { realmOf } from '../game/rpg.js';
 
 const $ = (id) => document.getElementById(id);
@@ -25,6 +26,7 @@ export class MobileHUD {
           <div class="m-exp"><div id="m-exp"></div></div>
         </div>
       </div>
+      <div id="m-buffs"></div>
       <div id="m-target" class="hidden">
         <div class="mt-face"><img id="mt-img" alt="" /><span id="mt-lv"></span></div>
         <div class="mt-info"><div class="mt-name" id="mt-name"></div><div class="mt-bar"><div id="mt-hp"></div><span id="mt-hp-t"></span></div></div>
@@ -174,7 +176,26 @@ export class MobileHUD {
     el.classList.remove('run'); void el.offsetWidth; el.classList.add('run');
   }
 
+  /** thanh buff/hiệu ứng dưới avatar (vẽ lại khi đổi, đếm giây mỗi lần cập nhật) */
+  renderBuffs(rebuild) {
+    const st = this.g.status, box = $('m-buffs');
+    if (!st || !box) return;
+    const ids = Object.keys(st.list).filter((k) => st.has(k) && STATUS[k]);
+    const key = ids.join(',');
+    if (rebuild || key !== this._buffKey) {
+      this._buffKey = key;
+      box.innerHTML = ids.map((k) => `<div class="bf ${STATUS[k].good ? 'good' : 'bad'}" data-k="${k}" title="${STATUS[k].name}: ${STATUS[k].fmt(st.val(k))}">${uiImg(STATUS[k].icon)}<i></i><b></b></div>`).join('');
+    }
+    for (const el of box.children) {
+      const k = el.dataset.k, left = st.left(k), dur = st.list[k]?.dur || 1;
+      el.querySelector('b').textContent = left >= 1 ? Math.ceil(left) : '';
+      el.querySelector('i').style.background = `conic-gradient(transparent ${(left / dur) * 360}deg, rgba(0,0,0,.6) 0)`;
+      el.classList.toggle('ending', left < 3);
+    }
+  }
+
   update() {
+    this.renderBuffs();
     const g = this.g, p = g.player, r = g.rpg;
     $('m-face-img').src = g.portraits.hero || '';
     $('m-lv').textContent = r.level;

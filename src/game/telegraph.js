@@ -51,7 +51,10 @@ export class Telegraphs {
       g.audio.hit(true);
       if (inside && !p.dead) {
         if (p.state === 'roll' || p.iframes > 0) g.hud.damage(p.pos.clone().setY(p.pos.y + 2.2), 'Né!', 'heal');
-        else p.takeDamage(t.dmg, t.owner || { pos: new THREE.Vector3(t.x, 0, t.z) }, { heavy: true });
+        else {
+          p.takeDamage(t.dmg, t.owner || { pos: new THREE.Vector3(t.x, 0, t.z) }, { heavy: true });
+          if (t.owner?.boss && Math.random() < 0.4) g.status.add('stun', 1); // boss đập đất: choáng
+        }
       } else if (d < t.r + 4) { g.sys.s.stats.dodges = (g.sys.s.stats.dodges || 0) + 1; }
       t.onBoom?.();
       g.scene.remove(t.grp);

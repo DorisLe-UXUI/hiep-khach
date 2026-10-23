@@ -6,7 +6,7 @@ import { ACHIEVEMENTS, GUILD } from '../game/systems.js';
 import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { SLOTS, RARITY, STAT_NAME, fmtStat, gearScore, GEM_ITEMS, GEM_TYPES, GEM_MAX, socketsOf, parseGem, gemValue, gemId } from '../game/gear.js';
-import { TITLES } from '../game/titles.js';
+import { TITLES, TITLE_BADGE } from '../game/titles.js';
 import { BEASTS, SKILL_TEXT, MAX_LV, expNeedBeast, WILD } from '../game/beasts.js';
 import { ZONES } from '../game/bestiary.js';
 import { MERIDIANS, pointValue, pointCost, pointRate } from '../game/meridian.js';
@@ -139,6 +139,7 @@ Object.assign(UI.prototype, {
       <p class="muted">Mỗi lúc chỉ đeo được một danh hiệu. Danh hiệu hiện trên đầu nhân vật và cộng chỉ số.</p>
       <div class="titles">${TITLES.map((t) => { const has = got.includes(t.id), on = r.title === t.id; return `
         <div class="title-row ${has ? '' : 'locked'} ${on ? 'on' : ''}">
+          <img class="t-badge" src="/assets/ui/${TITLE_BADGE[t.id] || 'bd_bronze'}.png" alt="" />
           <div class="tb" style="--tc:${t.color}"><span class="han">${t.han}</span><b>${t.name}</b></div>
           <div class="ti"><small>${has ? 'Đã đạt' : 'Điều kiện: ' + t.req}</small><span>${Object.entries(t.stats).map(([k, v]) => `${STAT_NAME[k]} ${fmtStat(k, v)}`).join(' · ')}</span></div>
           <button class="${on ? 'ghost' : 'primary'} sm" data-t="${t.id}" ${has && !on ? '' : 'disabled'}>${on ? 'Đang đeo' : has ? 'Đeo' : icon('lock')}</button>

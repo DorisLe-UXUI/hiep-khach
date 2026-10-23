@@ -75,8 +75,7 @@ export class RPG {
     }
     v += this.g.meridian?.stat(key) || 0;
     v += TITLES.find((t) => t.id === this.title)?.stats[key] || 0;
-    const b = this.buffs?.[key];
-    if (b && b.until > performance.now()) v += b.val;
+    if (key === 'atk' || key === 'crit' || key === 'spd') v += this.g.status?.val(key) || 0;
     return key === 'atk' || key === 'hp' || key === 'mp' ? Math.round(v) : v;
   }
 
@@ -155,7 +154,7 @@ export class RPG {
       if (f.mp) p.mp = Math.min(p.maxMp, p.mp + p.maxMp * f.mp);
       if (f.buff) {
         const [k, val, dur] = f.buff;
-        (this.buffs ??= {})[k] = { val, until: performance.now() + dur * 1000 };
+        this.g.status?.add(k, dur, val);
         this.g.toast?.(`${ITEMS[id].name}: <b>${BUFF_NAME[k]} +${k === 'atk' ? val : Math.round(val * 100) + '%'}</b> trong ${dur} giây`, 2);
       }
       this.g.fx?.burst(p.pos.clone().setY(p.pos.y + 1), f.buff ? 0xffc04a : 0x9aff8a, 18);

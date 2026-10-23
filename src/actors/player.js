@@ -164,7 +164,7 @@ export class Player extends Actor {
     if (sk.kind === 'volley') c.fireArrows(this, this.handPos(), this.aimDir(), 5, this.damage(1.1));
     if (sk.kind === 'nova') { c.nova(this, 5, this.damage(2.2, 'palm'), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff); this.game.vfx.shockwave(this.pos.clone(), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff, 6); }
     if (sk.kind === 'heal') this.game.vfx.pillar(this.pos.clone(), 0x8fe0a8, 4);
-    if (sk.kind === 'heal') this.heal(this.maxHp * 0.3);
+    if (sk.kind === 'heal') { this.heal(this.maxHp * 0.3); this.game.status?.add('regen', 6, 0.02); }
     if (sk.kind === 'wave') {
       const dir = this.aimDir();
       for (let k = -1; k <= 1; k++) c.fireOrb(this, this.handPos(), dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.22), { dmg: this.damage(1.6, 'palm'), size: 0.9, color: sk.color, speed: 30 });
@@ -175,14 +175,14 @@ export class Player extends Actor {
       this.game.vfx.shockwave(this.pos.clone(), sk.color, 9);
       this.game.vfx.pillar(this.pos.clone(), sk.color, 8);
       this.game.mhud?.announce(`${this.game.profile.name} thi triển tuyệt kỹ <b>${sk.name}</b>!`);
-      if (sk.heal) this.heal(this.maxHp * 0.35);
+      if (sk.heal) { this.heal(this.maxHp * 0.35); this.game.status?.add('shield', 8, 0.3); this.game.status?.clearBad(); }
     }
   }
 
   takeDamage(amount, from, { heavy = false } = {}) {
     if (this.dead || this.iframes > 0) return 0;
     if (this.mounted && heavy) this.game.companions.dismount();
-    amount *= this.game.diff.enemyDmg * (1 - this.rpg.def());
+    amount *= this.game.diff.enemyDmg * (1 - this.rpg.def()) * (1 - (this.game.status?.val('shield') || 0));
     const toAttacker = new THREE.Vector3().subVectors(from.pos, this.pos).setY(0).normalize();
     if (this.state === 'block' && this.forward().dot(toAttacker) > 0.25 && this.st > 0) {
       this.st = Math.max(0, this.st - (heavy ? 30 : 15));
@@ -240,6 +240,8 @@ export class Player extends Actor {
     const vm = input.virtualMove;
     if (vm) move.addScaledVector(f, vm.y).addScaledVector(r, vm.x);
     if (input.autoMove && move.lengthSq() === 0) move.copy(input.autoMove);
+    const stunned = s.game.status?.has('stun');
+    if (stunned) move.set(0, 0, 0);
     const hasMove = move.lengthSq() > 0.02;
     if (hasMove) move.normalize();
     const sprint = input.held('ShiftLeft') || input.held('ShiftRight') || !!vm?.sprint || !!input.autoSprint;
@@ -249,7 +251,7 @@ export class Player extends Actor {
     const grounded = s.onGround && !s.inWater;
     const busy = ['attack', 'dash', 'roll', 'hit', 'cast', 'shoot', 'drink'].includes(s.state);
     if (s.mounted && !talking && ['Mouse0', 'KeyQ', 'KeyF', 'ControlLeft', 'KeyC', 'Space'].some((k) => input.pressed(k))) s.game.companions.dismount();
-    if (!talking) {
+    if (!talking && !stunned) {
       if (input.pressed('Mouse0') || (!melee && input.held('Mouse0') && s.state === 'free')) {
         if (melee) {
           if (s.state === 'attack' && s.stateT > 0.12) s.buffered = true;
@@ -300,7 +302,7 @@ export class Player extends Actor {
     const frac = (name) => { const a = s.char.action(name); return a ? a.time / a.getClip().duration : 1; };
     if (s.state === 'free' && !talking) {
       if (hasMove) {
-        speed = (sprint && s.st > 1 ? 9 : 5.2) * (1 + s.rpg.stat('spd'));
+        speed = (sprint && s.st > 1 ? 9 : 5.2) * (1 + s.rpg.stat('spd')) * (s.game.status?.speedMul() ?? 1);
         if (s.mounted) speed = (sprint ? 17 : 11) * (s.game.beasts?.mountSpeed() || 1);
         if (s.inWater) speed = sprint ? 4 : 2.6;
         if (sprint && !s.mounted) s.st = Math.max(0, s.st - dt * 14);
@@ -362,7 +364,7 @@ export class Player extends Actor {
 
     if (!sprint || !hasMove) s.st = Math.min(s.maxSt, s.st + dt * 22);
     s.mp = Math.min(s.maxMp, s.mp + dt * 3.5);
-    if (s.inCombat <= 0) s.hp = Math.min(s.maxHp, s.hp + dt * 4);
+    if (s.inCombat <= 0 && !['poison', 'burn', 'bleed'].some((k) => s.game.status?.has(k))) s.hp = Math.min(s.maxHp, s.hp + dt * 4);
 
     if (s.state === 'free' || s.state === 'talk') {
       const hs = Math.hypot(s.vel.x, s.vel.z);

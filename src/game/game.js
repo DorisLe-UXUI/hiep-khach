@@ -39,6 +39,7 @@ import { setLang, trLine, voiceOf, SPEAKER_NAMES, LANG } from '../i18n.js';
 import { Beasts, BEASTS } from './beasts.js';
 import { dropGear, RARITY, randomGem } from './gear.js';
 import { randomFood, randomMat } from './loot.js';
+import { Status } from './status.js';
 import { TITLES } from './titles.js';
 import { Meridian } from './meridian.js';
 import { Telegraphs } from './telegraph.js';
@@ -161,6 +162,7 @@ export class Game {
     this.life = new Life(this);
     this.social = new Social(this);
     this.fury = new Fury(this);
+    this.status = new Status(this);
     this.meridian = new Meridian(this);
     this.telegraphs = new Telegraphs(this);
     this.clock = new Clock(this);
@@ -320,7 +322,8 @@ export class Game {
   }
 
   async placeHerbs() {
-    const fern = await loadModel('fern_02');
+    // dương xỉ kiểu hoạt hình nhẹ (bản Polyhaven ~6k tam giác mỗi bụi × 40 bụi rất nặng)
+    const fern = (await loadGLTF('/assets/nature/fern_1.glb')).scene;
     const r = rng(404);
     for (let i = 0; i < 40; i++) {
       let x, z, tries = 0;
@@ -328,9 +331,9 @@ export class Game {
         x = (r() * 2 - 1) * 300; z = (r() * 2 - 1) * 300; tries++;
       } while (tries < 50 && (this.terrain.splatAt(x, z).path > 0.1 || this.terrain.heightAt(x, z) < 0.5 || Math.hypot(x - 30, z - 50) < 90));
       const m = fern.clone(true);
-      m.scale.setScalar(0.6);
+      m.scale.setScalar(1.6);
       m.position.set(x, this.terrain.heightAt(x, z), z);
-      m.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(0x2a5a1a); o.material.emissiveIntensity = 0.6; } });
+      m.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.material = o.material.clone(); o.material.emissive = new THREE.Color(0x2a5a1a); o.material.emissiveIntensity = 0.6; } });
       this.scene.add(m);
       this.herbs.push({ mesh: m, x, z, taken: false });
     }
@@ -419,11 +422,15 @@ export class Game {
     for (const c of this.spots.cages) c.userData.bars.visible = true;
     const sp = ch.spawn;
     this.player.revive(sp.x, sp.z, sp.yaw);
+    this.status.clearBad();
     this.camRig.yaw = sp.yaw + Math.PI;
     this.camRig.snap(this.player.pos);
     this.save();
     const narration = typeof ch.narration === 'function' ? ch.narration(this) : ch.narration;
-    if (narration) await this.ui.narrate(narration);
+    if (narration) {
+      this.ui.narrBg = ['town', 'bamboo', 'lake', 'valley', 'ice', 'fire'][this.chapterIdx % 6];
+      await this.ui.narrate(narration);
+    }
     await this.ui.fade(false);
     this.hud.show(true);
     this.input.lock();
@@ -1130,6 +1137,7 @@ export class Game {
     this.combat.update(adt);
     this.fx.update(dt);
     this.fury.update(dt);
+    this.status.update(dt);
     this.telegraphs.update(dt);
     this.clock.update(dt);
     if ((this.musicT = (this.musicT || 0) - dt) <= 0) { this.musicT = 1.5; this.audio.music(this.pickMusic()); }

@@ -22,9 +22,10 @@ export const DIFFICULTY = {
 };
 
 export const QUALITY = {
-  low: { label: 'Thấp', pixelRatio: 0.75, shadow: 1024, grass: 1 },
-  medium: { label: 'Vừa', pixelRatio: 1, shadow: 2048, grass: 2 },
-  high: { label: 'Cao', pixelRatio: 1.5, shadow: 2048, grass: 3 },
+  // veg: tỉ lệ số cây cỏ, vegR: tỉ lệ bán kính hiện cây cỏ, treeShadow: cây có đổ bóng không
+  low: { label: 'Thấp', pixelRatio: 0.75, shadow: 1024, grass: 1, veg: 0.35, vegR: 0.6, treeShadow: false },
+  medium: { label: 'Vừa', pixelRatio: 1, shadow: 2048, grass: 2, veg: 0.6, vegR: 0.8, treeShadow: true },
+  high: { label: 'Cao', pixelRatio: 1.5, shadow: 2048, grass: 3, veg: 1, vegR: 1, treeShadow: true },
 };
 
 export function loadSettings() {

@@ -14,6 +14,9 @@ const SHEETS = [
   ['Game_icons_sprite_sheet_layout', true, ['sk_dao_q', 'sk_dao_f', 'sk_dao_u1', 'sk_dao_u2', 'cls_kiem', 'cls_thuong', 'cls_cung', 'cls_phap', 'cls_dao', 'sk_atk']],
   ['Wuxia_game_item_icons_sprite', false, ['eq_helm', 'eq_armor', 'eq_belt', 'eq_boots', 'eq_ring', 'eq_trinket', 'battlefield', 'duel', 'master', 'marry']],
   ['Game_UI_icons_sprite_sheet', false, ['family', 'auction', 'house', 'journal', 'enhance']],
+  ['Status_effect_icon_sprite_sheet', true, ['st_atk', 'st_crit', 'st_spd', 'st_shield', 'st_regen', 'st_poison', 'st_burn', 'st_freeze', 'st_stun', 'st_bleed']],
+  ['Game_resource_icons_sprite_sheet', false, ['rs_gold', 'rs_silver', 'rs_crystal', 'rs_qi', 'rs_exp', 'rs_contrib', 'rs_bounty', 'rs_vip', 'rs_chest', 'rs_key']],
+  ['Game_achievement_badge_icons_grid', false, ['bd_bronze', 'bd_silver', 'bd_gold', 'bd_jade', 'bd_phoenix', 'bd_hunter', 'bd_tamer', 'bd_meridian', 'bd_gem', 'bd_crown']],
 ];
 
 /** Tìm các cụm điểm khác nền trắng (trên lưới thu nhỏ), trả về khung bao theo thứ tự hàng rồi cột */
@@ -74,6 +77,27 @@ async function cutItem(file, b, id) {
     data[i + 3] = d < T ? 0 : Math.round(((d - T) / (SOFT - T)) * 255);
     if (d < T) st.push(x + 1, y, x - 1, y, x, y + 1, x, y - 1);
   }
+  // quầng sáng trắng quanh món phát sáng: tách màu trắng ra thành độ trong (giữ ánh sáng có màu)
+  if (GLOW.has(id)) {
+    // chỉ xử lý quầng nối liền với nền bên ngoài (đi từ điểm đã trong suốt qua các điểm gần trắng)
+    const diffW = (i) => Math.max(255 - data[i], 255 - data[i + 1], 255 - data[i + 2]);
+    const halo = new Uint8Array(W * H), q = [];
+    for (let k = 0; k < W * H; k++) if (data[k * 4 + 3] === 0) { halo[k] = 1; q.push(k); }
+    while (q.length) {
+      const c = q.pop(), cx = c % W, cy = (c / W) | 0;
+      for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const k = ny * W + nx;
+        if (!halo[k] && diffW(k * 4) < 70) { halo[k] = 2; q.push(k); }
+      }
+    }
+    for (let k = 0; k < W * H; k++) {
+      if (halo[k] !== 2) continue;
+      const i = k * 4, a = diffW(i) / 70;
+      for (let ch = 0; ch < 3; ch++) data[i + ch] = a > 0.02 ? Math.max(0, Math.min(255, Math.round((data[i + ch] - 255 * (1 - a)) / a))) : 255;
+      data[i + 3] = Math.min(data[i + 3], Math.round(a * 255));
+    }
+  }
   // vùng trắng bị bao kín (lòng đai, vành mũ): xoá thêm các mảng trắng tinh đủ lớn
   if (HOLES.has(id)) {
     const done = new Uint8Array(W * H);
@@ -97,6 +121,7 @@ async function cutItem(file, b, id) {
 }
 
 const HOLES = new Set(['eq_helm', 'eq_belt', 'marry']);
+const GLOW = new Set(['rs_gold', 'rs_crystal', 'rs_exp', 'rs_chest', 'bd_gem']);
 const files = fs.readdirSync(SRC);
 for (const [prefix, round, ids] of SHEETS) {
   // tên dài khớp trước (tránh "..._2" bị nhận nhầm)

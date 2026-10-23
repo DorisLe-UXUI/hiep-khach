@@ -1,3 +1,4 @@
+import { QUALITY, loadSettings } from '../settings.js';
 import * as THREE from 'three';
 import { loadGLTF } from '../engine/assets.js';
 import { rng, smoothstep } from './noise.js';
@@ -137,8 +138,11 @@ export async function buildStylizedVegetation(terrain, colliders, onProgress = (
   const root = new THREE.Group();
   root.name = 'stylized-vegetation';
   const near = [];
+  const Q = QUALITY[loadSettings().quality] || QUALITY.medium;
   const add = async (names, count, seed, opts, density, solid = 0) => {
-    opts = { ...opts, avoid: colliders };
+    // máy yếu: ít cây cỏ hơn, hiện gần hơn, cây không đổ bóng (cây chắn đường vẫn đủ va chạm vì rải cùng hạt giống)
+    count = Math.round(count * (solid ? Math.max(0.6, Q.veg) : Q.veg));
+    opts = { ...opts, avoid: colliders, radius: (opts.radius || 160) * Q.vegR, shadow: opts.shadow !== false && Q.treeShadow };
     const per = Math.ceil(count / names.length);
     for (let i = 0; i < names.length; i++) {
       const items = scatter(terrain, per, seed + i * 17, opts, density);

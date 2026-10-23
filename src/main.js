@@ -137,7 +137,7 @@ async function boot() {
 
   const clock = new THREE.Clock();
   // độ phân giải tự động: giữ khoảng 50+ khung hình/giây
-  let avg = 16, adjT = 0;
+  let avg = 16, adjT = 0, slowT = 0;
   const maxPR = () => Math.min(devicePixelRatio, ({ low: 0.75, medium: 1, high: 1.5 })[game.settings.quality] || 1);
   renderer.setAnimationLoop(() => {
     fit();
@@ -150,6 +150,13 @@ async function boot() {
       const pr = renderer.getPixelRatio();
       if (avg > 22 && pr > 0.55) renderer.setPixelRatio(Math.max(0.55, pr - 0.15));
       else if (avg < 14 && pr < maxPR()) renderer.setPixelRatio(Math.min(maxPR(), pr + 0.1));
+      // đã hạ độ phân giải hết mức mà vẫn chậm: tự chuyển đồ hoạ Thấp (một lần)
+      slowT = mode === 'play' && avg > 30 && renderer.getPixelRatio() <= 0.56 ? slowT + 1 : 0;
+      if (slowT >= 5 && game.settings.quality !== 'low' && !game._autoLow) {
+        game._autoLow = true;
+        game.applySettings({ ...game.settings, quality: 'low' });
+        game.toast('Máy hơi yếu — đã chuyển đồ hoạ <b>Thấp</b> cho mượt. Mở lại game để bớt cây cỏ.', 4);
+      }
     }
     window.__fps = Math.round(1000 / avg);
     if (mode === 'create') updatePreview(dt);
