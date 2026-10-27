@@ -51,6 +51,17 @@ const UI = {
   'Thần binh': ['Arsenal', '神兵'], 'Bảo thạch': ['Gems', '寶石'], 'Danh hiệu': ['Titles', '稱號'], 'Thú cưỡi': ['Mounts', '坐騎'], 'Linh thú': ['Pets', '靈獸'],
   'Ngôn ngữ': ['Language', '語言'], 'Âm lượng': ['Volume', '音量'], 'Nhạc nền': ['Music', '音樂'], 'Lồng tiếng': ['Voice', '配音'], 'Chất lượng đồ hoạ': ['Graphics quality', '畫質'],
   'Thấp': ['Low', '低'], 'Vừa': ['Medium', '中'], 'Cao': ['High', '高'], 'Cáo từ': ['Farewell', '告辭'], 'Nói chuyện': ['Talk', '交談'], 'Tự tìm đường': ['Auto path', '自動尋路'],
+  'Túi đồ & trang bị': ['Inventory & Gear', '背包與裝備'], 'Bách quái phổ': ['Bestiary', '百怪譜'], 'Bảng xếp hạng': ['Leaderboard', '排行榜'], 'Sản xuất & chợ': ['Crafting & Market', '生產與市集'],
+  'Bản đồ giang hồ': ['World Map', '江湖輿圖'], 'Hồ sơ nhân vật': ['Character Profile', '角色檔案'], 'Toàn bộ': ['All', '全部'], 'Vật phẩm': ['Items', '物品'], 'Chính tuyến': ['Main story', '主線'],
+  'Kỳ duyên': ['Side stories', '奇緣'], 'Tàn trang': ['Lost pages', '殘頁'], 'Hằng ngày': ['Daily', '每日'], 'Thành tựu': ['Achievements', '成就'], 'Luyện đan · Nấu ăn': ['Alchemy · Cooking', '煉丹 · 烹飪'],
+  'Chợ': ['Market', '市集'], 'Phó bản': ['Dungeons', '副本'], 'Boss thế giới': ['World bosses', '世界首領'], 'Luận Kiếm Đài': ['Duel Arena', '論劍台'], 'Trang bị đang mặc': ['Equipped gear', '已穿戴'],
+  'Giang hồ lộ': ['Journey', '江湖路'], 'Phân giải': ['Salvage', '分解'], 'Vận công đả thông': ['Open meridian point', '運功打通'], 'Huyệt kế': ['Next point', '下一穴'], 'Tỉ lệ': ['Success rate', '成功率'],
+  'Tiêu hao': ['Cost', '消耗'], 'Hộp thư': ['Mailbox', '信箱'], 'Nhận quà': ['Claim', '領取'], 'Chiêu mộ': ['Recruit', '招募'], 'Lĩnh ngộ': ['Learn', '領悟'], 'Luyện': ['Brew', '煉'], 'Nấu': ['Cook', '烹'],
+  'Vào phó bản': ['Enter', '進入副本'], 'Vũ khí': ['Weapon', '武器'], 'Mũ': ['Hat', '帽'], 'Y phục': ['Robe', '衣服'], 'Đai lưng': ['Belt', '腰帶'], 'Hài': ['Boots', '靴'], 'Nhẫn': ['Ring', '戒指'], 'Ngọc bội': ['Pendant', '玉佩'],
+  'Cảnh giới': ['Realm', '境界'], 'Lượng bạc': ['Silver', '銀兩'], 'Đạo tâm': ['Moral path', '道心'], 'Hồi truyện': ['Chapter', '章回'], 'Tốc độ': ['Speed', '速度'],
+  'Hồ sơ': ['Profile', '檔案'], 'Bội sức': ['Accessory', '佩飾'], 'Cấp': ['Level', '等級'], 'Kinh nghiệm': ['EXP', '經驗'], 'Điểm võ học': ['Skill points', '武學點'],
+  'Tinh thạch': ['Spirit crystals', '精石'], 'Đã hoàn thành': ['Completed', '已完成'], 'Đang mặc': ['Equipped', '穿戴中'], 'Mặc vào': ['Equip', '穿戴'], 'Tháo ra': ['Unequip', '卸下'],
+  'Tẩy luyện': ['Reforge', '洗煉'], 'Đeo': ['Wear', '佩戴'], 'Đang đeo': ['Wearing', '佩戴中'], 'Chưa tìm thấy.': ['Not found yet.', '尚未找到。'], 'Đánh bại đối thủ': ['Defeat your opponent', '擊敗對手'],
   'Lực chiến': ['Power', '戰力'], 'Khí huyết': ['HP', '氣血'], 'Nội lực': ['MP', '內力'], 'Bạo kích': ['Crit', '暴擊'], 'Giảm sát thương': ['Damage reduction', '減傷'], 'Thân pháp': ['Agility', '身法'],
 };
 const REV = {}; // dịch ngược để đổi qua lại giữa các ngôn ngữ
