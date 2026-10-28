@@ -1,5 +1,6 @@
 import { VOICE_LINES } from './story/voice.js';
 import { ZH_LINES } from './story/zh.js';
+import { NAMES as EN_NAMES, LINES as EN_LINES } from './i18n_en.js';
 
 /**
  * Ngôn ngữ: Tiếng Việt / English / 中文 cho phụ đề thoại và giao diện. Giọng lồng tiếng luôn là tiếng Anh.
@@ -72,7 +73,7 @@ function translateNode(n) {
     const raw = n.nodeValue, t = raw.trim();
     if (!t || n.parentElement?.closest('.han, .no-i18n')) return; // chữ Hán trang trí giữ nguyên
     const vi = UI[t] ? t : REV[t];
-    if (!vi) return;
+    if (!vi) { if (LANG === 'en') { const en = trData(t); if (en && en !== t) n.nodeValue = raw.replace(t, en); } return; }
     const out = LANG === 'vi' ? vi : UI[vi][LANG === 'en' ? 0 : 1];
     if (out !== t) n.nodeValue = raw.replace(t, out);
   } else if (n.nodeType === 1) {
@@ -83,11 +84,45 @@ function translateNode(n) {
   }
 }
 
+// ───────── dữ liệu game (tên, thông báo) → tiếng Anh ─────────
+const VN = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+const NUM = /[+-]?\d+(?:[.,]\d+)*/g;
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const NAME_RE = new RegExp(`(?<!\\p{L})(?:${Object.keys(EN_NAMES).sort((a, b) => b.length - a.length).map(esc).join('|')})(?!\\p{L})`, 'gu');
+// khoá có chứa tên (vd 'Hũ tương đậu nành...') cũng tra được ở dạng đã thay tên → '§'
+for (const k of Object.keys(EN_LINES)) if (!k.includes('§')) { const k2 = k.replace(NAME_RE, '§'); if (k2 !== k && EN_LINES[k2] == null) EN_LINES[k2] = EN_LINES[k]; }
+const cache = new Map();
+/** Khuôn câu: số → '#', tên → '§' (để tra LINES) */
+export function dataKey(t) {
+  return t.replace(NAME_RE, '§').replace(NUM, '#');
+}
+function fill(tpl, names, nums) {
+  let a = 0, b = 0;
+  return tpl.replace(/§(\d)?|#(\d)?/g, (m, i, j) => (m[0] === '§' ? names[i ? i - 1 : a++] : nums[j ? j - 1 : b++]) ?? '');
+}
+export function trData(t) {
+  if (cache.has(t)) return cache.get(t);
+  let out = null;
+  const direct = EN_NAMES[t] || EN_LINES[t] || VOICE_LINES[voiceKey(t)]?.en;
+  if (direct) out = direct;
+  else if (VN.test(t)) {
+    const names = [];
+    const s1 = t.replace(NAME_RE, (m) => { names.push(EN_NAMES[m]); return '§'; });
+    const nums = s1.match(NUM) || [];
+    const key = s1.replace(NUM, '#');
+    if (EN_LINES[key] != null) out = fill(EN_LINES[key], names, nums);
+    else if (names.length) { let k = 0; out = s1.replace(/§/g, () => names[k++]); }
+  }
+  if (cache.size > 5000) cache.clear();
+  cache.set(t, out);
+  return out;
+}
+
 let observer = null;
 export function setLang(lang) {
   LANG = ['vi', 'en', 'zh'].includes(lang) ? lang : 'vi';
   document.documentElement.lang = LANG === 'zh' ? 'zh-Hant' : LANG;
   translateNode(document.body);
-  observer ??= new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) translateNode(n); });
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer ??= new MutationObserver((ms) => { for (const m of ms) { if (m.type === 'characterData') translateNode(m.target); else for (const n of m.addedNodes) translateNode(n); } });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 }
