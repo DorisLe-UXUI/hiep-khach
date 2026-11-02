@@ -29,7 +29,13 @@ export class Lore {
   async build() {
     const g = this.g;
     const mat = new THREE.MeshStandardMaterial({ color: 0xfff4d8, emissive: 0xffe8a0, emissiveIntensity: 0.9, roughness: 0.6, side: THREE.DoubleSide });
-    const rod = new THREE.MeshStandardMaterial({ color: 0x7a4a20, roughness: 0.5 });
+    const rod = new THREE.MeshStandardMaterial({ color: 0x7a4a20, roughness: 0.5, emissive: 0x3a2008 });
+    // quầng sáng cộng màu thay đèn điểm (12 đèn điểm làm nặng mọi shader và dịch lại khi nhặt trang)
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const cg = c.getContext('2d'), gr = cg.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,240,190,.9)'); gr.addColorStop(0.35, 'rgba(255,225,150,.35)'); gr.addColorStop(1, 'rgba(255,220,140,0)');
+    cg.fillStyle = gr; cg.fillRect(0, 0, 64, 64);
+    const glowMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
     LORE.forEach((L, i) => {
       const [x, z] = L.at;
       // cuộn giấy nhỏ: tờ giấy cong + hai trục gỗ, lơ lửng phát sáng
@@ -40,9 +46,9 @@ export class Lore {
       const r = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.62, 8), rod);
       r.rotation.z = Math.PI / 2;
       grp.add(r);
-      const light = new THREE.PointLight(0xffe8b0, 3, 6);
-      light.position.y = 0.3;
-      grp.add(light);
+      const glow = new THREE.Sprite(glowMat);
+      glow.scale.setScalar(2.2);
+      grp.add(glow);
       const y = g.terrain.heightAt(x, z) + 1.1;
       grp.position.set(x, y, z);
       grp.userData = { i, base: y };

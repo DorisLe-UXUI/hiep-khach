@@ -202,7 +202,9 @@ export class Game {
     this.settings = s;
     saveSettings(s);
     const q = QUALITY[s.quality] || QUALITY.high;
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, q.pixelRatio));
+    const pr = Math.min(devicePixelRatio, q.pixelRatio);
+    // tự hạ xuống Thấp vì máy yếu: không được nâng độ phân giải lên lại
+    this.renderer.setPixelRatio(this._autoLow && s.quality === 'low' ? Math.min(this.renderer.getPixelRatio(), pr) : pr);
     if (this.sun.shadow.mapSize.x !== q.shadow) {
       this.sun.shadow.mapSize.set(q.shadow, q.shadow);
       this.sun.shadow.map?.dispose();

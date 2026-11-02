@@ -74,25 +74,46 @@ function chunkedInstances(scene, items, { shadow = true, radius = 160 } = {}) {
     q.setFromEuler(new THREE.Euler(0, it.yaw, 0));
     return { x: it.x, z: it.z, m: new THREE.Matrix4().compose(p.set(it.x, it.y, it.z), q, s.setScalar(it.scale)) };
   });
+  // bóng: chỉ bản sao trong NEAR mét quanh người chơi đổ bóng (khung bóng mặt trời chỉ ±38 m),
+  // phần còn lại ở một InstancedMesh riêng không đổ bóng
+  const NEAR = 50;
   const ims = parts.map((part) => {
-    const im = new THREE.InstancedMesh(part.geo, part.mat, Math.max(1, placed.length));
-    im.castShadow = shadow;
-    im.receiveShadow = true;
-    im.frustumCulled = false;
-    im.count = 0;
-    group.add(im);
-    return { im, local: part.local };
+    const make = (cast) => {
+      const im = new THREE.InstancedMesh(part.geo, part.mat, Math.max(1, placed.length));
+      im.castShadow = cast;
+      im.receiveShadow = true;
+      im.frustumCulled = false;
+      im.count = 0;
+      group.add(im);
+      return im;
+    };
+    return { far: make(false), near: shadow ? make(true) : null, local: part.local };
   });
-  let lx = 1e9, lz = 1e9;
+  let lx = 1e9, lz = 1e9, sx = 1e9, sz = 1e9, list = [];
+  const fill = (im, arr, local) => {
+    for (let i = 0; i < arr.length; i++) im.setMatrixAt(i, m.multiplyMatrices(arr[i].m, local));
+    im.count = arr.length;
+    im.instanceMatrix.needsUpdate = true;
+  };
   group.userData.update = (x, z) => {
-    if (Math.hypot(x - lx, z - lz) < radius * 0.12) return;
-    lx = x; lz = z;
-    const r2 = radius * radius;
-    const list = placed.filter((t) => (t.x - x) ** 2 + (t.z - z) ** 2 < r2);
-    for (const { im, local } of ims) {
-      list.forEach((t, i) => im.setMatrixAt(i, m.multiplyMatrices(t.m, local)));
-      im.count = list.length;
-      im.instanceMatrix.needsUpdate = true;
+    const moved = Math.hypot(x - lx, z - lz) >= radius * 0.12;
+    // tách gần/xa lại mỗi khi đi quá 6 m để vùng đổ bóng luôn bám theo người chơi
+    if (!moved && (!shadow || Math.hypot(x - sx, z - sz) < 6)) return;
+    if (moved) {
+      lx = x; lz = z;
+      const r2 = radius * radius;
+      list = placed.filter((t) => (t.x - x) ** 2 + (t.z - z) ** 2 < r2);
+    }
+    sx = x; sz = z;
+    let nearL = [], farL = list;
+    if (shadow) {
+      const n2 = NEAR * NEAR;
+      nearL = []; farL = [];
+      for (const t of list) ((t.x - x) ** 2 + (t.z - z) ** 2 < n2 ? nearL : farL).push(t);
+    }
+    for (const { far, near, local } of ims) {
+      fill(far, farL, local);
+      if (near) fill(near, nearL, local);
     }
   };
   return group;

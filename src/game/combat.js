@@ -1,12 +1,14 @@
 import { onHitEffect } from './status.js';
 import * as THREE from 'three';
 
+const _v = new THREE.Vector3(); // vector tạm, tránh cấp phát mỗi khung hình
+
 export class Combat {
   constructor(game) {
     this.game = game;
     this.orbs = [];
     this.orbGeo = new THREE.SphereGeometry(0.22, 16, 12);
-    this.orbMat = new THREE.MeshBasicMaterial({ color: 0xbfe6ff, toneMapped: false });
+    this.orbMats = new Map(); // vật liệu dùng lại theo màu: không tạo/huỷ mỗi chưởng (tránh dịch lại shader)
     this.hitStop = 0;
   }
 
@@ -15,7 +17,7 @@ export class Combat {
   nearestEnemy(pos, range, fwd, minDot = -1) {
     let best = null, bd = range;
     for (const e of this.enemies()) {
-      const v = new THREE.Vector3().subVectors(e.pos, pos).setY(0);
+      const v = _v.subVectors(e.pos, pos).setY(0);
       const d = v.length();
       if (d < bd && (minDot <= -1 || v.normalize().dot(fwd) > minDot)) { bd = d; best = e; }
     }
@@ -23,7 +25,7 @@ export class Combat {
   }
 
   inArc(attacker, target, range, arc) {
-    const v = new THREE.Vector3().subVectors(target.pos, attacker.pos).setY(0);
+    const v = _v.subVectors(target.pos, attacker.pos).setY(0);
     const d = v.length() - target.radius;
     if (d > range || Math.abs(target.pos.y - attacker.pos.y) > 2) return false;
     if (d < 0.4) return true;
@@ -85,14 +87,34 @@ export class Combat {
 
   /** Chưởng khí. Của người chơi thì trúng địch, của địch thì trúng người chơi. */
   fireOrb(owner, from, dir, { dmg = 30, size = 1, color = 0xbfe6ff, speed = 26 } = {}) {
-    const mat = new THREE.MeshBasicMaterial({ color, toneMapped: false });
+    const { mat, glow } = this.orbMat(color);
     const mesh = new THREE.Mesh(this.orbGeo, mat);
     mesh.scale.setScalar(size);
     mesh.position.copy(from);
-    mesh.add(new THREE.PointLight(color, 6, 9, 2));
+    // quầng sáng cộng màu thay đèn điểm (đèn điểm đổi số đèn => dịch lại shader cả cảnh)
+    const s = new THREE.Sprite(glow);
+    s.scale.setScalar(2.4);
+    mesh.add(s);
     this.game.scene.add(mesh);
     this.orbs.push({ mesh, vel: dir.clone().normalize().multiplyScalar(speed), life: 1.8, owner, dmg, color, hostile: !!owner.isEnemy, r: 0.5 * size });
     this.game.audio.whoosh();
+  }
+
+  orbMat(color) {
+    let m = this.orbMats.get(color);
+    if (!m) {
+      if (!Combat.glowTex) {
+        const c = document.createElement('canvas'); c.width = c.height = 64;
+        const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+        Combat.glowTex = new THREE.CanvasTexture(c);
+      }
+      m = { mat: new THREE.MeshBasicMaterial({ color, toneMapped: false }),
+        glow: new THREE.SpriteMaterial({ map: Combat.glowTex, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8, toneMapped: false }) };
+      this.orbMats.set(color, m);
+    }
+    return m;
   }
 
   /** Bắn n mũi tên toả hình quạt. */
@@ -133,14 +155,14 @@ export class Combat {
       let hit = o.mesh.position.y < this.game.terrain.heightAt(o.mesh.position.x, o.mesh.position.z);
       if (o.hostile) {
         const p = this.game.player;
-        if (!p.dead && p.pos.clone().setY(p.pos.y + 1.1).distanceTo(o.mesh.position) < p.radius + o.r) {
+        if (!p.dead && _v.copy(p.pos).setY(p.pos.y + 1.1).distanceTo(o.mesh.position) < p.radius + o.r) {
           const dealt = p.takeDamage(o.dmg, o.owner, { heavy: true });
           if (dealt) this.game.hud.damage(p.pos.clone().setY(p.pos.y + 1.9), dealt, 'player');
           hit = true;
         }
       } else {
         for (const e of this.enemies()) {
-          const c = e.pos.clone().setY(e.pos.y + 1.1);
+          const c = _v.copy(e.pos).setY(e.pos.y + 1.1);
           if (c.distanceTo(o.mesh.position) < e.radius + o.r + 0.2) {
             this.hurtEnemy(o.owner, e, o.dmg, { knock: !o.arrow, back: 3 });
             hit = true;
@@ -152,8 +174,6 @@ export class Combat {
         if (!o.arrow || hit) this.game.fx.burst(o.mesh.position.clone(), o.color, o.arrow ? 10 : 30);
         if (hit) this.game.audio.hit();
         this.game.scene.remove(o.mesh);
-        o.mesh.children[0]?.dispose?.();
-        if (!o.arrow) o.mesh.material.dispose();
         this.orbs.splice(i, 1);
       }
     }
