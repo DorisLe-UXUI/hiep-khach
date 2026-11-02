@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { loadGLTF, loadModel, loadKitOBJ } from '../engine/assets.js';
+import { cullSkinned } from './chibi.js';
 
 const C = '/assets/characters/';
 const HEAD_BONES = new Set(['Head', 'neck_01']);
@@ -126,6 +127,7 @@ export class Character {
   static async create(look, weapon = null) {
     const [tpl, clips] = await Promise.all([buildTemplate(look), loadClips()]);
     const c = new Character(SkeletonUtils.clone(tpl), clips);
+    cullSkinned(c.model); // sau khi phóng đầu chibi; lưới thường vẫn không cắt
     if (weapon) await c.equip(weapon);
     return c;
   }
