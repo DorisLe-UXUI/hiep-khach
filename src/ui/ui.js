@@ -253,7 +253,8 @@ export class UI {
 
   async narrate(lines) {
     const box = $('narr-text');
-    $('narration').style.setProperty('--nbg', `url(/brand/bg_${this.narrBg || 'town'}.jpg)`);
+    // đổi sang đường dẫn tuyệt đối: url() tương đối trong biến CSS bị tính theo thư mục của file CSS (assets/) nên 404 trên GitHub Pages
+    $('narration').style.setProperty('--nbg', `url(${new URL(`/brand/bg_${this.narrBg || 'town'}.jpg`, location.href).href})`);
     $('narration').classList.remove('hidden');
     await this.fade(false);
     for (const l of lines) {
