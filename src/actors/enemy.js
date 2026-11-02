@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { castTelegraph } from '../game/telegraph.js';
 import { Actor } from './actor.js';
 
+const _toP = new THREE.Vector3(), _to = new THREE.Vector3(), _dir = new THREE.Vector3(), _tv = new THREE.Vector3();
+
 /** Sơn tặc / trại chủ. AI: canh gác -> phát hiện -> áp sát -> chém -> trúng đòn -> chết. */
 export class Enemy extends Actor {
   get isEnemy() { return true; }
@@ -82,7 +84,7 @@ export class Enemy extends Actor {
       this.char.update(dt);
       return;
     }
-    const toP = new THREE.Vector3().subVectors(p.pos, this.pos).setY(0);
+    const toP = _toP.subVectors(p.pos, this.pos).setY(0);
     const dist = toP.length();
     let speed = 0, moveDir = null;
 
@@ -90,7 +92,7 @@ export class Enemy extends Actor {
       case 'idle': {
         if (this.patrol) {
           const wp = this.patrol[this.patrolIdx];
-          const to = new THREE.Vector3(wp[0] - this.pos.x, 0, wp[1] - this.pos.z);
+          const to = _to.set(wp[0] - this.pos.x, 0, wp[1] - this.pos.z);
           if (to.length() < 1) this.patrolIdx = (this.patrolIdx + 1) % this.patrol.length;
           else { moveDir = to.normalize(); speed = 1.6; }
         }
@@ -118,10 +120,10 @@ export class Enemy extends Actor {
             break;
           }
         }
-        if (dist > reach) { moveDir = toP.clone().normalize(); speed = this.speed; }
+        if (dist > reach) { moveDir = _dir.copy(toP).normalize(); speed = this.speed; }
         else {
           // vòng quanh một chút khi đang hồi chiêu
-          moveDir = new THREE.Vector3(-toP.z, 0, toP.x).normalize().multiplyScalar(Math.sin(this.stateT * 0.8 + this.home.x) > 0 ? 1 : -1);
+          moveDir = _dir.set(-toP.z, 0, toP.x).normalize().multiplyScalar(Math.sin(this.stateT * 0.8 + this.home.x) > 0 ? 1 : -1);
           speed = 1.2;
           if (this.cool <= 0) this.startAttack();
         }
@@ -162,7 +164,7 @@ export class Enemy extends Actor {
       case 'hit':
         break;
       case 'return': {
-        const to = new THREE.Vector3(this.home.x - this.pos.x, 0, this.home.z - this.pos.z);
+        const to = _to.set(this.home.x - this.pos.x, 0, this.home.z - this.pos.z);
         if (to.length() < 1.5) { this.setState('idle'); this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.5); }
         else { moveDir = to.normalize(); speed = 3; this.faceTowards(Math.atan2(to.x, to.z), dt, 6); }
         if (!p.dead && dist < this.aggroR * 0.6) this.setState('chase');
@@ -171,7 +173,7 @@ export class Enemy extends Actor {
     }
 
     if (moveDir && this.state === 'idle') this.faceTowards(Math.atan2(moveDir.x, moveDir.z), dt, 5);
-    const tv = moveDir ? moveDir.multiplyScalar(speed) : new THREE.Vector3();
+    const tv = moveDir ? moveDir.multiplyScalar(speed) : _tv.set(0, 0, 0);
     this.vel.x += (tv.x - this.vel.x) * Math.min(1, dt * 10);
     this.vel.z += (tv.z - this.vel.z) * Math.min(1, dt * 10);
     this.physics(dt);

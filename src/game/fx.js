@@ -1,11 +1,15 @@
 import * as THREE from 'three';
 
+const _col = new THREE.Color();
+const _p = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+
 /** Hiệu ứng hạt đơn giản dùng chung một Points buffer + vệt kiếm. */
 export class FX {
   constructor(scene) {
     this.scene = scene;
     this.max = 2000;
     this.p = [];
+    this.pool = [];
     const geo = new THREE.BufferGeometry();
     this.posArr = new Float32Array(this.max * 3);
     this.colArr = new Float32Array(this.max * 3);
@@ -50,27 +54,37 @@ export class FX {
   }
 
   emit(pos, vel, color, size, life, grav = 0) {
-    if (this.p.length >= this.max) this.p.shift();
-    this.p.push({ pos: pos.clone(), vel, color: new THREE.Color(color), size, life, max: life, grav });
+    let q;
+    if (this.p.length >= this.max) {
+      // thu hồi hạt cũ nhất (O(1), không shift mảng)
+      q = this.p[0];
+      this.p[0] = this.p.pop();
+    } else q = this.pool.pop() || {};
+    q.x = pos.x; q.y = pos.y; q.z = pos.z;
+    q.vx = vel.x; q.vy = vel.y; q.vz = vel.z;
+    _col.set(color);
+    q.r = _col.r; q.g = _col.g; q.b = _col.b;
+    q.size = size; q.life = life; q.max = life; q.grav = grav;
+    this.p.push(q);
   }
 
   burst(pos, color = 0xffffff, n = 24) {
     for (let i = 0; i < n; i++) {
-      const v = new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.8, Math.random() - 0.5).normalize().multiplyScalar(2 + Math.random() * 4);
+      const v = _v.set(Math.random() - 0.5, Math.random() * 0.8, Math.random() - 0.5).normalize().multiplyScalar(2 + Math.random() * 4);
       this.emit(pos, v, color, 0.12 + Math.random() * 0.1, 0.5 + Math.random() * 0.4, 3);
     }
   }
 
   sparks(pos) {
     for (let i = 0; i < 18; i++) {
-      const v = new THREE.Vector3(Math.random() - 0.5, Math.random(), Math.random() - 0.5).normalize().multiplyScalar(4 + Math.random() * 5);
+      const v = _v.set(Math.random() - 0.5, Math.random(), Math.random() - 0.5).normalize().multiplyScalar(4 + Math.random() * 5);
       this.emit(pos, v, 0xffc860, 0.06, 0.3 + Math.random() * 0.2, 12);
     }
   }
 
   blood(pos, dir) {
     for (let i = 0; i < 14; i++) {
-      const v = dir.clone().multiplyScalar(2 + Math.random() * 3).add(new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 2, (Math.random() - 0.5) * 2));
+      const v = _v.copy(dir).multiplyScalar(2 + Math.random() * 3).add(_v2.set((Math.random() - 0.5) * 2, Math.random() * 2, (Math.random() - 0.5) * 2));
       this.emit(pos, v, 0x5a0606, 0.09, 0.4 + Math.random() * 0.3, 14);
     }
   }
@@ -78,30 +92,30 @@ export class FX {
   dust(pos) {
     for (let i = 0; i < 10; i++) {
       const a = Math.random() * Math.PI * 2;
-      this.emit(pos.clone().add(new THREE.Vector3(0, 0.1, 0)), new THREE.Vector3(Math.cos(a) * 1.5, 0.4, Math.sin(a) * 1.5), 0x3a3428, 0.35, 0.6, -0.5);
+      this.emit(_p.copy(pos).setY(pos.y + 0.1), _v.set(Math.cos(a) * 1.5, 0.4, Math.sin(a) * 1.5), 0x3a3428, 0.35, 0.6, -0.5);
     }
   }
 
   levelUp(pos) {
     for (let i = 0; i < 80; i++) {
       const a = Math.random() * Math.PI * 2, r = 0.4 + Math.random() * 0.6;
-      this.emit(pos.clone().add(new THREE.Vector3(Math.cos(a) * r, Math.random() * 0.3, Math.sin(a) * r)), new THREE.Vector3(Math.cos(a) * 0.4, 2 + Math.random() * 3, Math.sin(a) * 0.4), i % 2 ? 0xffd27a : 0xfff3c0, 0.12, 1.2 + Math.random() * 0.6, -0.5);
+      this.emit(_p.copy(pos).add(_v2.set(Math.cos(a) * r, Math.random() * 0.3, Math.sin(a) * r)), _v.set(Math.cos(a) * 0.4, 2 + Math.random() * 3, Math.sin(a) * 0.4), i % 2 ? 0xffd27a : 0xfff3c0, 0.12, 1.2 + Math.random() * 0.6, -0.5);
     }
   }
 
   ring(pos, radius, color) {
     for (let i = 0; i < 60; i++) {
       const a = (i / 60) * Math.PI * 2;
-      this.emit(pos.clone().add(new THREE.Vector3(0, 0.3, 0)), new THREE.Vector3(Math.cos(a) * radius * 2.4, 0.5, Math.sin(a) * radius * 2.4), color, 0.22, 0.45, 0);
+      this.emit(_p.copy(pos).setY(pos.y + 0.3), _v.set(Math.cos(a) * radius * 2.4, 0.5, Math.sin(a) * radius * 2.4), color, 0.22, 0.45, 0);
     }
   }
 
   sparkle(pos, color = 0xfff0b0) {
-    this.emit(pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.5, Math.random() * 0.4, (Math.random() - 0.5) * 0.5)), new THREE.Vector3(0, 0.6, 0), color, 0.08, 0.8, 0);
+    this.emit(_p.copy(pos).add(_v2.set((Math.random() - 0.5) * 0.5, Math.random() * 0.4, (Math.random() - 0.5) * 0.5)), _v.set(0, 0.6, 0), color, 0.08, 0.8, 0);
   }
 
   trailPuff(pos, color) {
-    this.emit(pos, new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4), color, 0.2, 0.3);
+    this.emit(pos, _v.set((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4), color, 0.2, 0.3);
   }
 
   /** Bật vệt kiếm của nhân vật trong ~0.3s. */
@@ -116,18 +130,25 @@ export class FX {
     for (let i = n - 1; i >= 0; i--) {
       const q = this.p[i];
       q.life -= dt;
-      if (q.life <= 0) { this.p.splice(i, 1); continue; }
-      q.vel.y -= q.grav * dt;
-      q.pos.addScaledVector(q.vel, dt);
+      if (q.life <= 0) {
+        // swap-remove + tái dùng object, tránh splice/shift mỗi frame
+        this.p[i] = this.p[this.p.length - 1];
+        this.p.pop();
+        this.pool.push(q);
+        continue;
+      }
+      q.vy -= q.grav * dt;
+      q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
     }
-    this.p.forEach((q, i) => {
-      const k = q.life / q.max;
-      this.posArr.set([q.pos.x, q.pos.y, q.pos.z], i * 3);
-      this.colArr.set([q.color.r * k, q.color.g * k, q.color.b * k], i * 3);
+    const len = this.p.length;
+    for (let i = 0; i < len; i++) {
+      const q = this.p[i], k = q.life / q.max, i3 = i * 3;
+      this.posArr[i3] = q.x; this.posArr[i3 + 1] = q.y; this.posArr[i3 + 2] = q.z;
+      this.colArr[i3] = q.r * k; this.colArr[i3 + 1] = q.g * k; this.colArr[i3 + 2] = q.b * k;
       this.sizeArr[i] = q.size;
-    });
+    }
     const g = this.points.geometry;
-    g.setDrawRange(0, this.p.length);
+    g.setDrawRange(0, len);
     g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = g.attributes.size.needsUpdate = true;
 
     // vệt kiếm: ghi lại vị trí chuôi/mũi kiếm mỗi frame

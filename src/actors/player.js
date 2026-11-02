@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Actor } from './actor.js';
 
+const _move = new THREE.Vector3();
+
 const COMBO = {
   A: { anim: 'Sword_Regular_A', rec: 'Sword_Regular_A_Rec', hitAt: 0.6, mul: 1, arc: 1.25, lunge: 3.5, next: 'B' },
   B: { anim: 'Sword_Regular_B', rec: 'Sword_Regular_B_Rec', hitAt: 0.6, mul: 1.12, arc: 1.25, lunge: 3.5, next: 'C' },
@@ -232,7 +234,7 @@ export class Player extends Actor {
     if (s.dead) { s.vel.x = s.vel.z = 0; s.physics(dt); s.char.update(dt); return; }
 
     const f = cam.forward(), r = cam.right();
-    const move = new THREE.Vector3();
+    const move = _move.set(0, 0, 0);
     if (input.held('KeyW')) move.add(f);
     if (input.held('KeyS')) move.sub(f);
     if (input.held('KeyD')) move.add(r);
