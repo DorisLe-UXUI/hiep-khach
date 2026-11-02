@@ -798,6 +798,11 @@ export class Game {
       this.scene.add(m);
       this.loot.push({ mesh: m, kind, amount, t: 0, base: pos.y, color: kind === 'gear' ? new THREE.Color(RARITY[amount.rarity].color).getHex() : null });
     }
+    // giới hạn số vật phẩm trên sàn: bỏ cái cũ nhất (geometry/material dùng chung với cache nên không dispose)
+    while (this.loot.length > 80) {
+      const old = this.loot.shift();
+      this.scene.remove(old.mesh);
+    }
   }
 
   clearLoot() {
@@ -823,14 +828,16 @@ export class Game {
 
   updateLoot(dt) {
     const p = this.player.pos;
+    const tgt = (this._lootTgt ||= new THREE.Vector3());
     for (let i = this.loot.length - 1; i >= 0; i--) {
       const l = this.loot[i];
       l.t += dt;
+      if (l.t > 90) { this.scene.remove(l.mesh); this.loot.splice(i, 1); continue; } // vật phẩm bỏ quên tự biến mất
       l.mesh.rotation.y += dt * 2;
       const d = l.mesh.position.distanceTo(p);
-      if (d < (this.beasts.bonus('magnet') && this.companions.pet?.root.visible ? 12 : 4.5) && l.t > 0.6) l.mesh.position.lerp(p.clone().setY(p.y + 0.8), Math.min(1, dt * 8));
+      if (d < (this.beasts.bonus('magnet') && this.companions.pet?.root.visible ? 12 : 4.5) && l.t > 0.6) l.mesh.position.lerp(tgt.set(p.x, p.y + 0.8, p.z), Math.min(1, dt * 8));
       else l.mesh.position.y = l.base + Math.sin(l.t * 3) * 0.12;
-      if (Math.random() < (l.color ? 0.4 : 0.1)) this.fx.sparkle(l.mesh.position, l.color || (l.kind === 'gold' ? 0xffd27a : 0xbfe6ff));
+      if (d < 30 && Math.random() < (l.color ? 0.4 : 0.1)) this.fx.sparkle(l.mesh.position, l.color || (l.kind === 'gold' ? 0xffd27a : 0xbfe6ff));
       if (d < 1 && l.t > 0.6) { this.collect(l); this.scene.remove(l.mesh); this.loot.splice(i, 1); }
     }
     for (const h of this.herbs) {
@@ -1280,8 +1287,14 @@ export class Game {
       this.curZone = zn?.id;
       if (zn) this.ui.zoneBanner(zn);
     }
-    this.saveT = (this.saveT ?? 20) - dt;
-    if (this.saveT <= 0) { this.saveT = 20; this.save(); }
+    this.saveT = (this.saveT ?? 60) - dt;
+    if (this.saveT <= 0) { this.saveT = 60; this.save(); }
+    if (!this._saveHooks) {
+      // lưu khi rời tab/đóng trang, chỉ gắn listener một lần
+      this._saveHooks = true;
+      addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.save(); });
+      addEventListener('pagehide', () => this.save());
+    }
     this.camRig.update(dt, pp, frozen);
     this.updateSun(pp);
     this.grass.update(pp.x, pp.z, time);
@@ -1293,12 +1306,15 @@ export class Game {
     const a = this.activity;
     if (a) this.hud.objective(`<span class="han">${a.han}</span>${a.title}`, a.waves.length > 1 ? `Đợt ${a.wave + 1}/${a.waves.length} · còn ${a.left} địch` : `Đánh bại đối thủ`);
     else this.hud.objective(`<span class="han">${ch.han}</span>${ch.title} · ${ch.subtitle}`, st ? this.ui.nh(st.objective(this)) : '');
-    document.getElementById('hero-title').textContent = `${this.player.cls.name} · Cấp ${this.rpg.level}`;
+    const htEl = (this._heroTitleEl ||= document.getElementById('hero-title'));
+    const ht = `${this.player.cls.name} · Cấp ${this.rpg.level}`;
+    if (htEl.textContent !== ht) htEl.textContent = ht;
     this.hud.update(dt);
   }
 
   updateSun(center) {
-    const c = new THREE.Vector3(Math.round(center.x / 4) * 4, 0, Math.round(center.z / 4) * 4);
+    const c = (this._sunC ||= new THREE.Vector3());
+    c.set(Math.round(center.x / 4) * 4, 0, Math.round(center.z / 4) * 4);
     c.y = this.terrain.heightAt(c.x, c.z);
     this.sun.position.copy(c).addScaledVector(this.sky.sunDir, 150);
     this.sun.target.position.copy(c);

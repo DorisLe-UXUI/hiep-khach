@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+const _to = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+
 /**
  * Auto (tự động): tìm địch gần nhất, áp sát, đánh thường + xả chiêu khi có nội lực,
  * uống thuốc khi máu thấp; hết địch thì tự đi tới mục tiêu nhiệm vụ và bắt chuyện với NPC.
@@ -43,7 +45,7 @@ export class AutoPilot {
 
     // đang tự tìm đường: chỉ đánh khi bị tấn công
     if (this.dest) {
-      const to = new THREE.Vector3(this.dest.x - p.pos.x, 0, this.dest.z - p.pos.z);
+      const to = _to.set(this.dest.x - p.pos.x, 0, this.dest.z - p.pos.z);
       const d = to.length();
       if (d < 5) { g.toast(`Đã tới <b>${this.dest.name}</b>`, 2); this.dest = null; this.on = false; return out; }
       if (p.inCombat <= 0) {
@@ -51,7 +53,7 @@ export class AutoPilot {
         out.sprint = true;
         this.stuckT = p.pos.distanceTo(this.lastPos) < dt * 1.2 ? this.stuckT + dt : 0;
         this.lastPos.copy(p.pos);
-        if (this.stuckT > 0.6) out.move.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(performance.now() / 700) > 0 ? 1.2 : -1.2);
+        if (this.stuckT > 0.6) out.move.applyAxisAngle(_up, Math.sin(performance.now() / 700) > 0 ? 1.2 : -1.2);
         if (this.stuckT > 2.5) { out.press.push('Space'); this.stuckT = 0; }
         if (!g.player.mounted && g.beasts.s.mount && d > 60 && !this.mountTried) { this.mountTried = true; g.toggleMount(); }
         return out;
@@ -61,7 +63,7 @@ export class AutoPilot {
     if (!this.target || this.target.dead) this.target = g.combat.nearestEnemy(p.pos, 28, p.forward(), -1);
     const e = this.target;
     if (e) {
-      const to = new THREE.Vector3().subVectors(e.pos, p.pos).setY(0);
+      const to = _to.subVectors(e.pos, p.pos).setY(0);
       const d = to.length();
       const reach = p.cls.attack === 'melee' ? p.cls.range * 0.8 : 14;
       p.yaw = Math.atan2(to.x, to.z);
@@ -80,7 +82,7 @@ export class AutoPilot {
     // không có địch: đi làm nhiệm vụ
     const mk = g.markerPos();
     if (mk) {
-      const to = new THREE.Vector3(mk.x - p.pos.x, 0, mk.z - p.pos.z);
+      const to = _to.set(mk.x - p.pos.x, 0, mk.z - p.pos.z);
       const d = to.length();
       const it = g.nearestInteract();
       if (it && d < 4) { out.press.push('KeyE'); return out; }
@@ -90,7 +92,7 @@ export class AutoPilot {
         // kẹt vật cản: lách sang ngang
         this.stuckT = p.pos.distanceTo(this.lastPos) < dt * 1.2 ? this.stuckT + dt : 0;
         this.lastPos.copy(p.pos);
-        if (this.stuckT > 0.6) out.move.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(performance.now() / 700) > 0 ? 1.2 : -1.2);
+        if (this.stuckT > 0.6) out.move.applyAxisAngle(_up, Math.sin(performance.now() / 700) > 0 ? 1.2 : -1.2);
         if (this.stuckT > 2.5) { out.press.push('Space'); this.stuckT = 0; }
       }
     }
