@@ -1,0 +1,11 @@
+Âm thanh & nhạc (tất cả CC0 / public domain):
+- Kenney (kenney.nl): RPG Audio, Impact Sounds, Interface Sounds, Music Jingles — CC0
+- OpenGameArt.org (CC0):
+  menu.mp3  "Koto Booth" — tozan
+  town.mp3  "Asian/Oriental 1" — tozan
+  dungeon.mp3 "Asian/Oriental 2" — tozan
+  lake.mp3  "Japaori" — tozan
+  wild.mp3  "Kingdom of a million elephants under a white parasol" — spring-spring
+  home.mp3  "Hot Springs Town" — kistol
+  battle.mp3 "Looping Japanese Fight Track" — pepsidog
+  boss.mp3  "Fight, run, breath deeply" — Komiku (loyalty-freak-music)

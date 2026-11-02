@@ -1,0 +1,98 @@
+[
+ {
+  "id": "OdCOFSmEhl",
+  "title": "Goblin",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/54e0fd61-6898-4b17-b039-8fa656d02954.glb"
+ },
+ {
+  "id": "5vO2YJsPEf",
+  "title": "Orc",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/52a479b3-a635-4a23-92cb-6697eaa5eed5.glb"
+ },
+ {
+  "id": "JoBvxIUpZP",
+  "title": "Zombie",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/af74108f-e770-4ed0-9d17-83576afece78.glb"
+ },
+ {
+  "id": "1XZD9GK6Kj",
+  "title": "Skeleton",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/346b895f-4391-466b-9b49-bd8b85e20156.glb"
+ },
+ {
+  "id": "LnfIziKv4o",
+  "title": "Demon",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/46b52ba4-5d2a-4fc8-85cc-3e980f199141.glb"
+ },
+ {
+  "id": "Iip30bDHmu",
+  "title": "Ghost",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/810f60a2-6e45-4c4e-a0d5-da91cd7288bd.glb"
+ },
+ {
+  "id": "yRYJiAJyiM",
+  "title": "Spider",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/4259fbdb-afb5-4d40-9108-363625dd6b6e.glb"
+ },
+ {
+  "id": "hNO9XvjlKa",
+  "title": "Bat",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/4ae13ae9-c257-41ed-86b5-1b4760924ebc.glb"
+ },
+ {
+  "id": "LyjSUKHKnh",
+  "title": "Slime",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/195565b4-842a-44e9-a59a-5ebb1d133255.glb"
+ },
+ {
+  "id": "o87Upt5uHX",
+  "title": "Wizard",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/d206c071-7934-40eb-9091-35ebdf93c317.glb"
+ },
+ {
+  "id": "xGYmeDpfTu",
+  "title": "Ninja",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/2ed11876-720e-457a-8a69-4a14ba7234dc.glb"
+ },
+ {
+  "id": "ceRHrn8HHE",
+  "title": "Yeti",
+  "creator": "Quaternius",
+  "lic": "CC0 1.0",
+  "anim": true,
+  "glb": "https://static.poly.pizza/40a831b3-686a-4af8-b189-a13b38a3c26a.glb"
+ }
+]
