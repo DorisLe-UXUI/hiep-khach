@@ -71,6 +71,7 @@ Object.assign(UI.prototype, {
   // ───────────── TẠO NHÂN VẬT ─────────────
   /** preview(hero) dựng nhân vật xem trước trong cảnh 3D; trả về Promise<hero> */
   createCharacter(initial, preview, { editOnly = false } = {}) {
+    import('../engine/preload.js').then((m) => m.preloadCreation());
     const h = { ...defaultHero(), ...(initial || {}) };
     return new Promise((resolve) => {
       $('create').classList.remove('hidden');
