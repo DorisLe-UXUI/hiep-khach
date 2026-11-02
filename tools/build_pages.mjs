@@ -38,6 +38,16 @@ fs.writeFileSync(path.join(OUT, 'index.html'), rel(fs.readFileSync(path.join(OUT
 for (const f of fs.readdirSync(path.join(A, 'thumbs'))) if (f.startsWith('dbg_')) fs.rmSync(path.join(A, 'thumbs', f));
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 
+// tệp không được src/ hay index.html tham chiếu: bỏ khỏi bản build (bản gốc trong public/ giữ nguyên)
+const DEAD = [
+  'hdri/misty_pines.hdr', 'hdri/sunset_forest.hdr', // không có trong TIMES của sky.js
+  'monsters/fbx/Dragon.fbx', 'monsters/fbx/Skeleton.fbx', 'monsters/fbx/Slime.fbx', 'monsters/fbx/Snake_angry.fbx',
+  'kit/animals/Zebra.fbx', 'kit/animals/Llama.fbx', 'kit/animals/Horse.fbx', 'kit/animals/Pug.fbx', // nay dùng assets/beasts
+  // GLB nguồn đã bake thành impostor, chỉ còn tên trong vegetation.js
+  'models/jacaranda_tree.glb', 'models/fir_tree_01.glb', 'models/island_tree_02.glb', 'models/tree_small_02.glb', 'models/fir_sapling.glb',
+];
+for (const f of DEAD) fs.rmSync(path.join(A, f), { force: true });
+
 // ───── nén cho web (bản gốc trong public/ giữ nguyên); kết quả lưu đệm theo nội dung tệp ─────
 const CACHE = path.join(ROOT, '.cache-pages');
 fs.mkdirSync(CACHE, { recursive: true });
@@ -70,6 +80,17 @@ for (const f of [...walk(path.join(A, 'models')), ...walk(path.join(A, 'nature')
     // giản lược lưới: đồ vật Polyhaven rất chi tiết (vd. thanh katana 20k đỉnh) → ~1/5 mà nhìn không khác
     const err = file.includes('/models/') ? 0.004 : 0.002;
     execSync(`npx gltf-transform optimize "${file}" "${tmp}" --compress meshopt --texture-compress webp --texture-size 512 --simplify-error ${err}`, { cwd: ROOT, stdio: 'ignore' });
+    const out = fs.readFileSync(tmp); fs.rmSync(tmp); return out;
+  }]);
+// impostor: atlas 4096 px → 2048, giữ nguyên PNG và tên tệp (meta là kích thước thế giới, không đổi)
+for (const f of walk(path.join(A, 'impostors')).filter((f) => /_(color|normal)\.png$/.test(f)))
+  jobs.push([f, 'imp2048', (b) => sharp(b).resize({ width: 2048, withoutEnlargement: true }).png({ compressionLevel: 9 }).toBuffer()]);
+// nhân vật/sinh vật có khung xương: texture tối đa 1024 + WebP, không giản lược/ghép lưới
+const CHAR_DIRS = ['heroes', 'characters', 'chibi', 'monsters', 'beasts', 'folk'];
+for (const f of CHAR_DIRS.flatMap((d) => walk(path.join(A, d))).filter((f) => f.endsWith('.glb') && !/(^|\/)(anim_|w_)[^/]*\.glb$/.test(f)))
+  jobs.push([f, 'char1024s', (b, file) => {
+    const tmp = path.join(CACHE, 'tmp_' + crypto.createHash('md5').update(file).digest('hex') + '.glb');
+    execSync(`npx gltf-transform optimize "${file}" "${tmp}" --compress meshopt --texture-compress webp --texture-size 1024 --simplify false --join false --weld false --instance false --flatten false --palette false --resample false`, { cwd: ROOT, stdio: 'ignore' });
     const out = fs.readFileSync(tmp); fs.rmSync(tmp); return out;
   }]);
 for (const [f] of jobs) before += fs.statSync(f).size;

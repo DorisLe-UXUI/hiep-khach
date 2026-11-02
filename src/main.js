@@ -78,8 +78,8 @@ let game = null;
 const preview = { char: null, token: 0, angle: 0.35 };
 
 async function boot() {
-  // chibi: tải song song mọi model của màn hình chính ngay từ đầu
-  if (Character.chibi) preloadModels();
+  // chibi: tải song song model cần cho màn hình chính + nhân vật đang dùng ngay từ đầu
+  if (Character.chibi) preloadModels(currentProfile()?.hero || defaultHero());
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0xb7c0c2, 0.003);
   const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeight, 0.3, 1500);
