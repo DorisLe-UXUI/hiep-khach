@@ -41,6 +41,13 @@ if (import.meta.env.VITE_LITE) {
 }
 
 const ui = new UI();
+// bản dev (…/dev/): huy hiệu DEV để không nhầm với bản chính
+if (import.meta.env.VITE_DEV_BUILD) {
+  const b = document.createElement('div');
+  b.textContent = 'DEV ' + (import.meta.env.VITE_DEV_SHA || '');
+  b.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;padding:2px 8px;border-radius:4px;background:#c0392b;color:#fff;font:600 11px/1.6 monospace;pointer-events:none;opacity:.85';
+  document.body.appendChild(b);
+}
 ui.decorate();
 const settings = loadSettings();
 setLang(settings.lang || 'vi');

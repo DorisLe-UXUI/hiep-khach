@@ -323,7 +323,7 @@ export class UI {
     el.innerHTML = `<div class="zb-han">${z.han}</div><div class="zb-line"></div><div class="zb-name">${z.name}${lv}</div>`;
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
     // nhớ vùng vừa tới: lần sau mở game, màn tải dùng tranh vùng này
-    try { localStorage.setItem('hk_bg', ZONE_BG[z.id] || 'town'); } catch {}
+    try { localStorage.setItem((import.meta.env.VITE_STORE_PREFIX || '') + 'hk_bg', ZONE_BG[z.id] || 'town'); } catch {}
   }
 
   hideDialog() { $('dialog').classList.add('hidden'); }

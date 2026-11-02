@@ -7,9 +7,25 @@ import crypto from 'node:crypto';
 import sharp from 'sharp';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const OUT = path.join(ROOT, 'dist-pages');
+// --dev: bản xem thử cho thư mục con /dev/ (tiền tố lưu riêng, huy hiệu DEV) → dist-pages-dev/
+const DEV = process.argv.includes('--dev');
+const OUT_NAME = DEV ? 'dist-pages-dev' : 'dist-pages';
+const OUT = path.join(ROOT, OUT_NAME);
+const env = { ...process.env };
+if (DEV) {
+  env.VITE_STORE_PREFIX = 'dev_';
+  env.VITE_DEV_BUILD = '1';
+  env.VITE_DEV_SHA = execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
+}
+// bản chính: cất tạm dist-pages/dev/ (bản dev đã đăng) vì --emptyOutDir sẽ xoá nó
+const DEV_DIR = path.join(OUT, 'dev'), DEV_TMP = path.join(ROOT, '.dev-pages-keep');
+if (!DEV && fs.existsSync(DEV_DIR)) { fs.rmSync(DEV_TMP, { recursive: true, force: true }); fs.renameSync(DEV_DIR, DEV_TMP); }
 // giữ thư mục .git của nhánh gh-pages (Vite --emptyOutDir không xoá .git)
-execSync('npx vite build --base ./ --outDir dist-pages --emptyOutDir --logLevel error', { cwd: ROOT, stdio: 'inherit' });
+try {
+  execSync(`npx vite build --base ./ --outDir ${OUT_NAME} --emptyOutDir --logLevel error`, { cwd: ROOT, stdio: 'inherit', env });
+} finally {
+  if (fs.existsSync(DEV_TMP)) fs.renameSync(DEV_TMP, DEV_DIR);
+}
 const rel = (s) => s.replace(/(["'`(])\/(assets|brand)\//g, '$1./$2/');
 const A = path.join(OUT, 'assets');
 for (const f of fs.readdirSync(A)) {
@@ -62,4 +78,4 @@ await Promise.all(Array.from({ length: 6 }, async () => { while (i < jobs.length
 for (const [f] of jobs) after += fs.statSync(f).size;
 console.log(`nén ${jobs.length} tệp: ${(before / 1e6).toFixed(1)} MB → ${(after / 1e6).toFixed(1)} MB`);
 const sz = execSync(`du -sh "${OUT}"`).toString().split('\t')[0];
-console.log('dist-pages', sz);
+console.log(OUT_NAME, sz);

@@ -1,4 +1,6 @@
-const KEY = 'hkgh_settings_v1';
+// bản dev (…/dev/) dùng tiền tố riêng để không đụng bản lưu của bản chính (cùng tên miền)
+export const STORE_PREFIX = import.meta.env.VITE_STORE_PREFIX || '';
+const KEY = STORE_PREFIX + 'hkgh_settings_v1';
 
 export const DEFAULTS = {
   sens: 1,            // độ nhạy chuột
@@ -41,8 +43,8 @@ export function saveSettings(s) {
 }
 
 // ───── hồ sơ người chơi (đăng nhập cục bộ) + bản lưu theo hồ sơ ─────
-const PROFILES = 'hkgh_profiles_v1';
-const CURRENT = 'hkgh_current_v1';
+const PROFILES = STORE_PREFIX + 'hkgh_profiles_v1';
+const CURRENT = STORE_PREFIX + 'hkgh_current_v1';
 
 export function listProfiles() {
   try { return JSON.parse(localStorage.getItem(PROFILES) || '[]'); } catch { return []; }
@@ -105,7 +107,7 @@ export function login(name, title) {
 
 export function logout() { try { localStorage.removeItem(CURRENT); } catch { /* bỏ qua */ } }
 
-const saveKey = (profile) => 'hkgh_save_v1:' + (profile?.account || profile?.name || '_');
+const saveKey = (profile) => STORE_PREFIX + 'hkgh_save_v1:' + (profile?.account || profile?.name || '_');
 
 export function loadSave(profile) {
   try { return JSON.parse(localStorage.getItem(saveKey(profile)) || 'null'); } catch { return null; }
