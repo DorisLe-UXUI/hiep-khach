@@ -1227,7 +1227,8 @@ export class Game {
     // tiếng bước chân
     const hs = Math.hypot(this.player.vel.x, this.player.vel.z);
     if (hs > 2 && this.player.onGround && !this.player.mounted && !this.player.inWater) { this.stepT = (this.stepT || 0) - dt * hs; if (this.stepT <= 0) { this.stepT = 2.3; this.audio.step(); } }
-    const actors = [this.player];
+    const actors = this._actors || (this._actors = []);
+    actors.length = 0; actors.push(this.player);
     for (const e of this.enemies) {
       const d = e.pos.distanceTo(pp);
       const near = d < 75 || e.alerted;
@@ -1242,7 +1243,8 @@ export class Game {
       if (near) { n.update(adt); actors.push(n); }
     }
     for (const a of this.allies) { if (!a.dead || a.deadT < 30) { a.update(adt); actors.push(a); } }
-    for (const a of actors) if (!a.dead) a.separate(actors);
+    // NPC đứng yên (không có lộ trình) chỉ làm vật cản, không tự đẩy mình ra
+    for (const a of actors) if (!a.dead && !(a instanceof NPC && !a.route)) a.separate(actors);
     this.combat.update(adt);
     this.fx.update(dt);
     this.fury.update(dt);
