@@ -100,6 +100,11 @@ export class MobileHUD {
     this.bindJoystick();
   }
 
+  /** Quên các giá trị đã ghi (đổi ngôn ngữ: chữ dữ liệu không dịch ngược được nên phải ghi lại từ đầu). */
+  invalidate() {
+    for (const k of Object.keys(this)) if (k[0] === '_' && (this[k] === null || typeof this[k] !== 'object')) this[k] = undefined;
+  }
+
   _text(key, el, v) { if (this[key] !== v) { el.textContent = v; this[key] = v; } }
   _pct(key, el, r) { const v = Math.round(r * 200) / 2; if (this[key] !== v) { el.style.width = v + '%'; this[key] = v; } }
 

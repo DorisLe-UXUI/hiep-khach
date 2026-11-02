@@ -149,10 +149,18 @@ export class HUD {
     else { $('prompt-text').textContent = text; $('prompt').classList.remove('hidden'); }
   }
 
+  /** Quên các giá trị đã ghi (đổi ngôn ngữ: chữ dữ liệu không dịch ngược được nên phải ghi lại từ đầu). */
+  invalidate() {
+    for (const k of Object.keys(this)) if (k[0] === '_' && (this[k] === null || typeof this[k] !== 'object')) this[k] = undefined;
+    for (const el of this.plates?.values?.() || []) el._html = undefined;
+  }
+
   objective(chapter, text) {
     if (chapter !== this._chapter) { this.el.objChapter.innerHTML = chapter; this._chapter = chapter; }
     const el = this.el.objText;
-    if (el.textContent !== text) {
+    // so với chuỗi đã ghi (không so DOM): khi đổi ngôn ngữ, MutationObserver dịch lại nên DOM luôn khác → nhấp nháy mỗi khung
+    if (text !== this._objText) {
+      this._objText = text;
       el.textContent = text;
       el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
     }

@@ -218,7 +218,12 @@ export class Game {
     this.audio.setVolume(s.volume);
     this.audio.setMusicVolume(s.music ?? 0.5);
     this.audio.voiceVol = s.voice ?? 0.9;
-    setLang(s.lang || 'vi');
+    if ((s.lang || 'vi') !== this._lang) {
+      this._lang = s.lang || 'vi';
+      setLang(this._lang);
+      // HUD chỉ ghi khi giá trị đổi: buộc ghi lại để chữ theo ngôn ngữ mới
+      this.hud?.invalidate?.(); this.mhud?.invalidate?.(); this._heroTitle = undefined;
+    }
     const mmo = s.controlMode !== 'action';
     this.input.noLock = mmo;
     if (mmo && this.input.locked) this.input.unlock();
@@ -798,9 +803,10 @@ export class Game {
       this.scene.add(m);
       this.loot.push({ mesh: m, kind, amount, t: 0, base: pos.y, color: kind === 'gear' ? new THREE.Color(RARITY[amount.rarity].color).getHex() : null });
     }
-    // giới hạn số vật phẩm trên sàn: bỏ cái cũ nhất (geometry/material dùng chung với cache nên không dispose)
+    // giới hạn số vật phẩm trên sàn: quá 80 thì tự nhặt cái cũ nhất (không mất đồ; geometry/material dùng chung với cache nên không dispose)
     while (this.loot.length > 80) {
       const old = this.loot.shift();
+      this.collect(old);
       this.scene.remove(old.mesh);
     }
   }
@@ -832,7 +838,6 @@ export class Game {
     for (let i = this.loot.length - 1; i >= 0; i--) {
       const l = this.loot[i];
       l.t += dt;
-      if (l.t > 90) { this.scene.remove(l.mesh); this.loot.splice(i, 1); continue; } // vật phẩm bỏ quên tự biến mất
       l.mesh.rotation.y += dt * 2;
       const d = l.mesh.position.distanceTo(p);
       if (d < (this.beasts.bonus('magnet') && this.companions.pet?.root.visible ? 12 : 4.5) && l.t > 0.6) l.mesh.position.lerp(tgt.set(p.x, p.y + 0.8, p.z), Math.min(1, dt * 8));
@@ -1308,7 +1313,8 @@ export class Game {
     else this.hud.objective(`<span class="han">${ch.han}</span>${ch.title} · ${ch.subtitle}`, st ? this.ui.nh(st.objective(this)) : '');
     const htEl = (this._heroTitleEl ||= document.getElementById('hero-title'));
     const ht = `${this.player.cls.name} · Cấp ${this.rpg.level}`;
-    if (htEl.textContent !== ht) htEl.textContent = ht;
+    // so với chuỗi đã ghi (không so DOM): bản tiếng Anh/Trung dịch lại nội dung nên DOM luôn khác
+    if (ht !== this._heroTitle) { htEl.textContent = ht; this._heroTitle = ht; }
     this.hud.update(dt);
   }
 
