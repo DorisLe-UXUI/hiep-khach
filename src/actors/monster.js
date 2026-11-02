@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { loadGLTF } from '../engine/assets.js';
+import { cullSkinned } from './chibi.js';
 
 /**
  * Quái vật (Quaternius Ultimate Monsters / Monster Pack / Easy Enemies / Bestiary, CC0)
@@ -75,6 +76,7 @@ export class MonsterCharacter {
     model.scale.multiplyScalar(s);
     model.position.y -= box.min.y * s + (def.lift || 0);
     if (def.yaw) model.rotation.y = def.yaw;
+    cullSkinned(model); // chỉ lưới da được cắt khung nhìn
     return new MonsterCharacter(model, src.animations, def);
   }
 

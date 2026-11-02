@@ -27,7 +27,7 @@ import { VFX } from './vfx.js';
 import { Ally } from '../actors/ally.js';
 import { Life } from './life.js';
 import { Social, RECRUITS } from './social.js';
-import { REVEAL } from '../world/stylized.js';
+import { REVEAL, setVegetationShadows } from '../world/stylized.js';
 import { MonsterCharacter } from '../actors/monster.js';
 import { MeshyCharacter, MESHY_DEFAULT, meshyFile } from '../actors/meshy.js';
 import { MONSTERS, Spawner, monsterStats } from './bestiary.js';
@@ -138,6 +138,23 @@ const SERVICE_NPCS = [
   { id: 'steward', name: 'Quản gia', han: '管家', model: 'mx:merchant', x: -24, z: 106, yaw: Math.PI, greet: 'Chủ nhân, gia viên cần tu sửa thêm ạ.', action: 'Quản lý gia viên', open: 'openHousePanel' },
 ];
 
+/** Cập nhật actor; lazy = chỉ chạy mỗi 3 khung (lệch pha theo slot), dt bị bỏ qua được dồn vào lần sau. */
+function tickActor(a, dt, lazy, slot) {
+  const acc = (a._accDt || 0) + dt;
+  if (lazy && slot % 3) { a._accDt = acc; return; }
+  a._accDt = 0;
+  a.update(acc);
+}
+/** Bật/tắt đổ bóng các lưới của actor, chỉ duyệt khi trạng thái đổi; nhớ giá trị gốc để trả lại. */
+function castShadows(a, on) {
+  if ((a._shadowOn ?? true) === on) return;
+  a._shadowOn = on;
+  a.root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (on) { if (o._cs !== undefined) { o.castShadow = o._cs; o._cs = undefined; } } else if (o._cs === undefined) { o._cs = o.castShadow; o.castShadow = false; }
+  });
+}
+
 export class Game {
   constructor(ctx) {
     Object.assign(this, ctx);
@@ -211,6 +228,7 @@ export class Game {
       this.sun.shadow.map = null;
     }
     this.grass.setRadius?.(q.grass);
+    setVegetationShadows(q.treeShadow); // Thấp: tắt bóng cây ngay (cây dựng lúc chất lượng cao vẫn còn lưới gần)
     this.camera.fov = s.fov;
     this.camera.updateProjectionMatrix();
     this.camRig.sens = s.sens;
@@ -1243,18 +1261,28 @@ export class Game {
     if (hs > 2 && this.player.onGround && !this.player.mounted && !this.player.inWater) { this.stepT = (this.stepT || 0) - dt * hs; if (this.stepT <= 0) { this.stepT = 2.3; this.audio.step(); } }
     const actors = this._actors || (this._actors = []);
     actors.length = 0; actors.push(this.player);
-    for (const e of this.enemies) {
-      const d = e.pos.distanceTo(pp);
+    const fn = (this._frameN = (this._frameN || 0) + 1);
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i], d = e.pos.distanceTo(pp);
       const near = d < 75 || e.alerted;
       // ở xa: ẩn hẳn (không vẽ, không cập nhật xương)
       if (!e.dead || e.deadT < 12) e.root.visible = near;
-      if (near) { e.update(adt); actors.push(e); }
+      if (!near) continue;
+      // ngoài 30 m (và ngoài tầm phát hiện), đang yên: 3 khung mới cập nhật một lần, dồn dt
+      const lazy = d > 30 && d > e.aggroR + 2 && !e.boss && e.state === 'idle';
+      tickActor(e, adt, lazy, fn + i);
+      castShadows(e, d < 35);
+      actors.push(e);
     }
-    for (const n of this.npcs) {
+    for (let i = 0; i < this.npcs.length; i++) {
+      const n = this.npcs[i];
       if (n.hidden) { n.root.visible = false; continue; }
-      const near = n.pos.distanceTo(pp) < 70;
+      const d = n.pos.distanceTo(pp), near = d < 70;
       n.root.visible = near;
-      if (near) { n.update(adt); actors.push(n); }
+      if (!near) continue;
+      tickActor(n, adt, d > 30 && !n.talking, fn + i);
+      castShadows(n, d < 35);
+      actors.push(n);
     }
     for (const a of this.allies) { if (!a.dead || a.deadT < 30) { a.update(adt); actors.push(a); } }
     // NPC đứng yên (không có lộ trình) chỉ làm vật cản, không tự đẩy mình ra
