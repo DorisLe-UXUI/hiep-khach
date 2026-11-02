@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { loadGLTF } from '../engine/assets.js';
-import { ChibiCharacter } from './chibi.js';
+import { ChibiCharacter, cullSkinned } from './chibi.js';
 
 /**
  * Nhân vật tạo bằng Meshy/Tripo (khung xương kiểu Mixamo, không có ngón tay).
@@ -56,6 +56,8 @@ export const MESHY_DEFAULT = {
 export const meshyFile = (id) => MESHY_MODELS.find((m) => m.id === id)?.file;
 
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
+// tạm cho update() mỗi khung hình (không cấp phát)
+const _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3(), _rq = new THREE.Quaternion(), _rqi = new THREE.Quaternion();
 
 export class MeshyCharacter {
   /** file: tên trong /assets/heroes ; weapon: như ChibiCharacter */
@@ -77,6 +79,7 @@ export class MeshyCharacter {
     const s = (HEIGHT * (opts.scale || 1)) / (box.max.y - box.min.y);
     model.scale.multiplyScalar(s);
     model.position.y -= box.min.y * s;
+    cullSkinned(model);
     const c = new MeshyCharacter(model, driver);
     if (weapon) await c.equip(weapon);
     return c;
@@ -166,13 +169,13 @@ export class MeshyCharacter {
     this.root.updateMatrixWorld(true);
     // hông: dịch theo độ lệch của hông người điều khiển (ngồi, nhảy, ngã)
     const h = this.hips;
-    _v.copy(h.s.getWorldPosition(new THREE.Vector3())).sub(this.driver.model.localToWorld(h.sBindPos.clone()));
-    const target = this.model.localToWorld(h.tBindPos.clone()).add(_v);
+    h.s.getWorldPosition(_v).sub(this.driver.model.localToWorld(_v2.copy(h.sBindPos)));
+    const target = this.model.localToWorld(_v3.copy(h.tBindPos)).add(_v);
     h.t.parent.updateMatrixWorld(true);
     h.t.position.copy(h.t.parent.worldToLocal(target));
     // xoay từng khớp: q_t = q_s · inv(q_s_bind) · q_t_bind (tính trong hệ root), rồi đổi về hệ cha
-    const rootQ = this.root.getWorldQuaternion(new THREE.Quaternion());
-    const rootInv = rootQ.clone().invert();
+    const rootQ = this.root.getWorldQuaternion(_rq);
+    const rootInv = _rqi.copy(rootQ).invert();
     for (const p of this.pairs) {
       p.s.getWorldQuaternion(_q).premultiply(rootInv).multiply(p.sBind).multiply(p.tBind).premultiply(rootQ);
       p.t.parent.getWorldQuaternion(_q2);
@@ -181,8 +184,8 @@ export class MeshyCharacter {
     }
     // vũ khí: lòng bàn tay Meshy = cổ tay Meshy + (khe cầm − cổ tay) của khung KayKit
     for (const m of this.mounts || []) {
-      const slotW = m.slot.getWorldPosition(new THREE.Vector3());
-      const target = m.tHand.getWorldPosition(new THREE.Vector3()).add(slotW.clone().sub(m.wrist.getWorldPosition(_v)));
+      const slotW = m.slot.getWorldPosition(_v4);
+      const target = m.tHand.getWorldPosition(_v2).add(slotW.sub(m.wrist.getWorldPosition(_v)));
       m.holder.position.copy(m.slot.worldToLocal(target));
     }
   }

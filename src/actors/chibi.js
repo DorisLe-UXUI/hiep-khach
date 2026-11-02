@@ -87,6 +87,20 @@ function loadClips() {
   return clipsP;
 }
 
+/**
+ * Bật cắt khung nhìn cho lưới da (SkinnedMesh): khối cầu bao tính ở tư thế gốc rồi nới 1.5 lần
+ * để tay vung, ngã nằm vẫn nằm trong. Lưới thường giữ nguyên (không cắt).
+ */
+export function cullSkinned(model) {
+  model.updateMatrixWorld(true);
+  model.traverse((o) => {
+    if (!o.isSkinnedMesh) return;
+    o.computeBoundingSphere();
+    o.boundingSphere.radius *= 1.5;
+    o.frustumCulled = true;
+  });
+}
+
 export class ChibiCharacter {
   /**
    * look: { model: 'knight', hide: ['Knight_Helmet'], tint: '#hex', scale }
@@ -109,6 +123,7 @@ export class ChibiCharacter {
     const s = (HEIGHT * (look.scale || 1)) / (box.max.y - box.min.y);
     model.scale.multiplyScalar(s);
     model.position.y -= box.min.y * s;
+    cullSkinned(model);
     const c = new ChibiCharacter(model, clips, look);
     if (weapon) await c.equip(weapon);
     return c;
