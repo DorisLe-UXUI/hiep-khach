@@ -11,6 +11,15 @@ import { PLACES, WATER_LEVEL } from './layout.js';
 /** Vị trí nhân vật để làm trong suốt cây che giữa camera và nhân vật (dùng chung mọi vật liệu cây). */
 export const REVEAL = { uReveal: { value: new THREE.Vector3(1e6, 0, 0) } };
 
+// các InstancedMesh "gần" (đổ bóng) của cây: để tắt/bật bóng cây lúc đang chơi (tự hạ chất lượng)
+const shadowIMs = [];
+let vegShadow = true;
+export function setVegetationShadows(on) {
+  if (on === vegShadow) return;
+  vegShadow = on;
+  for (const im of shadowIMs) im.castShadow = on;
+}
+
 function addReveal(mat) {
   if (mat.userData.reveal) return;
   mat.userData.reveal = true;
@@ -87,7 +96,9 @@ function chunkedInstances(scene, items, { shadow = true, radius = 160 } = {}) {
       group.add(im);
       return im;
     };
-    return { far: make(false), near: shadow ? make(true) : null, local: part.local };
+    const near = shadow ? make(vegShadow) : null;
+    if (near) shadowIMs.push(near);
+    return { far: make(false), near, local: part.local };
   });
   let lx = 1e9, lz = 1e9, sx = 1e9, sz = 1e9, list = [];
   const fill = (im, arr, local) => {
@@ -158,6 +169,7 @@ const open = (x, z) => 1 - forest(x, z) * 0.6;
 export async function buildStylizedVegetation(terrain, colliders, onProgress = () => {}) {
   const root = new THREE.Group();
   root.name = 'stylized-vegetation';
+  shadowIMs.length = 0; vegShadow = true; // dựng lại cảnh: bỏ danh sách cũ
   const near = [];
   const Q = QUALITY[loadSettings().quality] || QUALITY.medium;
   const add = async (names, count, seed, opts, density, solid = 0) => {
