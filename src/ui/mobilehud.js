@@ -67,6 +67,8 @@ export class MobileHUD {
       <div id="m-combo" class="hidden"><b>0</b><span>Liên kích</span><small></small></div>
       <div id="m-camhint">🖱 Kéo chuột / vuốt màn hình để xoay & nghiêng góc nhìn · Cuộn hoặc chụm 2 ngón để phóng to · Phím ← → ↑ ↓</div>`;
     document.getElementById('hud').appendChild(root);
+    addEventListener('resize', () => this.placeTopBand());
+    setTimeout(() => this.placeTopBand(), 500);
 
     // nút
     root.querySelectorAll('[data-act]').forEach((b) => {
@@ -208,7 +210,20 @@ export class MobileHUD {
   }
 
   /** Thông báo chạy chữ trên đầu màn hình. */
+  /** Dải chữ trên cùng: khoảng trống giữa khung nhân vật và hàng nút (chữ chạy + thông báo nổi đặt ở đây). */
+  placeTopBand() {
+    if (!document.body.classList.contains('mmo')) return;
+    const a = $('m-avatar')?.getBoundingClientRect(), r = $('rail')?.getBoundingClientRect();
+    if (!a?.width || !r?.width) return;
+    let left = a.right + 8, w = r.left - 8 - left, top = a.top + 4;
+    if (w < 200) { left = Math.max(8, innerWidth / 2 - 160); w = 320; top = Math.max(a.bottom, r.bottom) + 4; } // màn hẹp: ngay dưới hàng nút
+    const ann = $('m-ann'), ts = $('toasts');
+    for (const [k, v] of [['left', left + 'px'], ['width', w + 'px'], ['top', top + 'px'], ['transform', 'none']]) ann.style.setProperty(k, v, 'important');
+    if (ts) Object.assign(ts.style, { left: left + 'px', width: w + 'px', top: top + 30 + 'px', transform: 'none' });
+  }
+
   announce(html) {
+    this.placeTopBand();
     const el = $('m-ann');
     el.innerHTML = `<span>${html}</span>`;
     el.classList.remove('run'); void el.offsetWidth; el.classList.add('run');

@@ -124,9 +124,12 @@ export class HUD {
     const el = document.createElement('div');
     el.className = 'toast';
     el.innerHTML = this.game.ui.nh(html);
+    this.game.mhud?.placeTopBand();
     $('toasts').appendChild(el);
     this.toasts.push({ el, t });
-    while (this.toasts.length > 3) { this.toasts.shift().el.remove(); }
+    // màn MMO: thông báo nằm ở dải trên cùng nên chỉ giữ 2 dòng mới nhất
+    const max = document.body.classList.contains('mmo') ? 2 : 3;
+    while (this.toasts.length > max) { this.toasts.shift().el.remove(); }
   }
 
   tip(text, t = 6) {
