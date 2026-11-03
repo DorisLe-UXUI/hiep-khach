@@ -12,7 +12,7 @@ const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xffffff, 0x554433, 2.2));
 const d = new THREE.DirectionalLight(0xffffff, 2.5); d.position.set(2, 3, 4); scene.add(d);
 const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
-new GLTFLoader().load(`/public/assets/weapons/${name}.glb`, (g) => {
+new GLTFLoader().load(new URLSearchParams(location.search).get('p') || `/public/assets/weapons/${name}.glb`, (g) => {
   const o = g.scene, box = new THREE.Box3().setFromObject(o), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   o.position.sub(c);
   const pivot = new THREE.Group(); pivot.add(o); scene.add(pivot);

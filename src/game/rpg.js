@@ -244,16 +244,19 @@ export class RPG {
   /** Vũ khí cầm tay đổi theo binh khí đang mặc (nếu hợp môn phái). */
   syncWeaponModel() {
     const m = this.gear.weapon?.model, cls = this.g.profile.hero?.cls, ch = this.g.player?.char;
-    if (!m || !ch?.swapWeapon) return;
-    const FIT = { kiem: /katana|sword|cutlass|claymore|machete|axe|hammer/, thuong: /spear|trident|scythe|claymore|hammer|axe/, cung: /bow|crossbow/, phap: /staff/, dao: /knife|dagger|sickle|staff/ };
-    if (!(FIT[cls] || FIT.kiem).test(m) || ch.weaponKind === m) return;
-    ch.swapWeapon(m);
+    if (!ch?.swapWeapon) return;
+    if (!m) return this.g.player.applyWeaponGlow?.();
+    const FIT = { kiem: /katana|sword|cutlass|claymore|machete|axe|hammer|darkblade/, thuong: /spear|trident|scythe|claymore|hammer|axe|bustersword/, cung: /bow|crossbow/, phap: /staff/, dao: /knife|dagger|sickle|staff/ };
+    if (!(FIT[cls] || FIT.kiem).test(m)) return this.g.player.applyWeaponGlow?.();
+    if (ch.weaponKind === m) return this.g.player.applyWeaponGlow?.();
+    Promise.resolve(ch.swapWeapon(m)).then(() => this.g.player.applyWeaponGlow?.());
   }
   unequipGear(slot) {
     if (!this.gear[slot] || this.gearBag.length >= 60) return;
     this.gearBag.push(this.gear[slot]);
     delete this.gear[slot];
     this.apply();
+    if (slot === 'weapon') this.g.player?.applyWeaponGlow?.();
   }
   essence(it) {
     const n = Math.round([1, 2, 5, 12, 30][it.rarity] * (1 + it.lv / 10));

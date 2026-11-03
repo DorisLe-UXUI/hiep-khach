@@ -91,8 +91,20 @@ const WEAPONS = {
   pp_dagger: [{ path: '/assets/weapons/pp_dagger.glb', hand: 'r', len: 0.55, grip: 0.2 }, { path: '/assets/weapons/pp_dagger.glb', hand: 'l', len: 0.55, grip: 0.2 }],
   pp_knife: [{ path: '/assets/weapons/pp_knife.glb', hand: 'r', len: 0.5, grip: 0.25 }, { path: '/assets/weapons/pp_knife.glb', hand: 'l', len: 0.5, grip: 0.25 }],
   pp_sickle: [{ path: '/assets/weapons/pp_sickle.glb', hand: 'r', len: 0.6, grip: 0.2 }, { path: '/assets/weapons/pp_sickle.glb', hand: 'l', len: 0.6, grip: 0.2 }],
+  // tuyệt thế binh khí (poly.pizza CC0, kiểu fantasy)
+  px_crystalsword: [{ path: '/assets/weapons/px_crystalsword.glb', hand: 'r', len: 1.15, grip: 0.14 }],
+  px_devilsword: [{ path: '/assets/weapons/px_devilsword.glb', hand: 'r', len: 1.2, grip: 0.14 }],
+  px_redsword: [{ path: '/assets/weapons/px_redsword.glb', hand: 'r', len: 1.15, grip: 0.14 }],
+  px_silversword: [{ path: '/assets/weapons/px_silversword.glb', hand: 'r', len: 1.15, grip: 0.14 }],
+  px_bustersword: [{ path: '/assets/weapons/px_bustersword.glb', hand: 'r', len: 1.5, grip: 0.12 }],
+  px_darkblade: [{ path: '/assets/weapons/px_darkblade.glb', hand: 'r', len: 1.15, grip: 0.16 }],
+  px_battleaxe: [{ path: '/assets/weapons/px_battleaxe.glb', hand: 'r', len: 1.3, grip: 0.15 }],
+  px_hewaxe: [{ path: '/assets/weapons/px_hewaxe.glb', hand: 'r', len: 1.05, grip: 0.15 }],
+  px_crescentaxe: [{ path: '/assets/weapons/px_crescentaxe.glb', hand: 'r', len: 1.1, grip: 0.15 }],
+  px_longbow: [{ path: '/assets/weapons/px_longbow.glb', hand: 'l', len: 1.4, grip: 0.5 }],
+  px_goldspear: [{ path: '/assets/weapons/px_goldspear.glb', hand: 'r', len: 2.0, grip: 0.4 }],
 };
-const STYLE_OF = { pp_spear: 'spear', pp_trident: 'spear', pp_scythe: 'spear', pp_claymore: 'spear', pp_staff: 'staff', pp_bow: 'bow', pp_crossbow: 'bow', pp_dagger: 'dual', pp_knife: 'dual', pp_sickle: 'dual', kk_spear: 'spear', kk_halberd: 'spear', kk_bow_a: 'bow', kk_bow_b: 'bow', kk_staff_a: 'staff', kk_staff_b: 'staff', kk_wand: 'staff', kk_dagger_a: 'dual', kk_dagger_b: 'dual', kk_claw: 'dual', bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
+const STYLE_OF = { px_bustersword: 'spear', px_battleaxe: 'spear', px_longbow: 'bow', px_goldspear: 'spear', pp_spear: 'spear', pp_trident: 'spear', pp_scythe: 'spear', pp_claymore: 'spear', pp_staff: 'staff', pp_bow: 'bow', pp_crossbow: 'bow', pp_dagger: 'dual', pp_knife: 'dual', pp_sickle: 'dual', kk_spear: 'spear', kk_halberd: 'spear', kk_bow_a: 'bow', kk_bow_b: 'bow', kk_staff_a: 'staff', kk_staff_b: 'staff', kk_wand: 'staff', kk_dagger_a: 'dual', kk_dagger_b: 'dual', kk_claw: 'dual', bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
 
 let clipsP = null;
 function loadClips() {

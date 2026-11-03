@@ -144,12 +144,37 @@ export class Player extends Actor {
     }, 900);
   }
 
+  /** Thần binh / đồ Truyền thuyết: binh khí trên tay ánh màu hệ khí, mũi kiếm toả bụi sáng. */
+  applyWeaponGlow() {
+    const ch = this.char, w = this.rpg?.gear?.weapon;
+    const el = ELEMENT_BY_ID[w?.elem];
+    const color = el ? el.color : w?.rarity >= 4 ? 0xffb030 : null;
+    for (const m of ch.weaponMounts || ch.driver?.weaponMounts || []) {
+      m.traverse((o) => {
+        if (!o.isMesh || !o.material) return;
+        if (o.userData.baseMat) { o.material = o.userData.baseMat; delete o.userData.baseMat; }
+        if (color == null || !o.material.emissive) return;
+        o.userData.baseMat = o.material;
+        o.material = o.material.clone();
+        o.material.emissive.set(color);
+        o.material.emissiveIntensity = 0.55;
+      });
+    }
+    this.weaponGlowColor = color;
+  }
+
   /** Khí màu quanh người: khi đang giao chiến, vừa chém, hoặc đang vận công. */
   qiUpdate(dt) {
     this.qiT = Math.max(0, (this.qiT || 0) - dt);
     this.qiGlow = Math.max(0, (this.qiGlow || 0) - dt);
     const fx = this.game.fx;
     if (!fx || this.dead) return;
+    // bụi sáng ở mũi thần binh
+    const tip = this.char.weaponTip;
+    if (this.weaponGlowColor != null && tip && Math.random() < dt * 9) {
+      tip.getWorldPosition(_qi);
+      fx.emit(_qi, _qv.set((Math.random() - 0.5) * 0.4, 0.5 + Math.random() * 0.6, (Math.random() - 0.5) * 0.4), this.weaponGlowColor, 0.1, 0.6, -0.2);
+    }
     const strong = this.qiT > 0, rate = strong ? 40 : this.qiGlow > 0 ? 26 : this.inCombat > 0 ? 6 : (this.game.path?.adv() || 0) >= 3 ? 3 : 0;
     if (!rate || Math.random() > rate * dt) return;
     for (let i = 0, n = strong ? 2 : 1; i < n; i++) {
