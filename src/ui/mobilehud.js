@@ -47,6 +47,7 @@ export class MobileHUD {
         <button class="m-sk s4 art" data-act="jump"><span class="ico-wrap">${uiImg('sk_jump', 'sk-art')}</span><i class="cd"></i></button>
         <button class="m-sk s5 art" data-act="block"><span class="ico-wrap">${uiImg('sk_block', 'sk-art')}</span></button>
         <button class="m-sk s6" data-act="u1"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
+        <button class="m-sk s8" data-act="qi" title="Vận công (3)"><span class="ico-wrap"><span class="han">運</span></span></button>
         <button class="m-sk s7" data-act="u2"><span class="ico-wrap"></span><i class="cd"></i><em class="nm"></em><span class="lock">${icon('lock')}<b></b></span></button>
         <button class="m-rage" data-act="rage" title="Bộc phát nộ khí (X)">${uiImg('sk_rage', 'rg-art')}<i class="rg-fill"></i><span class="han">怒</span><b class="rg-t">0%</b></button>
         <button class="m-auto" data-act="auto">${uiImg('auto', 'auto-ic')}<span>Auto</span></button>
@@ -134,7 +135,7 @@ export class MobileHUD {
 
   press(act, down) {
     const g = this.g, inp = g.input;
-    const key = { atk: 'Mouse0', q: 'KeyQ', f: 'KeyF', u1: 'Digit1', u2: 'Digit2', roll: 'ControlLeft', jump: 'Space', block: 'Block', potion: 'KeyR' }[act];
+    const key = { atk: 'Mouse0', q: 'KeyQ', f: 'KeyF', u1: 'Digit1', u2: 'Digit2', qi: 'Digit3', roll: 'ControlLeft', jump: 'Space', block: 'Block', potion: 'KeyR' }[act];
     if (key) {
       if (down) { inp.justDown.add(key); inp.down.add(key); } else inp.down.delete(key);
       if (down && act !== 'block') g.auto?.pause(1.5);

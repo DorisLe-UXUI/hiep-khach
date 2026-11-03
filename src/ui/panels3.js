@@ -153,6 +153,65 @@ Object.assign(UI.prototype, {
     this.relock(g);
   },
 
+  // ───────────── GIANG HỒ TRỰC TUYẾN ─────────────
+  async openOnline(g, tab = 'arena') {
+    const on = g.online, r = g.rpg;
+    const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const CLSN = { kiem: 'Kiếm', thuong: 'Thương', cung: 'Cung', phap: 'Pháp', dao: 'Đạo' };
+    const tabs = `<div class="ctabs" style="--cols:3"><button data-tab="arena" class="${tab === 'arena' ? 'on' : ''}">${icon('duel')}Luận Kiếm Đài</button><button data-tab="market" class="${tab === 'market' ? 'on' : ''}">${icon('scales')}Chợ giang hồ</button><button data-tab="chat" class="${tab === 'chat' ? 'on' : ''}">${icon('team')}Kênh thế giới</button></div>`;
+    let body = this.openPanel('Giang hồ trực tuyến', `${tabs}<p class="muted">Đang kết nối…</p>`);
+    const bindTabs = () => body.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => this.openOnline(g, b.dataset.tab)));
+    bindTabs();
+    this.relock(g);
+    if (!on.base) { body.innerHTML = `${tabs}<div class="ol-off">${icon('lock')}<p><b>Máy chủ trực tuyến chưa mở.</b><br>Luận Kiếm Đài, Chợ giang hồ và Kênh thế giới sẽ hoạt động khi máy chủ được bật.</p></div>`; bindTabs(); return; }
+    let html = tabs;
+    try {
+      if (tab === 'arena') {
+        await on.call('/arena/submit', on.snapshot());
+        const d = await on.call('/arena/opponents');
+        html += `<p class="muted">Đấu với <b>bản sao nhân vật</b> của người chơi khác (máy điều khiển, theo đúng chỉ số của họ). Thắng: +bạc, +điểm. Bản sao của ngươi cũng được người khác khiêu chiến.</p>
+          <div class="ol-me">Điểm luận kiếm: <b>${d.me ?? 1000}</b> · Đang trực tuyến: <b>${on.users}</b></div>
+          <div class="ol-cols"><div><h4 class="sub-h">Đối thủ ngang tài</h4>${d.list.length ? d.list.map((o, i) => `<div class="ol-row"><span class="ol-cls">${CLSN[o.cls] || ''}</span><div><b>${esc(o.name)}</b> <small>Lv.${o.level} · ${esc(o.snap.title)}${o.snap.faction ? ' · ' + (o.snap.faction === 'chinh' ? 'Chính' : 'Tà') : ''}</small><br><small>Lực chiến ${o.power.toLocaleString('vi-VN')} · Điểm ${o.rating} · ${o.wins}T/${o.losses}B</small></div><button class="primary sm" data-duel="${i}">Khiêu chiến</button></div>`).join('') : '<p class="muted">Chưa có ai. Mời bằng hữu cùng chơi!</p>'}</div>
+          <div><h4 class="sub-h">Bảng phong thần</h4><ol class="ol-top">${d.top.map((o) => `<li><b>${esc(o.name)}</b> <small>${CLSN[o.cls] || ''} Lv.${o.level}</small><span>${o.rating}</span></li>`).join('')}</ol></div></div>`;
+        body = this.openPanel('Giang hồ trực tuyến', html);
+        body.querySelectorAll('[data-duel]').forEach((b) => (b.onclick = () => { this.closePanel(); on.duel(d.list[+b.dataset.duel]); }));
+      } else if (tab === 'market') {
+        const d = await on.call('/market');
+        if (d.owed) { const c = await on.call('/market/claim'); r.addGold(c.gold); g.toast(`Bán được ${c.sold.map((x) => `<b>${esc(x.name)}</b>`).join(', ')} · nhận <b>${c.gold}</b> lượng (đã trừ 5% thuế chợ)`, 5); }
+        const bag = r.gearBag || [];
+        html += `<p class="muted">Rao bán trang bị cho người chơi khác, hoặc mua đồ họ bán. Thuế chợ 5%. Tối đa 10 món đang rao. ${icon('coins')} Ngươi có <b>${r.gold}</b> lượng.</p>
+          <div class="ol-cols"><div><h4 class="sub-h">Đang bán trên chợ</h4>${d.list.length ? d.list.map((o) => `<div class="ol-row"><span class="ol-cls r${o.item.rarity || 0}">${esc(o.item.han || '')}</span><div><b style="color:${RARITY[o.item.rarity || 0]?.color}">${esc(o.item.name)}</b> <small>Lv.${o.item.lv || '?'}${o.item.elem ? ' · thần binh' : ''}</small><br><small>${Object.entries(o.item.stats || {}).map(([k, v]) => `${STAT_NAME[k] || k} ${fmtStat(k, v)}`).join(' · ')} · người bán ${esc(o.name)}</small></div>${o.mine ? `<button class="ghost sm" data-cancel="${o.lid}">Gỡ</button>` : `<button class="primary sm" data-buy="${o.lid}" data-price="${o.price}" ${r.gold < o.price ? 'disabled' : ''}>${o.price} lượng</button>`}</div>`).join('') : '<p class="muted">Chợ đang vắng.</p>'}</div>
+          <div><h4 class="sub-h">Rao bán từ kho của ngươi</h4>${bag.length ? bag.map((it, i) => `<div class="ol-row"><span class="ol-cls r${it.rarity}">${esc(it.han)}</span><div><b style="color:${RARITY[it.rarity].color}">${esc(it.name)}</b> <small>Lv.${it.lv}</small></div><input type="number" min="1" value="${Math.max(10, Math.round(gearScore(it) / 20))}" data-pi="${i}" class="ol-price" /><button class="ghost sm" data-sell="${i}">Rao</button></div>`).join('') : '<p class="muted">Kho trang bị trống (đồ đang mặc không rao được).</p>'}</div></div>`;
+        body = this.openPanel('Giang hồ trực tuyến', html);
+        body.querySelectorAll('[data-buy]').forEach((b) => (b.onclick = async () => {
+          const price = +b.dataset.price;
+          if (r.gold < price) return;
+          try { const res = await on.call('/market/buy', { lid: +b.dataset.buy }); r.gold -= price; r.gearBag.push({ ...res.item, uid: 'm' + Date.now() }); g.audio.coin(); g.toast(`Mua được <b>${esc(res.item.name)}</b>`, 2); } catch { g.toast('Món này vừa có người mua mất', 2); }
+          this.openOnline(g, 'market');
+        }));
+        body.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = async () => { try { const res = await on.call('/market/cancel', { lid: +b.dataset.cancel }); r.gearBag.push({ ...res.item, uid: 'm' + Date.now() }); } catch {} this.openOnline(g, 'market'); }));
+        body.querySelectorAll('[data-sell]').forEach((b) => (b.onclick = async () => {
+          const i = +b.dataset.sell, it = r.gearBag[i], price = +body.querySelector(`[data-pi="${i}"]`).value;
+          try { await on.call('/market/list', { item: it, price }); r.gearBag.splice(i, 1); g.toast(`Đã rao <b>${esc(it.name)}</b> giá ${price} lượng`, 2); } catch (e) { g.toast(e.code === 'limit' ? 'Đã rao đủ 10 món' : 'Không rao được', 2); }
+          this.openOnline(g, 'market');
+        }));
+      } else {
+        const d = await on.call('/state?since=0');
+        html += `<div class="ol-chat" id="ol-chat">${d.chat.map((m) => `<p><b>${esc(m.name)}</b> ${esc(m.text)}</p>`).join('') || '<p class="muted">Chưa có tin nhắn.</p>'}</div>
+          <div class="ol-say"><input id="ol-text" maxlength="140" placeholder="Nói với cả giang hồ…" /><button class="primary" id="ol-send">Gửi</button></div><p class="muted sm">Đang trực tuyến: ${on.users} · Tin nhắn cũng hiện ở khung chat kênh Giang Hồ.</p>`;
+        body = this.openPanel('Giang hồ trực tuyến', html);
+        const box = body.querySelector('#ol-chat'); box.scrollTop = box.scrollHeight;
+        const send = async () => { const t = body.querySelector('#ol-text').value.trim(); if (!t) return; try { await on.say(t); on.pollT = 0; } catch (e) { g.toast(e.code === 'slow' ? 'Gửi chậm lại một chút' : 'Không gửi được', 1.5); } this.openOnline(g, 'chat'); };
+        body.querySelector('#ol-send').onclick = send;
+        body.querySelector('#ol-text').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') send(); };
+      }
+    } catch {
+      body = this.openPanel('Giang hồ trực tuyến', `${tabs}<div class="ol-off">${icon('lock')}<p><b>Không kết nối được máy chủ.</b><br>Thử lại sau ít phút.</p></div>`);
+    }
+    bindTabs();
+    this.relock(g);
+  },
+
   // ───────────── ĐẠO LỘ: CHUYỂN CHỨC & CHÍNH TÀ ─────────────
   openPath(g, tab = 'adv') {
     const pa = g.path, s = pa.s, lv = g.rpg.level, cls = pa.cls, a = pa.adv();

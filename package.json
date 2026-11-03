@@ -10,7 +10,8 @@
     "assets": "python3 -I tools/fetch_polyhaven.py",
     "build:pages": "node tools/build_pages.mjs",
     "build:pages:dev": "node tools/build_pages.mjs --dev",
-    "deploy:dev": "bash tools/deploy_dev.sh"
+    "deploy:dev": "bash tools/deploy_dev.sh",
+    "deploy:online": "cd server && npx -y wrangler deploy"
   },
   "dependencies": {
     "three": "^0.180.0"

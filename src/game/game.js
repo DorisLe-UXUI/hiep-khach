@@ -50,6 +50,7 @@ import '../ui/panels3.js';
 import { GuideTrail, stepHint } from './guide.js';
 import { Bond } from './bond.js';
 import { Path } from './path.js';
+import { Online } from './online.js';
 import { trObjective } from '../story/objectives_i18n.js';
 
 export const LOOKS = {
@@ -216,6 +217,7 @@ export class Game {
     this.beasts = new Beasts(this);
     this.bond = new Bond(this);
     this.path = new Path(this);
+    this.online = new Online(this);
     // lồng tiếng + phụ đề cho lời dẫn truyện và câu nói nhanh
     this.ui.tr = (t) => trLine(t);
     this.ui.speak = (t, isHero) => this.audio.voice(t ? voiceOf(t, isHero !== false && this.profile.hero?.gender === 'female') : null);
@@ -897,6 +899,7 @@ export class Game {
   }
 
   onPlayerDeath() {
+    if (this.online?.fight) return; // thua luận kiếm: không hiện màn tử trận
     setTimeout(() => {
       this.input.unlock();
       document.getElementById('death').classList.remove('hidden');
@@ -1339,6 +1342,7 @@ export class Game {
     this.companions.update(dt);
     this.bond.update(dt);
     this.path.update(dt);
+    this.online.update(dt);
     this.vfx.update(dt);
     this.updateRings(dt);
     REVEAL.uReveal.value.copy(pp);
