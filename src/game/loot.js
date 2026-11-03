@@ -67,9 +67,9 @@ export const ELEMENTS = [
 // [tên loại, chữ Hán, mẫu cầm tay (chibi WEAPONS), ảnh]
 // mỗi loại có vài mẫu, hệ khí khác nhau dùng mẫu khác nhau
 const DIVINE_KINDS = [
-  ['kiếm', '劍', ['px_crystalsword', 'pp_katana', 'px_devilsword', 'px_silversword', 'px_redsword']], ['đao', '刀', ['px_darkblade', 'pp_cutlass', 'px_bustersword']],
-  ['thương', '槍', ['px_goldspear', 'pp_trident', 'pp_spear']], ['cung', '弓', ['px_longbow', 'pp_bow']], ['trượng', '杖', ['pp_staff']],
-  ['chuỷ', '匕', ['pp_knife']], ['phủ', '斧', ['px_battleaxe', 'px_crescentaxe', 'px_hewaxe', 'pp_axe']], ['chuỳ', '錘', ['pp_hammer']], ['kích', '戟', ['pp_scythe']], ['trảo', '爪', ['pp_sickle']],
+  ['kiếm', '劍', ['px_crystalsword', 'my_angular', 'px_devilsword', 'og_he', 'px_redsword', 'my_shadowblade', 'og_hd', 'px_silversword', 'og_s8', 'pp_katana']], ['đao', '刀', ['og_hj', 'px_darkblade', 'og_hf', 'og_ha', 'pp_cutlass', 'og_hc', 'px_bustersword']],
+  ['thương', '槍', ['my_celestspear', 'px_goldspear', 'pp_trident', 'pp_spear']], ['cung', '弓', ['px_longbow', 'my_ancientxbow', 'pp_bow']], ['trượng', '杖', ['pp_staff']],
+  ['chuỷ', '匕', ['pp_knife']], ['phủ', '斧', ['my_axe', 'px_battleaxe', 'px_crescentaxe', 'px_hewaxe', 'pp_axe']], ['chuỳ', '錘', ['my_amethystmace', 'og_mace', 'pp_hammer']], ['kích', '戟', ['pp_scythe']], ['trảo', '爪', ['pp_sickle']],
 ];
 ELEMENTS.forEach((e, i) => DIVINE_KINDS.forEach(([kind, kh, models], j) => {
   const model = models[i % models.length];
@@ -87,6 +87,15 @@ ELEMENTS.forEach((e, i) => DIVINE_KINDS.forEach(([kind, kh, models], j) => {
   ['px_longbow', 'Hậu Nghệ cung', '后羿弓', 14], ['px_redsword', 'Xích Tiêu kiếm', '赤霄劍', 15], ['px_crescentaxe', 'Nguyệt Phủ', '月斧', 15],
   ['px_goldspear', 'Kim Long thương', '金龍槍', 16], ['px_battleaxe', 'Bàn Cổ chiến phủ', '盤古戰斧', 17], ['px_bustersword', 'Trấn Sơn cự kiếm', '鎮山巨劍', 18],
   ['px_devilsword', 'Ma Thần kiếm', '魔神劍', 18], ['px_crystalsword', 'Thiên Tinh kiếm', '天星劍', 19],
+  // binh khí OpenGameArt (CC0) và mẫu Meshy riêng của game
+  ['og_s3', 'Hắc Thiết kiếm', '黑鐵劍', 5], ['og_s4', 'Thanh Ngọc kiếm', '青玉劍', 6], ['og_s1', 'Bạch Vân kiếm', '白雲劍', 7], ['og_s7', 'Bích Thuỷ kiếm', '碧水劍', 7],
+  ['og_s2', 'Liệt Phong đao', '烈風刀', 8], ['og_s5', 'Băng Tâm kiếm', '冰心劍', 8], ['og_katana', 'Ảnh Nguyệt kiếm', '影月劍', 9], ['og_mace', 'Lưu Tinh chuỳ', '流星錘', 9],
+  ['og_s6', 'Trảm Mã đao', '斬馬刀', 9], ['og_s8', 'Hoàng Kim kiếm', '黃金劍', 9], ['og_s9', 'Long Nha cự kiếm', '龍牙巨劍', 10],
+  ['og_hb', 'Hàn Nguyệt đao', '寒月刀', 11], ['og_hh', 'Thanh Phong kiếm', '青風劍', 11], ['og_ha', 'Liệt Nha đao', '裂牙刀', 12], ['og_hi', 'Bạch Hổ đao', '白虎刀', 12],
+  ['my_ancientxbow', 'Cổ Mộc thần cung', '古木神弓', 12], ['og_hd', 'Bích Lân kiếm', '碧鱗劍', 13], ['og_hg', 'Phá Quân cự kiếm', '破軍巨劍', 13], ['og_hc', 'Ma Cốt đao', '魔骨刀', 14],
+  ['og_heavy', 'Huyền Thiết trọng kiếm', '玄鐵重劍', 14], ['og_he', 'Kim Ô kiếm', '金烏劍', 15], ['og_hf', 'Độc Hạt đao', '毒蠍刀', 16], ['my_angular', 'Xích Huyết kiếm', '赤血劍', 16],
+  ['og_hj', 'Phượng Hoàng đao', '鳳凰刀', 17], ['my_amethystmace', 'Tử Tinh chuỳ', '紫晶錘', 17], ['my_celestspear', 'Thiên Thạch thương', '天石槍', 17],
+  ['my_axe', 'Băng Phách phủ', '冰魄斧', 18], ['my_shadowblade', 'Tử U kiếm', '紫幽劍', 19],
 ].forEach(([model, name, han, tier]) => NAMED_WEAPONS.push({ id: 'n_' + model, name, han, tier, thumb: 'wpn_' + model, model }));
 export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((e) => [e.id, e]));
 
