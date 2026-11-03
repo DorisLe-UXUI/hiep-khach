@@ -1502,3 +1502,10 @@ body.mmo #toasts { position: fixed; align-items: stretch; gap: 4px; z-index: 6; 
 body.mmo .toast { padding: 4px 14px !important; font: 600 13.5px/1.35 var(--serif) !important; border-radius: 10px !important; }
 body.mmo .toast .sm { font-size: 11.5px; }
 @media (max-height: 520px) { body.mmo #m-ann span { font-size: 12px; } body.mmo .toast { font-size: 11.5px !important; padding: 3px 10px !important; } }
+
+/* cụm nút chiêu + nút nhanh bên phải: nhỏ gọn hơn (đè hệ số chung của #mhud) */
+#m-actions, #m-quick { zoom: .85; }
+@media (max-height: 820px) { #m-actions, #m-quick { zoom: .75; } body.mmo #nav { zoom: .85; } }
+@media (max-height: 520px) { #mhud > #m-actions, #mhud > #m-quick { zoom: .6; } body.mmo #nav { zoom: .7; } }
+@media (max-height: 400px) { #mhud > #m-actions, #mhud > #m-quick { zoom: .54; } body.mmo #nav { zoom: .62; } }
+@media (max-height: 520px) { #mhud > #m-quick { top: auto !important; bottom: 340px !important; right: 30px !important; } }

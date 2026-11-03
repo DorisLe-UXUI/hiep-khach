@@ -94,9 +94,16 @@ export const ZONES = [
 ];
 
 /** Chỉ số theo cấp. */
-export function monsterStats(m) {
-  const lv = m.lv, k = m.elite ? 7 : 1;
-  return { hp: Math.round((45 + lv * 22) * k), dmg: Math.round((6 + lv * 2.2) * (m.elite ? 1.6 : 1)), exp: Math.round((14 + lv * 9) * (m.elite ? 6 : 1)), gold: Math.round((3 + lv * 2) * (m.elite ? 8 : 1)) };
+export function monsterStats(m, lvOverride) {
+  const lv = lvOverride || m.lv, k = m.elite ? 7 : 1;
+  // càng lên cao quái càng trâu: thêm phần luỹ thừa cho máu & sát thương
+  const tough = lv > 12 ? 1.35 : 1;
+  return { hp: Math.round((45 + lv * 22 + Math.pow(lv, 1.25) * 2) * k * tough), dmg: Math.round((6 + lv * 2.2 + Math.pow(lv, 1.08) * 0.4) * (m.elite ? 1.6 : 1)), exp: Math.round((14 + lv * 9 + Math.pow(lv, 1.55) * 3.2) * (m.elite ? 6 : 1)), gold: Math.round((3 + lv * 2) * (m.elite ? 8 : 1)), lv };
+}
+/** Cấp quái ngoài thế giới: theo cấp người chơi (khu càng xa càng cao hơn một chút), không thấp hơn cấp gốc. */
+export function worldMonsterLv(m, zoneId, playerLv) {
+  const off = { dongco: -3, rungnam: -2, bangho: -1, doigio: 0, thunglung: 1, hangtuyet: 2, hoason: 3 }[zoneId] ?? 0;
+  return Math.max(m.lv, Math.min(1999, playerLv + off + Math.floor(Math.random() * 3) - 1));
 }
 
 /** Sinh quái quanh người chơi theo khu vực, hồi sinh sau khi chết. */
@@ -160,7 +167,8 @@ export class Spawner {
       // tránh mọc ngay cạnh người chơi
       if (Math.hypot(x - g.player.pos.x, z - g.player.pos.z) < 12) continue;
       const patrol = Array.from({ length: 3 }, () => { const b = Math.random() * Math.PI * 2, r = Math.random() * zn.r * 0.8; return [zn.x + Math.cos(b) * r, zn.z + Math.sin(b) * r]; });
-      return g.spawnMonster(id, x, z, { zone: zn.id, patrol: center ? null : patrol });
+      const mm = MONSTERS[id];
+      return g.spawnMonster(id, x, z, { zone: zn.id, patrol: center ? null : patrol, lv: mm ? worldMonsterLv(mm, zn.id, g.rpg.level) : undefined });
     }
     return null;
   }

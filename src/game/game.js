@@ -643,10 +643,12 @@ export class Game {
     const ch = await makeChar(opts.look || LOOKS[t.look], opts.weapon || t.weapon);
     if (opts.scale || t.scale) ch.root.scale.setScalar(opts.scale || t.scale);
     ch.model.traverse((o) => { if (o.isMesh && o.material) o.material = o.material.clone(); });
+    // kẻ địch người: có opts.lv thì chỉ số theo cấp (Thiên Thê, phó bản cao cấp)
+    const sl = opts.lv ? monsterStats({ lv: opts.lv }, opts.lv) : null;
     const e = new Enemy(this, ch, {
-      name: opts.name || t.name, hp: opts.hp || t.hp, dmg: opts.dmg || t.dmg, x, z, boss: opts.boss, aggro: opts.aggro,
+      name: opts.name || t.name, hp: opts.hp || (sl ? Math.round(sl.hp * (opts.boss ? 6 : 1.4)) : t.hp), dmg: opts.dmg || (sl ? Math.round(sl.dmg * (opts.boss ? 1.6 : 1.1)) : t.dmg), lv: opts.lv, x, z, boss: opts.boss, aggro: opts.aggro,
       speed: opts.speed || t.speed, patrol: opts.patrol, idleAnim: t.idleAnim || 'Sword_Idle', caster: opts.caster ?? t.caster,
-      exp: t.exp, gold: t.gold, group: opts.group, tag: type,
+      exp: sl ? Math.round(sl.exp * (opts.boss ? 8 : 1.5)) : t.exp, gold: sl ? Math.round(sl.gold * (opts.boss ? 6 : 1.2)) : t.gold, group: opts.group, tag: type,
     });
     e.placeAt(x, z, Math.random() * 6.28);
     this.scene.add(ch.root);
@@ -1097,12 +1099,12 @@ export class Game {
   /** Sinh một con quái theo bách quái phổ. */
   async spawnMonster(id, x, z, opts = {}) {
     const m = MONSTERS[id];
-    const st = monsterStats(m);
+    const st = monsterStats(m, opts.lv);
     const ch = m.meshy ? await MeshyCharacter.create(m.meshy, null, { scale: (m.h * (opts.scale || 1)) / 1.75 }) : await MonsterCharacter.create({ file: m.file, height: m.h * (opts.scale || 1), tint: m.tint });
     const e = new Enemy(this, ch, {
       name: m.name, hp: st.hp, dmg: st.dmg, x, z, boss: !!opts.boss, aggro: opts.aggro ?? (m.passive ? 0 : m.elite ? 14 : m.beast ? 7 : 10), speed: m.elite ? 4.2 : 3.6,
       patrol: opts.patrol, idleAnim: 'Idle_Loop', caster: m.caster, exp: st.exp, gold: st.gold, group: opts.group || 'mob:' + id, tag: id,
-      monster: m, reach: Math.max(1.6, m.h * 0.75), zone: opts.zone, lv: m.lv,
+      monster: m, reach: Math.max(1.6, m.h * 0.75), zone: opts.zone, lv: st.lv,
     });
     e.radius = Math.max(0.35, m.h * 0.28);
     if (m.beast) e.beast = m.beast;

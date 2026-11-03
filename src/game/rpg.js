@@ -2,7 +2,10 @@
  * Hệ thống nhập vai: cảnh giới (cấp), kinh nghiệm, lượng bạc, hành trang, trang bị, võ học.
  */
 export const REALMS = ['Sơ nhập giang hồ', 'Tam lưu cao thủ', 'Nhị lưu cao thủ', 'Nhất lưu cao thủ', 'Tuyệt đỉnh cao thủ', 'Tông sư'];
-export const realmOf = (lv) => REALMS[Math.min(REALMS.length - 1, Math.floor((lv - 1) / 3))];
+export const MAX_LEVEL = 1999;
+// cảnh giới cao (sau Tông sư): [cấp bắt đầu, tên]
+export const HIGH_REALMS = [[30, 'Đại tông sư'], [60, 'Võ thánh'], [100, 'Võ thần'], [160, 'Bán tiên'], [250, 'Địa tiên'], [400, 'Thiên tiên'], [600, 'Huyền tiên'], [850, 'Kim tiên'], [1150, 'Thái Ất Kim tiên'], [1500, 'Đại La Kim tiên'], [1800, 'Hỗn Nguyên'], [1999, 'Thiên Đế']];
+export const realmOf = (lv) => { let r = null; for (const [m, n] of HIGH_REALMS) if (lv >= m) r = n; return r || REALMS[Math.min(REALMS.length - 1, Math.floor((lv - 1) / 3))]; };
 export const expNeed = (lv) => Math.round(70 * Math.pow(lv, 1.55));
 
 /** Danh mục vật phẩm. slot: weapon | armor | trinket; use: hàm khi dùng. */
@@ -108,12 +111,14 @@ export class RPG {
     this.exp += n;
     this.zhenqi = (this.zhenqi || 0) + Math.ceil(n * 0.35);
     let up = false;
-    while (this.exp >= expNeed(this.level)) {
+    if (this.level >= MAX_LEVEL) { this.exp = 0; return; }
+    while (this.level < MAX_LEVEL && this.exp >= expNeed(this.level)) {
       this.exp -= expNeed(this.level);
       this.level++;
       this.points++;
       up = true;
     }
+    if (this.level >= MAX_LEVEL) this.exp = 0;
     if (up) {
       this.apply(true);
       const g = this.g;

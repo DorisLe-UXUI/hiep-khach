@@ -65,6 +65,9 @@ const OBJ = {
   'Phá vòng Minh vệ (#/#)': ['Break through the Alliance guards (#/#)', '突破盟衛（#/#）'],
   'Đánh bại Tư Đồ Phong': ['Defeat Situ Feng', '擊敗司徒鋒'],
   'Quyết định số phận Võ Lâm Minh': ['Decide the fate of the Martial Alliance', '決定武林盟的命運'],
+  'Tu luyện đạt cấp # để mở tầng # (đang cấp #)': ['Train to level # to open floor # (now level #)', '修煉至 # 級以開啟第 # 層（目前 # 級）'],
+  'Diệt thủ vệ Thiên Thê (#/#)': ['Defeat the Heavenly Ladder guards (#/#)', '擊敗天梯守衛（#/#）'],
+  'Hoàn thành tầng #': ['Clear floor #', '通過第 # 層'],
   'Quay lại gặp Đồ Bá': ['Go back to Tu Ba', '回去找屠霸'],
 };
 

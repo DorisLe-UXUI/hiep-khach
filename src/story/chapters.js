@@ -1,4 +1,5 @@
 import { PLACES } from '../world/layout.js';
+import { ZONES } from '../game/bestiary.js';
 
 /**
  * CỐT TRUYỆN: "Thanh Phong Kiếm Ký"
@@ -1086,12 +1087,110 @@ export const CHAPTERS = [
           g.save();
         },
         talk: {
-          maiden: (g) => [g.flags.tookSeat ? ['maiden', 'Minh chủ bận rộn, còn nhớ đường về hồ Bích Thủy sao?'] : ['maiden', 'Lần này, thật sự hết chuyện rồi chứ, công tử? ...Tiểu nữ không tin đâu.']],
+          maiden: (g) => [
+            g.flags.tookSeat ? ['maiden', 'Minh chủ bận rộn, còn nhớ đường về hồ Bích Thủy sao?'] : ['maiden', 'Lần này, thật sự hết chuyện rồi chứ, công tử? ...Tiểu nữ không tin đâu.'],
+            ['maiden', 'Đêm qua trên Kiếm Mộ hiện ra một bậc thang ánh sáng xuyên mây. Người ta gọi là Thiên Thê. Nghe nói sư bá năm xưa đã leo tới tầng thứ một trăm...'],
+            { choice: [
+              { text: 'Bước lên Thiên Thê (Hồi IV · 100 tầng, tới cấp 1999)', then: (g) => { g.finishChapter(); } },
+              { text: 'Để sau.', then: () => [['maiden', 'Khi nào công tử muốn leo, cứ nói với tiểu nữ.']] },
+            ] },
+          ],
         },
       },
     ],
   },
 ];
+
+// ═════════════════════════════ HỒI IV · THIÊN THÊ (100 tầng, cấp 20 → 1990) ═════════════════════════════
+const HAN_D = '〇一二三四五六七八九';
+const hanNum = (n) => { if (n < 10) return HAN_D[n]; if (n === 100) return '百'; const t = Math.floor(n / 10), u = n % 10; return (t > 1 ? HAN_D[t] : '') + '十' + (u ? HAN_D[u] : ''); };
+const LADDER_PLACES = [
+  { name: 'Đồng cỏ Thanh Phong', x: 70, z: 160, zone: 'dongco', bg: 'town' }, { name: 'Rừng Nấm', x: -78, z: -18, zone: 'rungnam', bg: 'bamboo' },
+  { name: 'Bờ hồ Bích Thủy', x: -112, z: 138, zone: 'bangho', bg: 'lake' }, { name: 'Đồi Gió', x: 150, z: 70, zone: 'doigio', bg: 'town' },
+  { name: 'Rừng trúc', x: -150, z: -105, zone: 'rungnam', bg: 'bamboo' }, { name: 'Yêu Ma Cốc', x: 150, z: -120, zone: 'thunglung', bg: 'valley' },
+  { name: 'Hắc Phong trại', x: 48, z: -190, zone: 'thunglung', bg: 'valley' }, { name: 'Hàn Băng Cốc', x: -40, z: -245, zone: 'hangtuyet', bg: 'ice' },
+  { name: 'Kiếm Mộ', x: -222, z: -205, zone: 'hangtuyet', bg: 'ice' }, { name: 'Hỏa Diệm Sơn', x: 215, z: -215, zone: 'hoason', bg: 'fire' },
+];
+const LADDER_BOSS = [
+  ['hanbang', 'Băng Phách Thủ Hộ'], ['honglian', 'Hồng Liên Ảo Ảnh'], ['wumian', 'Vô Diện Kiếm Hồn'], ['huyetma', 'Huyết Ma Tàn Niệm'], ['mguard', 'Kim Giáp Thiên Tướng'],
+  ['situ', 'Minh Chủ Tâm Ma'], ['hanxue', 'Tuyết Nữ Thiên Thê'], ['villain', 'Mộ Dung Huyết Ảo Ảnh'], ['skeletonKing', 'Kiếm Mộ Vương Hồn'], ['boss', 'Đồ Bá Ma Hoá'],
+];
+const LADDER_EPITHET = ['Sơ', 'Thanh', 'Huyền', 'Xích', 'Tử', 'Kim', 'Bạch Ngọc', 'Cửu U', 'Thái Hư', 'Hỗn Độn'];
+const LADDER_LINES = [
+  'Mỗi bậc thang dưới chân là một mảnh ký ức của những kiếm khách đã ngã xuống.',
+  'Gió ở tầng này lạnh như lưỡi kiếm. Tiếng ai đó thì thầm: "Quay về đi."',
+  'Mây cuộn quanh bậc thang. Xa xa, bóng một lão nhân áo trắng chắp tay đứng chờ.',
+  'Trên vách đá khắc hàng nghìn cái tên. Có cả tên của sư phụ.',
+  'Thiên Thê rung lên. Thủ vệ tầng này đã thức giấc từ ba trăm năm trước.',
+];
+function ladderChapter(n) {
+  const req = Math.min(1990, n * 20), L = LADDER_PLACES[(n - 1) % LADDER_PLACES.length];
+  const [btype, bname] = LADDER_BOSS[(n - 1) % LADDER_BOSS.length], ep = LADDER_EPITHET[Math.min(9, Math.floor((n - 1) / 10))];
+  const boss = `${bname} · ${ep}`, grp = 'tt' + n, cnt = 5 + Math.min(5, Math.floor(n / 20));
+  const zone = ZONES.find((z) => z.id === L.zone) || ZONES[0];
+  return {
+    id: grp,
+    han: '天梯',
+    hanSub: `第${hanNum(n)}層`,
+    title: `Thiên Thê · Tầng ${n}`,
+    subtitle: `${L.name} · Cấp ${req}`,
+    time: ['morning', 'noon', 'dawn2', 'night', 'sunrise'][n % 5],
+    bg: L.bg,
+    spawn: { x: L.x, z: L.z + 40, yaw: Math.PI },
+    narration: () => [
+      `Thiên Thê, tầng thứ ${n}. Bậc thang ánh sáng dẫn xuống ${L.name}.`,
+      LADDER_LINES[n % LADDER_LINES.length],
+      n % 10 === 0 ? `Tầng ${n} là một cửa ải lớn. Kẻ gác cổng ở đây mạnh hơn hẳn những tầng trước.` : `Kẻ trấn giữ: ${boss}.`,
+    ],
+    steps: [
+      {
+        objective: (g) => `Tu luyện đạt cấp ${req} để mở tầng ${n} (đang cấp ${g.rpg.level})`,
+        marker: () => null,
+        enter: (g) => { if (g.rpg.level < req) g.toast(`Tầng ${n} cần <b>cấp ${req}</b>. Săn quái ở các khu (quái lên cấp theo ngươi) để tu luyện.`, 5); },
+        done: (g) => g.rpg.level >= req,
+      },
+      {
+        objective: () => `Tới ${L.name}`,
+        marker: () => ({ x: L.x, z: L.z }),
+        done: (g) => near(g, L.x, L.z, 18),
+      },
+      {
+        objective: (g) => `Diệt thủ vệ Thiên Thê (${g.killCount(grp)}/${cnt})`,
+        marker: (g) => g.nearestOf(grp) || { x: L.x, z: L.z },
+        enter: (g) => {
+          for (let i = 0; i < cnt; i++) {
+            const a = (i / cnt) * Math.PI * 2, id = zone.mobs[(n + i) % zone.mobs.length];
+            g.spawnMonster(id, L.x + Math.cos(a) * 9, L.z + Math.sin(a) * 9, { group: grp, aggro: 40, lv: req + 2 }).then((e) => { if (e && i === 0 && !e.monster?.elite) { e.elite = true; e.maxHp = e.hp = e.maxHp * 2.5; e.name = 'Hung ' + e.name; } });
+          }
+        },
+        done: (g) => killed(g, grp, cnt),
+      },
+      {
+        objective: () => `Đánh bại ${boss}`,
+        marker: (g) => g.nearestOf(grp + 'b') || { x: L.x, z: L.z },
+        enter: (g) => g.dialog([
+          ['hero', `(Bậc thang rung chuyển. ${boss} hiện ra giữa ${L.name}.)`],
+          ['hero', n % 10 === 0 ? 'Cửa ải lớn... Sư phụ, xin người phù hộ.' : 'Tầng này, ta sẽ qua.'],
+          { run: (g) => g.spawn(btype, L.x, L.z - 6, { group: grp + 'b', boss: true, name: `${boss} · Lv.${req + 5}`, lv: req + 5 + (n % 10 === 0 ? 5 : 0), aggro: 100 }) },
+        ]),
+        done: (g) => killed(g, grp + 'b', 1),
+      },
+      {
+        objective: () => `Hoàn thành tầng ${n}`,
+        marker: () => null,
+        enter: (g) => {
+          g.rpg.gainExp(Math.round(800 + Math.pow(req, 1.75) * 6));
+          g.rpg.addGold(200 + req * 15);
+          g.path?.addMerit?.(20 + n);
+          g.vfx?.banner?.('登', `Vượt Thiên Thê · Tầng ${n}`, '#ffd86a');
+          if (n === 100) g.toast('<b>THIÊN THÊ · ĐỈNH</b><br><span class="sm">Ngươi đã leo tới nơi sư bá năm xưa đứng. Giang hồ không còn ai trên ngươi.</span>', 10);
+          setTimeout(() => g.finishChapter(), 1500);
+        },
+      },
+    ],
+  };
+}
+for (let n = 1; n <= 100; n++) CHAPTERS.push(ladderChapter(n));
 
 /** Thoại mặc định khi bước hiện tại không có thoại riêng. */
 export const AMBIENT = {
