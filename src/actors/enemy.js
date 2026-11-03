@@ -10,6 +10,8 @@ export class Enemy extends Actor {
   constructor(game, character, opts) {
     super(game, character, { radius: opts.boss ? 0.5 : 0.4, hp: opts.hp });
     this.name = opts.name;
+    const hk = game.diff?.enemyHp || 1; // độ khó: quái trâu hơn
+    if (hk !== 1) this.hp = this.maxHp = Math.round(this.maxHp * hk);
     this.boss = !!opts.boss;
     this.dmg = opts.dmg;
     this.speed = opts.speed ?? 4.6;

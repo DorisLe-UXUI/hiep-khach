@@ -41,6 +41,7 @@ import { dropGear, RARITY, randomGem } from './gear.js';
 import { randomFood, randomMat } from './loot.js';
 import { Status } from './status.js';
 import { SideQuests, STORY_NPCS, STORY_SPEAKERS } from '../story/sidequests.js';
+import { Bounty } from './bounty.js';
 import { Lore } from '../story/lore.js';
 import { TITLES } from './titles.js';
 import { Meridian } from './meridian.js';
@@ -207,6 +208,7 @@ export class Game {
     this.fury = new Fury(this);
     this.status = new Status(this);
     this.side = new SideQuests(this);
+    this.bounty = new Bounty(this);
     this.lore = new Lore(this);
     this.meridian = new Meridian(this);
     this.telegraphs = new Telegraphs(this);
@@ -520,6 +522,7 @@ export class Game {
     this.enterStep();
     this.refreshStoryNpcs();
     this.side.reenter();
+    this.bounty.reenter();
   }
 
   enterStep() {
@@ -597,7 +600,7 @@ export class Game {
     const st = this.step;
     let m = null;
     try { m = st?.marker?.(this) || null; } catch { m = null; }
-    return m || this.side?.marker() || null; // hết việc chính thì chỉ đường Kỳ duyên
+    return m || this.side?.marker() || this.bounty?.marker() || null; // hết việc chính thì chỉ đường Kỳ duyên
   }
 
   /** Hảo cảm Uyển Nhi: tặng quà, mỗi mốc 25/50/75/100 có một đoạn tâm sự và phần thưởng */
@@ -774,8 +777,9 @@ export class Game {
     this.path?.onKill(e);
     if (e.group) this.kills[e.group] = (this.kills[e.group] || 0) + 1;
     this.side?.onKill(e);
+    this.bounty?.onKill(e);
     if (e.group === 'doba') this.dobaSpot = { x: e.pos.x, z: e.pos.z };
-    this.rpg.gainExp(Math.round(e.exp * (this.sys.buff('exp') ? 1.1 : 1)));
+    this.rpg.gainExp(Math.round(e.exp * (this.sys.buff('exp') ? 1.1 : 1) * (this.diff.expMul || 1) * (this.bounty?.rankMul() || 1)));
     this.sys.progress('kill');
     if (this.companions.pet?.root.visible) this.beasts.gainExp(this.companions.petId, Math.ceil(e.exp * 0.5));
     if (e.elite || e.monster?.elite) this.sys.s.stats.elites = (this.sys.s.stats.elites || 0) + 1;
@@ -1112,7 +1116,7 @@ export class Game {
     // ban đêm yêu quái mạnh hơn
     if (opts.zone && !m.beast && this.clock.night) { e.maxHp = e.hp = Math.round(e.maxHp * 1.25); e.dmg = Math.round(e.dmg * 1.25); e.exp = Math.round(e.exp * 1.3); e.night = true; }
     // quái tinh anh ngẫu nhiên: to hơn, trâu hơn, chắc chắn rơi trang bị tốt
-    if (opts.zone && !opts.boss && !m.elite && !m.beast && Math.random() < 0.07) {
+    if (opts.zone && !opts.boss && !m.elite && !m.beast && Math.random() < 0.07 * (this.diff.eliteMul || 1)) {
       e.elite = true;
       e.maxHp = e.hp = Math.round(e.maxHp * 3.2);
       e.dmg = Math.round(e.dmg * 1.5);
@@ -1325,6 +1329,7 @@ export class Game {
     this.fx.update(dt);
     this.fury.update(dt);
     this.side.update(dt);
+    this.bounty.update(dt);
     this.lore.update(dt);
     this.status.update(dt);
     this.telegraphs.update(dt);

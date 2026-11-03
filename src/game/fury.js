@@ -26,6 +26,7 @@ export class Fury {
     if (this.rage < 100 || this.burst > 0) return false;
     const g = this.g, p = g.player;
     this.rage = 0; this.burst = 10;
+    g.bounty?.on('fury');
     const rainbow = [0xff3a3a, 0xffa02a, 0xffe24a, 0xff5ae0];
     g.vfx.pillar(p.pos.clone(), 0xff5a2a, 8);
     g.vfx.rings(p.pos.clone(), rainbow, 8);

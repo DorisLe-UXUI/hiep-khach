@@ -39,6 +39,8 @@ export class Combat {
     const crit = Math.random() < this.game.rpg.crit();
     dmg = Math.round(dmg * (crit ? 1.8 : 1));
     e.takeDamage(dmg, p, opts);
+    if (p === this.game.player && crit) this.game.bounty?.on('crit');
+    if (p !== this.game.player && p === this.game.companions?.pet) this.game.bounty?.on('pethit');
     if (p === this.game.player) { this.game.fury?.hit(dmg); const ls = this.game.path?.bonus('leech'); if (ls) p.hp = Math.min(p.maxHp, p.hp + dmg * ls); }
     this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
     this.game.vfx.flash(e, crit ? 0xffe080 : 0xffffff);
@@ -55,6 +57,7 @@ export class Combat {
       let dmg = Math.round(a.dmg);
       if (crit) dmg = Math.round(dmg * 1.8);
       e.takeDamage(dmg, p, { knock: a.knock, back: a.back ?? 2.5 });
+      if (crit && p === this.game.player) this.game.bounty?.on('crit');
       if (p === this.game.player) this.game.fury?.hit(dmg);
       this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
       this.game.vfx.flash(e, crit ? 0xffe080 : 0xffffff);

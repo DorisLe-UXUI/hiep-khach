@@ -115,6 +115,7 @@ export class Path {
       if (d.d !== today) { d.d = today; d.n = 0; }
       d.n++;
       this.addMerit(15);
+      this.g.bounty?.on('patrol');
       if (d.n === 10) { this.addMerit(100); this.g.toast(`<b>Nhiệm vụ phe ngày</b> hoàn thành · Công trạng +100`, 3); }
     }
   }

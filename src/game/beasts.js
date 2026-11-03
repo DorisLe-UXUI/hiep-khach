@@ -131,6 +131,7 @@ export class Beasts {
     if (!r.remove(item)) return null;
     this.gainExp(id, item === 'beast_pill' ? 120 : 90);
     this.g.bond?.gain(id, 15);
+    this.g.bounty?.on('feed');
     return item;
   }
 

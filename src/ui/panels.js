@@ -1,4 +1,5 @@
 import { SIDE_QUESTS } from '../story/sidequests.js';
+import { BOUNTY_BY_ID, BOUNTY_RANKS } from '../game/bounty.js';
 import { LORE } from '../story/lore.js';
 import { SPEAKERS } from '../story/chapters.js';
 const SPEAKER_NAME = (id) => ({ hanxue_npc: 'Hàn Tuyết', honglian_npc: 'Hồng Liên' }[id] || SPEAKERS[id]?.name || id);
@@ -47,6 +48,18 @@ Object.assign(UI.prototype, {
       const row = (q, state) => `<div class="task side-q ${state}"><span class="han sq-han">${q.han}</span><div><b>${q.name}</b> <small>${state === 'done' ? 'Đã hoàn thành' : state === 'active' ? this.nh(g.side.step(q.id)?.objective(g, g.side.api(q.id)) || '') : state === 'open' ? `Gặp ${SPEAKER_NAME(q.giver)} để nhận` : 'Chưa tới lúc'}</small><p class="muted sm">${state === 'locked' ? '???' : q.summary}</p></div></div>`;
       html = `<p class="muted">Kỳ duyên là những câu chuyện riêng của người giang hồ. Có nhân vật chỉ xuất hiện nếu trước đó ngươi chọn tha cho họ.</p>
         <div class="tasks">${SIDE_QUESTS.map((q) => row(q, sd.done.includes(q.id) ? 'done' : q.id in sd.active ? 'active' : q.unlock(g) ? 'open' : 'locked')).join('')}</div>`;
+    } else if (tab === 'bounty') {
+      const B = g.bounty, bs = B.s; B.fill();
+      const next = BOUNTY_RANKS[B.rank() + 1];
+      const card = (b, act) => { const t = BOUNTY_BY_ID[b.type], r = B.reward(b);
+        return `<div class="task bty ${act ? 'active' : ''}">${icon(t.icon)}<div><b>${B.title(b)}</b> <span class="bty-star">${'★'.repeat(b.star)}${'☆'.repeat(5 - b.star)}</span>
+          ${act ? `<small>(${b.n}/${b.goal})${b.left != null ? ` · còn ${Math.ceil(b.left / 60)} phút` : ''}</small><div class="tbar"><div style="width:${(b.n / b.goal) * 100}%"></div></div>` : ''}
+          <p class="muted sm">${t.tip}</p><small>Thưởng: ${r.exp} kinh nghiệm · ${r.gold} lượng${r.gear ? ' · trang bị' : ''}${t.timed ? ' · <b>có giới hạn thời gian</b>' : ''}</small></div>
+          ${act ? `<button class="ghost sm" data-bab="${b.uid}">Huỷ</button>` : `<button class="primary sm" data-bacc="${b.uid}">Nhận</button>`}</div>`; };
+      html = `<div class="bty-head"><span class="han">令</span><div><b>Giang Hồ Lệnh · ${B.rankName()}</b><small>Đã hoàn thành ${bs.done} lệnh · Danh vọng ${bs.pts}${next ? ` / ${next[0]} → ${next[1]}` : ''} · Thưởng & kinh nghiệm diệt quái +${Math.round((B.rankMul() - 1) * 100)}%</small>
+        <small>Nhận tối đa 3 lệnh, không giới hạn số lần. Mỗi lệnh bắt dùng một tính năng khác. Cấp càng cao càng mở lệnh nhiều sao (khó hơn, thưởng lớn hơn). Cứ 10 lệnh tặng thêm một trang bị tốt.</small></div></div>
+        ${bs.active.length ? `<h4 class="sub-h">Đang làm (${bs.active.length}/3)</h4><div class="tasks">${bs.active.map((b) => card(b, true)).join('')}</div>` : ''}
+        <h4 class="sub-h">Bảng lệnh <button class="ghost sm" id="bty-ref">Làm mới · ${20 + g.rpg.level * 3} lượng</button></h4><div class="tasks">${bs.offers.map((b) => card(b, false)).join('')}</div>`;
     } else if (tab === 'lore') {
       const got = g.lore.got;
       html = `<p class="muted">Thanh Phong kiếm phổ tàn trang: <b>${got.length}/12</b>. Trang phát sáng trắng, rải khắp bản đồ.</p>
@@ -54,9 +67,12 @@ Object.assign(UI.prototype, {
     } else {
       html = `<div class="tasks">${ACHIEVEMENTS.map((a) => { const v = Math.min(a.goal, sy.statValue(a.stat)), ok = sy.s.achDone.includes(a.id); return `<div class="task ${ok ? 'ok' : ''}">${icon(ok ? 'check' : 'star')}<div><b>${a.name}</b> <small>${a.desc} (${v}/${a.goal})</small><div class="tbar"><div style="width:${(v / a.goal) * 100}%"></div></div></div><div class="rws">${rewardIcons(a.reward)}</div></div>`; }).join('')}</div>`;
     }
-    const body = this.openPanel('Nhiệm vụ', `<div class="with-side">${sideTabs([['main', 'Chính tuyến', 'scroll'], ['side', 'Kỳ duyên', 'lotus'], ['lore', 'Tàn trang', 'book'], ['daily', 'Hằng ngày', 'calendar'], ['ach', 'Thành tựu', 'trophy']], tab)}<div class="side-body">${html}</div></div>`);
+    const body = this.openPanel('Nhiệm vụ', `<div class="with-side">${sideTabs([['main', 'Chính tuyến', 'scroll'], ['bounty', 'Giang Hồ Lệnh', 'swords'], ['side', 'Kỳ duyên', 'lotus'], ['lore', 'Tàn trang', 'book'], ['daily', 'Hằng ngày', 'calendar'], ['ach', 'Thành tựu', 'trophy']], tab)}<div class="side-body">${html}</div></div>`);
     this.bindSide(body, (t) => this.openQuests(g, t));
     body.querySelector('#q-map')?.addEventListener('click', () => { this.closePanel(); this.openMap(g); });
+    body.querySelectorAll('[data-bacc]').forEach((b) => (b.onclick = () => { g.bounty.accept(Number(b.dataset.bacc)); this.openQuests(g, 'bounty'); }));
+    body.querySelectorAll('[data-bab]').forEach((b) => (b.onclick = () => { g.bounty.abandon(Number(b.dataset.bab)); this.openQuests(g, 'bounty'); }));
+    body.querySelector('#bty-ref')?.addEventListener('click', () => { if (g.bounty.refresh()) this.openQuests(g, 'bounty'); });
     body.querySelectorAll('.act-chest.ready').forEach((b) => (b.onclick = () => { const r = sy.claimChest(Number(b.dataset.c)); if (r) g.toast('Nhận: ' + r); this.openQuests(g, 'daily'); }));
     this.relock(g);
   },

@@ -18,9 +18,11 @@ export const DEFAULTS = {
 };
 
 export const DIFFICULTY = {
-  easy: { label: 'Nhàn du', enemyDmg: 0.6, playerDmg: 1.25 },
-  normal: { label: 'Giang hồ', enemyDmg: 1, playerDmg: 1 },
-  hard: { label: 'Tuyệt đỉnh', enemyDmg: 1.45, playerDmg: 0.85 },
+  // enemyHp: máu quái, expMul: kinh nghiệm, eliteMul: tỉ lệ quái tinh anh
+  easy: { label: 'Nhàn du', enemyDmg: 0.6, playerDmg: 1.25, enemyHp: 0.75, expMul: 1, eliteMul: 0.7 },
+  normal: { label: 'Giang hồ', enemyDmg: 1.15, playerDmg: 1, enemyHp: 1.3, expMul: 1.1, eliteMul: 1.3 },
+  hard: { label: 'Tuyệt đỉnh', enemyDmg: 1.6, playerDmg: 0.85, enemyHp: 1.8, expMul: 1.35, eliteMul: 1.8 },
+  hell: { label: 'Địa ngục', enemyDmg: 2.2, playerDmg: 0.75, enemyHp: 2.6, expMul: 1.7, eliteMul: 2.5 },
 };
 
 export const QUALITY = {

@@ -116,6 +116,7 @@ export class Systems {
 
   /** Ghi nhận tiến độ: 'kill' | 'herb' | 'dungeon' | 'pvp' | 'enhance' | 'craft' */
   progress(id, n = 1) {
+    this.g.bounty?.on(id, n);
     const t = DAILY.find((d) => d.id === id);
     if (t) {
       const cur = this.s.daily[id] || 0;

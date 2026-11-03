@@ -129,6 +129,7 @@ export class Player extends Actor {
   channelQi() {
     if ((this.cooldowns.qi || 0) > 0) { this.game.toast(`Vận công hồi sau ${Math.ceil(this.cooldowns.qi)} giây`, 1); return; }
     this.cooldowns.qi = 15;
+    this.game.bounty?.on('qi');
     this.setState('cast');
     this.char.play('Spell_Simple_Enter', { once: true, fade: 0.08, speed: 1.1, restart: true, onDone: () => this.state === 'cast' && this.setState('free') });
     const v = this.game.vfx;
@@ -197,6 +198,7 @@ export class Player extends Actor {
     if (this.cooldowns[cdKey] > 0 || this.mp < cost) { this.game.hud.flashSlot(slot === 'q' ? 'dash' : 'cast'); return; }
     if (slot === 'u1' || slot === 'u2') {
       this.mp -= cost;
+      this.game.bounty?.on('ult');
       this.cooldowns[cdKey] = sk.cd;
       this.pendingSkill = sk;
       this.aimNow();

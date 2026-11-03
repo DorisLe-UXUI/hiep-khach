@@ -341,6 +341,7 @@ export class MobileHUD {
     const zn = g.spawner.zoneAt(g.player.pos.x, g.player.pos.z);
     const questHtml = main + `
       <div class="mq-item main">${icon('scroll')}<div><b>${LANG === 'zh' ? `[主線] ${ch.hanSub}` : `[Chính] ${ch.subtitle}`}</b><span>${st ? g.ui.nh(trObjective(st.objective(g))) : 'Đã hoàn thành'}</span>${!a && g.hud.hintHtml ? `<em class="mq-hint">➜ ${g.hud.hintHtml}</em>` : ''}</div></div>
+      ${(g.bounty?.tracker() || []).map((q) => `<div class="mq-item bty">${icon('swords')}<div><b>[Lệnh ${'★'.repeat(q.star)}] ${q.name}</b><span>${q.text}</span></div></div>`).join('')}
       ${g.side.tracker().map((q) => `<div class="mq-item side">${icon('lotus')}<div><b>[Kỳ duyên] ${q.name}</b><span>${g.ui.nh(trObjective(q.text))}</span></div></div>`).join('')}
       <div class="mq-item">${icon('skull')}<div><b>${LANG === 'zh' ? '[每日] 誅除惡徒' : '[Ngày] Diệt trừ ác đồ'}</b><span>(${kills}/20)</span></div></div>
       <div class="mq-item">${icon('herb')}<div><b>${LANG === 'zh' ? '[每日] 採摘靈芝草' : '[Ngày] Hái Linh chi thảo'}</b><span>(${daily.herb || 0}/5)</span></div></div>

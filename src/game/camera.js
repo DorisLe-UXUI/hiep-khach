@@ -74,11 +74,13 @@ export class CameraRig {
     const right = this.right(_right);
     const shoulder = this.mode === 'third' ? 0.45 : 0;
     let d = dist;
-    // camera không xuyên tường/đất: rút ngắn khoảng cách khi bị chặn
+    // camera không xuyên tường/đất: rút ngắn khoảng cách khi bị chặn.
+    // Góc nhìn cao (MMO) chỉ né mặt đất: đá/tường lớn từng kéo camera dí sát đầu nhân vật giữa trận đánh.
     {
+      const top = this.mode !== 'third', minD = top ? Math.min(dist, 4.5) : 1.8;
       for (let k = 0.6; k <= dist; k += 0.3) {
         const p = _p.copy(head).addScaledVector(back, k).addScaledVector(right, shoulder);
-        if (p.y < this.terrain.heightAt(p.x, p.z) + 0.3 || this.colliders.blocked(head.x, head.z, p.x, p.z, p.y)) { d = Math.max(0.6, k - 0.3); break; }
+        if (p.y < this.terrain.heightAt(p.x, p.z) + 0.3 || (!top && this.colliders.blocked(head.x, head.z, p.x, p.z, p.y))) { d = Math.max(minD, k - 0.3); break; }
       }
     }
     const desired = _desired.copy(head).addScaledVector(back, d).addScaledVector(right, shoulder);
