@@ -57,6 +57,26 @@ export class VFX {
   constructor(scene) {
     this.scene = scene;
     this.items = [];
+    // dùng lại vật liệu + hình khối: không tạo/huỷ mỗi chiêu (huỷ vật liệu cuối cùng => three xoá chương trình shader, lần sau phải dịch lại)
+    this.mats = new Map();
+    this.geos = new Map();
+  }
+
+  /** Vật liệu cộng màu từ kho; trả về kho khi hiệu ứng hết. */
+  mat(map, color, opacity = 1) {
+    const k = map ? map.uuid : '';
+    if (!this.mats.has(k)) this.mats.set(k, []);
+    const pool = this.mats.get(k);
+    const m = pool.pop() || new THREE.MeshBasicMaterial({ map, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+    m.color.set(color);
+    m.opacity = opacity;
+    m.userData.pool = pool;
+    return m;
+  }
+
+  geo(key, make) {
+    if (!this.geos.has(key)) this.geos.set(key, make());
+    return this.geos.get(key);
   }
 
   add(obj, life, update) {
@@ -66,8 +86,8 @@ export class VFX {
 
   /** Vòng phép xoay dưới chân. */
   magicCircle(pos, color = 0x8fd8ff, radius = 2.2, life = 1.1) {
-    const mat = new THREE.MeshBasicMaterial({ map: runeTexture(), color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, radius * 2), mat);
+    const mat = this.mat(runeTexture(), color);
+    const m = new THREE.Mesh(this.geo('plane' + radius, () => new THREE.PlaneGeometry(radius * 2, radius * 2)), mat);
     m.rotation.x = -Math.PI / 2;
     m.position.copy(pos).add(new THREE.Vector3(0, 0.06, 0));
     m.renderOrder = 5;
@@ -78,8 +98,7 @@ export class VFX {
       mat.opacity = Math.min(1, k * 3) * 0.95 * Math.max(0.2, s);
     });
     // cột sáng mảnh
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.75, radius * 0.9, 2.5, 32, 1, true),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+    const beam = new THREE.Mesh(this.geo('beam' + radius, () => new THREE.CylinderGeometry(radius * 0.75, radius * 0.9, 2.5, 32, 1, true)), this.mat(null, color, 0.25));
     beam.position.copy(pos).add(new THREE.Vector3(0, 1.25, 0));
     this.add(beam, life * 0.7, (o, k) => { o.material.opacity = k * 0.22; o.scale.y = 0.4 + (1 - k); });
     return m;
@@ -88,15 +107,18 @@ export class VFX {
   /** Vệt kiếm lưỡi liềm trước mặt nhân vật. */
   slash(actor, color = 0xffffff, { wide = 1, flip = false, tilt = 0.25, height = 1.15, reach = 1.6 } = {}) {
     const r0 = reach * 0.66, r1 = reach * (0.98 + wide * 0.08);
-    const geo = new THREE.RingGeometry(r0, r1, 48, 1, -1.1 * wide, 2.2 * wide);
-    // UV theo góc để gradient chạy dọc vệt
-    const pos = geo.attributes.position, uv = geo.attributes.uv;
-    for (let i = 0; i < pos.count; i++) {
-      const a = Math.atan2(pos.getY(i), pos.getX(i));
-      const r = Math.hypot(pos.getX(i), pos.getY(i));
-      uv.setXY(i, (a + 1.1 * wide) / (2.2 * wide), (r - r0) / (r1 - r0));
-    }
-    const mat = new THREE.MeshBasicMaterial({ map: arcTexture(), color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+    const geo = this.geo(`slash${reach},${wide}`, () => {
+      const geo = new THREE.RingGeometry(r0, r1, 48, 1, -1.1 * wide, 2.2 * wide);
+      // UV theo góc để gradient chạy dọc vệt
+      const pos = geo.attributes.position, uv = geo.attributes.uv;
+      for (let i = 0; i < pos.count; i++) {
+        const a = Math.atan2(pos.getY(i), pos.getX(i));
+        const r = Math.hypot(pos.getX(i), pos.getY(i));
+        uv.setXY(i, (a + 1.1 * wide) / (2.2 * wide), (r - r0) / (r1 - r0));
+      }
+      return geo;
+    });
+    const mat = this.mat(arcTexture(), color);
     const m = new THREE.Mesh(geo, mat);
     const g = new THREE.Group();
     g.add(m);
@@ -115,8 +137,8 @@ export class VFX {
 
   /** Sóng chấn tròn trên mặt đất. */
   shockwave(pos, color = 0xffd27a, radius = 5) {
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
-    const m = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 48), mat);
+    const mat = this.mat(null, color);
+    const m = new THREE.Mesh(this.geo('shock', () => new THREE.RingGeometry(0.8, 1, 48)), mat);
     m.rotation.x = -Math.PI / 2;
     m.position.copy(pos).add(new THREE.Vector3(0, 0.1, 0));
     this.add(m, 0.5, (o, k) => { o.scale.setScalar(radius * (1 - k) + 0.5); mat.opacity = k; });
@@ -124,8 +146,8 @@ export class VFX {
 
   /** Cột sáng (lên cấp, hồi máu). */
   pillar(pos, color = 0xffd27a, h = 6) {
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, h, 32, 1, true), mat);
+    const mat = this.mat(null, color);
+    const m = new THREE.Mesh(this.geo('pillar' + h, () => new THREE.CylinderGeometry(0.9, 1.1, h, 32, 1, true)), mat);
     m.position.copy(pos).add(new THREE.Vector3(0, h / 2, 0));
     this.add(m, 1.4, (o, k, dt) => { mat.opacity = Math.min(1, k * 2) * 0.5; o.scale.x = o.scale.z = 1 + (1 - k) * 0.6; o.rotation.y += dt * 2; });
     this.magicCircle(pos, color, 2.6, 1.4);
@@ -150,7 +172,8 @@ export class VFX {
       if (it.life <= 0) {
         it.obj.userData.onEnd?.();
         this.scene.remove(it.obj);
-        it.obj.traverse?.((o) => { o.geometry?.dispose(); if (o.material && o.material.map !== runeTex && o.material.map !== arcTex) o.material.dispose?.(); });
+        // hình khối trong kho dùng lại, vật liệu trả về kho (không dispose)
+        it.obj.traverse?.((o) => { o.material?.userData.pool?.push(o.material); });
         this.items.splice(i, 1);
       }
     }

@@ -28,7 +28,7 @@
       // tranh vùng lần trước dừng chân (lần đầu: ngẫu nhiên)
       (function () {
         var B = ['town', 'bamboo', 'lake', 'valley', 'ice', 'fire'], bg = null;
-        try { bg = localStorage.getItem('hk_bg'); } catch (e) {}
+        try { bg = localStorage.getItem('__STORE_PREFIX__hk_bg'); } catch (e) {}
         if (B.indexOf(bg) < 0) bg = B[Math.floor(Math.random() * B.length)];
         document.querySelector('#loading .brand-bg').style.backgroundImage = 'url(' + '/brand/bg_' + bg + '.jpg)';
       })();

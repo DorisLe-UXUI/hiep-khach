@@ -84,8 +84,31 @@ export class MobileHUD {
     $('m-quest').onclick = () => { if (!this.g.dialogOpen) this.g.ui.openQuests(this.g); };
     $('m-avatar').onclick = () => { if (!this.g.dialogOpen) this.g.ui.openProfile(this.g); };
     $('m-avatar').title = 'Hồ sơ nhân vật';
+    // cache node + trạng thái đã ghi để tránh dựng lại DOM mỗi 0,1 s
+    this.el = {
+      face: $('m-face-img'), lv: $('m-lv'), name: $('m-name'), hp: $('m-hp'), mp: $('m-mp'),
+      hpT: $('m-hp-t'), mpT: $('m-mp-t'), power: $('m-power'), exp: $('m-exp'), expT: $('m-exp-t'),
+      pot: $('mq-pot'), qi: $('mq-qi'), clock: $('m-clock'), quest: $('mq-body'),
+      target: $('m-target'), mtImg: $('mt-img'), mtLv: $('mt-lv'), mtName: $('mt-name'),
+      mtHp: $('mt-hp'), mtHpT: $('mt-hp-t'), mtPct: $('mt-pct'), combo: $('m-combo'),
+      rage: document.querySelector('.m-rage'), auto: document.querySelector('.m-auto'),
+    };
+    this.el.rageFill = this.el.rage.querySelector('.rg-fill');
+    this.el.rageT = this.el.rage.querySelector('.rg-t');
+    this.el.comboB = this.el.combo.querySelector('b');
+    this.el.comboS = this.el.combo.querySelector('small');
+    const sk = (sel) => { const b = document.querySelector(sel); return { el: b, cd: b.querySelector('.cd'), lock: b.querySelector('.lock b') }; };
+    this.sk = { s1: sk('.m-sk.s1'), s2: sk('.m-sk.s2'), s3: sk('.m-sk.s3'), s4: sk('.m-sk.s4'), s6: sk('.m-sk.s6'), s7: sk('.m-sk.s7') };
     this.bindJoystick();
   }
+
+  /** Quên các giá trị đã ghi (đổi ngôn ngữ: chữ dữ liệu không dịch ngược được nên phải ghi lại từ đầu). */
+  invalidate() {
+    for (const k of Object.keys(this)) if (k[0] === '_' && (this[k] === null || typeof this[k] !== 'object')) this[k] = undefined;
+  }
+
+  _text(key, el, v) { if (this[key] !== v) { el.textContent = v; this[key] = v; } }
+  _pct(key, el, r) { const v = Math.round(r * 200) / 2; if (this[key] !== v) { el.style.width = v + '%'; this[key] = v; } }
 
   setClass(cls, def) {
     const atk = { kiem: 'sword', thuong: 'spear', cung: 'bow', phap: 'fist', dao: 'shuriken' }[cls] || 'sword';
@@ -222,80 +245,90 @@ export class MobileHUD {
   update() {
     this.renderBuffs();
     if (!this._pmT || performance.now() - this._pmT > 1000) { this._pmT = performance.now(); this.renderPetMode(); }
-    const g = this.g, p = g.player, r = g.rpg;
-    $('m-face-img').src = g.portraits.hero || '';
-    $('m-lv').textContent = r.level;
-    $('m-name').textContent = g.profile.name;
-    $('m-hp').style.width = (p.hp / p.maxHp) * 100 + '%';
-    $('m-mp').style.width = (p.mp / p.maxMp) * 100 + '%';
-    $('m-hp-t').textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
-    $('m-mp-t').textContent = `${Math.floor(p.mp)}/${p.maxMp}`;
-    $('m-power').textContent = g.sys.power().toLocaleString('vi-VN');
+    const g = this.g, p = g.player, r = g.rpg, el = this.el;
+    const face = g.portraits.hero || '';
+    if (face !== this._face) { el.face.src = face; this._face = face; }
+    this._text('_lvT', el.lv, String(r.level));
+    this._text('_nameT', el.name, g.profile.name);
+    this._pct('_hpW', el.hp, p.hp / p.maxHp);
+    this._pct('_mpW', el.mp, p.mp / p.maxMp);
+    this._text('_hpT', el.hpT, `${Math.ceil(p.hp)}/${p.maxHp}`);
+    this._text('_mpT', el.mpT, `${Math.floor(p.mp)}/${p.maxMp}`);
+    this._text('_powerT', el.power, g.sys.power().toLocaleString('vi-VN'));
     const need = Math.round(70 * Math.pow(r.level, 1.55));
-    $('m-exp').style.width = (r.exp / need) * 100 + '%';
-    $('m-exp-t').textContent = ((r.exp / need) * 100).toFixed(2) + '%';
-    $('mq-pot').textContent = r.bag.potion || 0;
-    $('mq-qi').textContent = r.bag.qipill || 0;
-    const now = new Date();
-    const ck = g.clock;
-    $('m-clock').innerHTML = `${ck.night ? '🌙' : '☀️'}${ck.raining ? '🌧' : ''} <span class="han">${ck.shichen().han}</span> ${ck.shichen().name} ${ck.label()}`;
+    this._pct('_expW', el.exp, r.exp / need);
+    this._text('_expT', el.expT, ((r.exp / need) * 100).toFixed(2) + '%');
+    this._text('_potT', el.pot, String(r.bag.potion || 0));
+    this._text('_qiT', el.qi, String(r.bag.qipill || 0));
+    const ck = g.clock, sc = ck.shichen();
+    const clockHtml = `${ck.night ? '🌙' : '☀️'}${ck.raining ? '🌧' : ''} <span class="han">${sc.han}</span> ${sc.name} ${ck.label()}`;
+    if (clockHtml !== this._clockHtml) { el.clock.innerHTML = clockHtml; this._clockHtml = clockHtml; }
 
     // hồi chiêu dạng quét tròn
-    const cd = (sel, v, max, mp) => {
-      const b = document.querySelector(sel);
+    const cd = (sk, v, max, mp) => {
       const k = max ? Math.min(1, v / max) : 0;
-      b.querySelector('.cd').style.background = k > 0 ? `conic-gradient(rgba(0,0,0,.72) ${k * 360}deg, transparent 0)` : 'none';
-      b.classList.toggle('nomp', mp !== undefined && p.mp < mp);
+      const bg = k > 0 ? `conic-gradient(rgba(0,0,0,.72) ${k * 360}deg, transparent 0)` : 'none';
+      if (sk.cd._bg !== bg) { sk.cd.style.background = bg; sk.cd._bg = bg; }
+      const nomp = mp !== undefined && p.mp < mp;
+      if (sk._nomp !== nomp) { sk.el.classList.toggle('nomp', nomp); sk._nomp = nomp; }
     };
-    cd('.m-sk.s1', p.cooldowns.dash, p.cls.q.cd, p.cls.q.mp);
-    cd('.m-sk.s2', p.cooldowns.cast, p.cls.f.cd, p.cls.f.mp);
-    cd('.m-sk.s6', p.cooldowns.u1, p.cls.u1.cd, p.cls.u1.mp);
-    cd('.m-sk.s7', p.cooldowns.u2, p.cls.u2.cd, p.cls.u2.mp);
-    for (const [sel, sk] of [['.m-sk.s6', p.cls.u1], ['.m-sk.s7', p.cls.u2]]) {
-      const b = document.querySelector(sel), locked = r.level < sk.lv;
-      b.classList.toggle('locked', locked);
-      b.querySelector('.lock b').textContent = locked ? `Cấp ${sk.lv}` : '';
+    cd(this.sk.s1, p.cooldowns.dash, p.cls.q.cd, p.cls.q.mp);
+    cd(this.sk.s2, p.cooldowns.cast, p.cls.f.cd, p.cls.f.mp);
+    cd(this.sk.s6, p.cooldowns.u1, p.cls.u1.cd, p.cls.u1.mp);
+    cd(this.sk.s7, p.cooldowns.u2, p.cls.u2.cd, p.cls.u2.mp);
+    for (const [sk, s] of [[this.sk.s6, p.cls.u1], [this.sk.s7, p.cls.u2]]) {
+      const locked = r.level < s.lv;
+      if (sk._locked !== locked) { sk.el.classList.toggle('locked', locked); sk.lock.textContent = locked ? `Cấp ${s.lv}` : ''; sk._locked = locked; }
     }
     // nộ khí & liên kích
-    const fu = g.fury, rb = document.querySelector('.m-rage');
+    const fu = g.fury, rb = el.rage;
     const rk = fu.burst > 0 ? fu.burst / 10 : fu.rage / 100;
-    rb.querySelector('.rg-fill').style.background = `conic-gradient(${fu.burst > 0 ? 'rgba(255,210,122,.35)' : 'transparent'} ${rk * 360}deg, rgba(10,4,2,.68) 0)`; // phần đã nạp lộ ảnh lửa
-    rb.querySelector('.rg-t').textContent = fu.burst > 0 ? Math.ceil(fu.burst) + 's' : Math.floor(fu.rage) + '%';
-    rb.classList.toggle('full', fu.rage >= 100 && !fu.burst);
-    rb.classList.toggle('on', fu.burst > 0);
-    const cb = $('m-combo');
-    cb.classList.toggle('hidden', fu.combo < 3);
-    if (fu.combo >= 3) {
-      cb.querySelector('b').textContent = fu.combo;
-      cb.querySelector('small').textContent = fu.mult() > 1 ? `Sát thương +${Math.round((fu.mult() - 1) * 100)}%` : '';
-      cb.style.setProperty('--k', Math.max(0, fu.comboT / 3));
+    const rageBg = `conic-gradient(${fu.burst > 0 ? 'rgba(255,210,122,.35)' : 'transparent'} ${rk * 360}deg, rgba(10,4,2,.68) 0)`; // phần đã nạp lộ ảnh lửa
+    if (rageBg !== this._rageBg) { el.rageFill.style.background = rageBg; this._rageBg = rageBg; }
+    this._text('_rageT', el.rageT, fu.burst > 0 ? Math.ceil(fu.burst) + 's' : Math.floor(fu.rage) + '%');
+    const full = fu.rage >= 100 && !fu.burst, bursting = fu.burst > 0;
+    if (full !== this._rageFull) { rb.classList.toggle('full', full); this._rageFull = full; }
+    if (bursting !== this._rageOn) { rb.classList.toggle('on', bursting); this._rageOn = bursting; }
+    const cb = el.combo;
+    const comboHidden = fu.combo < 3;
+    if (comboHidden !== this._comboHidden) { cb.classList.toggle('hidden', comboHidden); this._comboHidden = comboHidden; }
+    if (!comboHidden) {
+      this._text('_comboN', el.comboB, fu.combo);
+      this._text('_comboS', el.comboS, fu.mult() > 1 ? `Sát thương +${Math.round((fu.mult() - 1) * 100)}%` : '');
+      const ck2 = Math.max(0, fu.comboT / 3);
+      if (ck2 !== this._comboK) { cb.style.setProperty('--k', ck2); this._comboK = ck2; }
     }
     // khung mục tiêu
     const tg = g.currentTarget();
-    $('m-target').classList.toggle('hidden', !tg);
+    const tgHidden = !tg;
+    if (tgHidden !== this._tgHidden) { el.target.classList.toggle('hidden', tgHidden); this._tgHidden = tgHidden; }
     if (tg) {
       const pct = Math.max(0, tg.hp / tg.maxHp);
-      $('mt-img').src = tg.monster ? `/assets/thumbs/mon_${tg.tag}.png` : (g.portraits[tg.tag] || g.portraits.doba || '');
-      $('mt-lv').textContent = 'C.' + (tg.lv || Math.max(1, Math.round(tg.exp / 12)));
-      $('mt-name').innerHTML = `${tg.name}${tg.monster?.elite || tg.elite || tg.boss ? ' <span class="elite-tag">Tinh anh</span>' : ''}`;
-      $('mt-hp').style.width = pct * 100 + '%';
-      $('mt-hp-t').textContent = `${Math.ceil(tg.hp)} / ${tg.maxHp}`;
-      $('mt-pct').textContent = Math.round(pct * 100) + '%';
+      const img = tg.monster ? `/assets/thumbs/mon_${tg.tag}.png` : (g.portraits[tg.tag] || g.portraits.doba || '');
+      if (img !== this._mtImg) { el.mtImg.src = img; this._mtImg = img; }
+      this._text('_mtLv', el.mtLv, 'C.' + (tg.lv || Math.max(1, Math.round(tg.exp / 12))));
+      const mtName = `${tg.name}${tg.monster?.elite || tg.elite || tg.boss ? ' <span class="elite-tag">Tinh anh</span>' : ''}`;
+      if (mtName !== this._mtName) { el.mtName.innerHTML = mtName; this._mtName = mtName; }
+      this._pct('_mtHp', el.mtHp, pct);
+      this._text('_mtHpT', el.mtHpT, `${Math.ceil(tg.hp)} / ${tg.maxHp}`);
+      this._text('_mtPct', el.mtPct, Math.round(pct * 100) + '%');
     }
-    cd('.m-sk.s3', 0, 0);
-    cd('.m-sk.s4', 0, 0, 8);
-    document.querySelector('.m-auto').classList.toggle('on', !!g.auto?.on);
+    cd(this.sk.s3, 0, 0);
+    cd(this.sk.s4, 0, 0, 8);
+    const autoOn = !!g.auto?.on;
+    if (autoOn !== this._autoOn) { el.auto.classList.toggle('on', autoOn); this._autoOn = autoOn; }
 
     // bảng nhiệm vụ
     const st = g.step, a = g.activity, ch = g.chapter;
     const main = a ? `<div class="mq-item act"><b>[Hoạt động] ${a.title}</b><span>${a.waves.length > 1 ? `Đợt ${a.wave + 1}/${a.waves.length}` : 'Đánh bại đối thủ'}</span></div>` : '';
     const daily = g.sys.s.daily, kills = daily.kill || 0;
     const zn = g.spawner.zoneAt(g.player.pos.x, g.player.pos.z);
-    $('mq-body').innerHTML = main + `
+    const questHtml = main + `
       <div class="mq-item main">${icon('scroll')}<div><b>${LANG === 'zh' ? `[主線] ${ch.hanSub}` : `[Chính] ${ch.subtitle}`}</b><span>${st ? g.ui.nh(trObjective(st.objective(g))) : 'Đã hoàn thành'}</span>${!a && g.hud.hintHtml ? `<em class="mq-hint">➜ ${g.hud.hintHtml}</em>` : ''}</div></div>
       ${g.side.tracker().map((q) => `<div class="mq-item side">${icon('lotus')}<div><b>[Kỳ duyên] ${q.name}</b><span>${g.ui.nh(trObjective(q.text))}</span></div></div>`).join('')}
       <div class="mq-item">${icon('skull')}<div><b>${LANG === 'zh' ? '[每日] 誅除惡徒' : '[Ngày] Diệt trừ ác đồ'}</b><span>(${kills}/20)</span></div></div>
       <div class="mq-item">${icon('herb')}<div><b>${LANG === 'zh' ? '[每日] 採摘靈芝草' : '[Ngày] Hái Linh chi thảo'}</b><span>(${daily.herb || 0}/5)</span></div></div>
       ${zn ? `<div class="mq-item zone">${icon('dragon')}<div><b>[Khu vực] ${zn.name}</b><span>Đang săn quái · Bách quái phổ (L)</span></div></div>` : ''}`;
+    if (questHtml !== this._questHtml) { el.quest.innerHTML = questHtml; this._questHtml = questHtml; }
   }
 }

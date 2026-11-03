@@ -16,19 +16,32 @@ export class Telegraphs {
   add(o) {
     const g = this.g, color = o.color ?? 0xff3020;
     const grp = new THREE.Group();
-    const mk = (geo, op) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false, depthTest: false, side: THREE.DoubleSide })); m.renderOrder = 5; grp.add(m); return m; };
+    const mats = [];
+    const mk = (geo, op) => {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+      m.renderOrder = 5; mats.push(m.material); grp.add(m); return m;
+    };
     const edge = mk(ringGeo, 0.9), base = mk(discGeo, 0.16), fill = mk(discGeo, 0.32);
     edge.scale.setScalar(o.r); base.scale.setScalar(o.r);
-    let innerEdge = null;
+    let innerEdge = null, ownGeo = null;
     if (o.inner) {
       // vùng an toàn ở giữa (đòn hình vành khăn)
-      base.geometry = new THREE.RingGeometry(o.inner, o.r, 64).rotateX(-Math.PI / 2); base.scale.setScalar(1);
+      ownGeo = new THREE.RingGeometry(o.inner, o.r, 64).rotateX(-Math.PI / 2);
+      base.geometry = ownGeo; base.scale.setScalar(1);
       innerEdge = mk(ringGeo, 0.9); innerEdge.scale.setScalar(o.inner);
-      fill.geometry = base.geometry; fill.scale.setScalar(1);
+      fill.geometry = ownGeo; fill.scale.setScalar(1);
     }
     grp.position.set(o.x, g.terrain.heightAt(o.x, o.z) + 0.12, o.z);
     g.scene.add(grp);
-    this.list.push({ ...o, t: 0, grp, fill, base });
+    this.list.push({ ...o, t: 0, grp, fill, base, mats, ownGeo });
+  }
+
+  /** Giải phóng material tự tạo + geometry riêng; KHÔNG đụng ringGeo/discGeo dùng chung. */
+  dispose(t) {
+    for (const m of t.mats) m.dispose();
+    t.mats = null;
+    t.ownGeo?.dispose();
+    t.ownGeo = null;
   }
 
   update(dt) {
@@ -40,7 +53,7 @@ export class Telegraphs {
       if (t.inner) t.fill.material.opacity = 0.12 + k * 0.4;
       else t.fill.scale.setScalar(Math.max(0.01, t.r * k));
       t.grp.children[0].material.opacity = 0.6 + Math.sin(t.t * 18) * 0.3;
-      if (t.owner?.dead) { g.scene.remove(t.grp); this.list.splice(i, 1); continue; }
+      if (t.owner?.dead) { g.scene.remove(t.grp); this.dispose(t); this.list.splice(i, 1); continue; }
       if (k < 1) continue;
       // nổ
       const d = Math.hypot(p.pos.x - t.x, p.pos.z - t.z);
@@ -58,11 +71,15 @@ export class Telegraphs {
       } else if (d < t.r + 4) { g.sys.s.stats.dodges = (g.sys.s.stats.dodges || 0) + 1; }
       t.onBoom?.();
       g.scene.remove(t.grp);
+      this.dispose(t);
       this.list.splice(i, 1);
     }
   }
 
-  clear() { for (const t of this.list) this.g.scene.remove(t.grp); this.list = []; }
+  clear() {
+    for (const t of this.list) { this.g.scene.remove(t.grp); this.dispose(t); }
+    this.list = [];
+  }
 }
 
 /** Chọn và tung một chiêu cảnh báo cho kẻ địch lớn. Trả về thời gian vận chiêu. */

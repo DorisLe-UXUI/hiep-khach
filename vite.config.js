@@ -25,8 +25,13 @@ function saveEndpoint() {
   };
 }
 
+/** Tiền tố khoá localStorage trong script nội tuyến của index.html (bản dev: VITE_STORE_PREFIX=dev_) */
+function storePrefix() {
+  return { name: 'store-prefix', transformIndexHtml: (html) => html.replaceAll('__STORE_PREFIX__', process.env.VITE_STORE_PREFIX || '') };
+}
+
 export default defineConfig({
-  plugins: [saveEndpoint()],
+  plugins: [saveEndpoint(), storePrefix()],
   server: { port: 5180, strictPort: true },
   build: { chunkSizeWarningLimit: 2000 },
 });

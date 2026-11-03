@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 
+// vector tạm dùng lại mỗi khung hình (tránh cấp phát)
+const _head = new THREE.Vector3(), _back = new THREE.Vector3(), _right = new THREE.Vector3(), _p = new THREE.Vector3();
+const _desired = new THREE.Vector3(), _shake = new THREE.Vector3(), _look = new THREE.Vector3();
+
 /** Camera sau lưng (mặc định) hoặc nhìn từ trên cao kiểu ARPG (phím V). */
 export class CameraRig {
   constructor(camera, terrain, colliders) {
@@ -63,32 +67,33 @@ export class CameraRig {
     this.target.lerp(focus, 1 - Math.exp(-dt * 14));
     const pitch = this.mode === 'third' ? this.pitch : (this.mmoPitch ?? 0.78);
     const dist = this.dist;
-    const head = this.target.clone().add(new THREE.Vector3(0, this.mode === 'third' ? 1.55 : 1.0 + Math.max(0, 0.6 - (this.mmoPitch ?? 0.78)) * 0.8, 0));
-    const back = new THREE.Vector3(Math.sin(this.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.yaw) * Math.cos(pitch));
+    const head = _head.copy(this.target);
+    head.y += this.mode === 'third' ? 1.55 : 1.0 + Math.max(0, 0.6 - (this.mmoPitch ?? 0.78)) * 0.8;
+    const back = _back.set(Math.sin(this.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.yaw) * Math.cos(pitch));
     // lệch vai phải một chút cho dễ nhìn trước mặt
-    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    const right = this.right(_right);
     const shoulder = this.mode === 'third' ? 0.45 : 0;
     let d = dist;
     // camera không xuyên tường/đất: rút ngắn khoảng cách khi bị chặn
     {
       for (let k = 0.6; k <= dist; k += 0.3) {
-        const p = head.clone().addScaledVector(back, k).addScaledVector(right, shoulder);
+        const p = _p.copy(head).addScaledVector(back, k).addScaledVector(right, shoulder);
         if (p.y < this.terrain.heightAt(p.x, p.z) + 0.3 || this.colliders.blocked(head.x, head.z, p.x, p.z, p.y)) { d = Math.max(0.6, k - 0.3); break; }
       }
     }
-    const desired = head.clone().addScaledVector(back, d).addScaledVector(right, shoulder);
+    const desired = _desired.copy(head).addScaledVector(back, d).addScaledVector(right, shoulder);
     desired.y = Math.max(desired.y, this.terrain.heightAt(desired.x, desired.z) + 0.4);
     this.pos.lerp(desired, 1 - Math.exp(-dt * 20));
     this.camera.position.copy(this.pos);
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt * 3);
       const s = this.shake * this.shake * 0.25;
-      this.camera.position.add(new THREE.Vector3((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s));
+      this.camera.position.add(_shake.set((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, (Math.random() - 0.5) * s));
     }
-    this.camera.lookAt(head.clone().addScaledVector(right, shoulder));
+    this.camera.lookAt(_look.copy(head).addScaledVector(right, shoulder));
   }
 
   /** Hướng "phía trước" trên mặt đất theo camera. */
-  forward() { return new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)); }
-  right() { return new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw)); }
+  forward(out = new THREE.Vector3()) { return out.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)); }
+  right(out = new THREE.Vector3()) { return out.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw)); }
 }

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { WATER_LEVEL } from '../world/layout.js';
 
 const GRAVITY = 26;
+const _next = new THREE.Vector3(); // vị trí tạm trong physics() (tránh cấp phát mỗi khung hình)
 
 /** Thân vật lý chung cho người chơi, địch, NPC: đứng trên đất/sàn, va chạm, xoay mặt. */
 export class Actor {
@@ -48,7 +49,7 @@ export class Actor {
   /** Tích phân vị trí + trọng lực + va chạm. */
   physics(dt) {
     this.vel.y -= GRAVITY * this.gravityScale * dt;
-    const next = this.pos.clone().addScaledVector(this.vel, dt);
+    const next = _next.copy(this.pos).addScaledVector(this.vel, dt);
     this.game.colliders.resolve(next, this.radius, next.y + 0.3);
     // giới hạn bản đồ
     const r = Math.hypot(next.x, next.z);
