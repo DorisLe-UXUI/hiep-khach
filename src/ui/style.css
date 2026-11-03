@@ -1331,3 +1331,21 @@ img.ico.img3d { object-fit: contain; vertical-align: middle; filter: drop-shadow
 @keyframes ubIn { 0% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); filter: blur(10px); } 14% { opacity: 1; transform: translate(-50%, -50%) scale(.95); filter: blur(0); } 22% { transform: translate(-50%, -50%) scale(1.03); } 30% { transform: translate(-50%, -50%) scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.08); } }
 @keyframes ubShine { from { background-position: 100% 0; } to { background-position: -150% 0; } }
 @keyframes ubSlash { 0% { transform: translate(-50%, -50%) scaleX(0); opacity: .9; } 100% { transform: translate(-50%, -50%) scaleX(1); opacity: 0; } }
+
+/* tâm giao linh thú */
+.bond { margin: 10px 0; padding: 10px 12px; border: 1px solid rgba(255,138,176,.35); border-radius: 6px; background: linear-gradient(180deg, rgba(255,138,176,.1), rgba(255,216,106,.05)); }
+.bond-head { display: flex; align-items: center; gap: 8px; } .bond-head .han { font-size: 26px; color: #ffd86a; } .bond-head b { font-size: 16px; color: #fff3d6; }
+.bond-tier { margin-left: auto; font-size: 13px; color: #ff9ac0; } .bond-tier .han { font-size: 16px; }
+.bond-bar { margin: 6px 0; } .bond-bar small { font-size: 11.5px; color: var(--ink-dim); }
+.bond-stages { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 6px 0; font-size: 12px; }
+.bond-stages span { padding: 2px 7px; border-radius: 10px; background: rgba(255,255,255,.06); color: var(--ink-faint); } .bond-stages span.on { background: rgba(255,216,106,.2); color: #ffd86a; }
+.bond-stages i { font-style: normal; margin-right: 3px; } .bond-stages em { color: var(--ink-faint); font-style: normal; }
+.bond-unl { margin: 3px 0; font-size: 12px; color: #9fe8c8; } .bond-unl .ico { width: 13px; height: 13px; }
+.bond-mem summary { cursor: pointer; font-size: 13px; color: #ffd86a; } .bond-mem p { margin: 6px 0; font-size: 12.5px; line-height: 1.5; color: #f0e2c8; font-style: italic; }
+.bond-evo { animation: bondPulse 1.2s ease-in-out infinite; } @keyframes bondPulse { 50% { box-shadow: 0 0 16px #ffd86a; } }
+
+/* thần binh: hào quang theo hệ khí */
+.gcell.divine { box-shadow: inset 0 0 0 1px var(--ec), 0 0 12px var(--ec); }
+.gcell.divine .thumb-img { filter: hue-rotate(var(--eh)) saturate(1.6) drop-shadow(0 0 6px var(--ec)); animation: divGlow 2s ease-in-out infinite; }
+.gcell .gel { position: absolute; left: 2px; top: 2px; padding: 0 4px; font: 700 10px/14px var(--serif); color: #160c04; background: var(--ec); border-radius: 3px; }
+@keyframes divGlow { 50% { filter: hue-rotate(var(--eh)) saturate(2) brightness(1.25) drop-shadow(0 0 10px var(--ec)); } }

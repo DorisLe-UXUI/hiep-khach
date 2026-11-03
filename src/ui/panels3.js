@@ -8,6 +8,8 @@ import { icon, itemIcon } from './icons.js';
 import { SLOTS, RARITY, STAT_NAME, fmtStat, gearScore, GEM_ITEMS, GEM_TYPES, GEM_MAX, socketsOf, parseGem, gemValue, gemId } from '../game/gear.js';
 import { TITLES, TITLE_BADGE } from '../game/titles.js';
 import { BEASTS, SKILL_TEXT, MAX_LV, expNeedBeast, WILD } from '../game/beasts.js';
+import { BOND_TIERS, STAGES, MAX_BOND } from '../game/bond.js';
+import { ELEMENT_BY_ID } from '../game/loot.js';
 import { ZONES } from '../game/bestiary.js';
 import { MERIDIANS, pointValue, pointCost, pointRate } from '../game/meridian.js';
 
@@ -22,7 +24,8 @@ const statLines = (it, cmp) => Object.entries(it.stats).map(([k, v]) => {
 const EQ3D = { weapon: 'sk_atk', helm: 'eq_helm', armor: 'eq_armor', belt: 'eq_belt', boots: 'eq_boots', ring: 'eq_ring', trinket: 'eq_trinket' };
 const gcell = (it, extra = '') => {
   const R = RARITY[it.rarity];
-  return `<button class="gcell r${it.rarity}" style="--rc:${R.color}" data-uid="${it.uid}" ${extra}><img class="thumb-img" src="${it.thumb ? `/assets/thumbs/${it.thumb}.png` : `/assets/ui/${EQ3D[it.slot]}.png`}" alt="" draggable="false" /><span class="gh">${it.han}</span>${it.enh ? `<span class="ge">+${it.enh}</span>` : ''}<span class="gl">${it.lv}</span></button>`;
+  const E = it.elem && ELEMENT_BY_ID[it.elem];
+  return `<button class="gcell r${it.rarity} ${E ? 'divine' : ''}" style="--rc:${R.color};${E ? `--ec:#${E.color.toString(16).padStart(6, '0')};--eh:${E.hue}deg` : ''}" data-uid="${it.uid}" ${extra}><img class="thumb-img" src="${it.thumb ? `/assets/thumbs/${it.thumb}.png` : `/assets/ui/${EQ3D[it.slot]}.png`}" alt="" draggable="false" />${E ? `<span class="gel">${E.el}</span>` : ''}<span class="gh">${it.han}</span>${it.enh ? `<span class="ge">+${it.enh}</span>` : ''}<span class="gl">${it.lv}</span></button>`;
 };
 
 Object.assign(UI.prototype, {
@@ -162,10 +165,26 @@ Object.assign(UI.prototype, {
       ? `<div class="bst-stats"><span>Tốc độ</span>${bar(d.mount.speed * (1 + (o?.lv || 1) * 0.02), 2.6)}<b>×${(bs.lv(sel) ? (d.mount.speed / 1.6) * (1 + bs.lv(sel) * 0.02) : d.mount.speed / 1.6).toFixed(2)}</b>
           ${d.mount.def ? `<span>Hộ thể</span>${bar(d.mount.def, 0.1)}<b>-${d.mount.def * 100}%</b>` : ''}</div><p class="muted sm">Cưỡi càng xa càng lên cấp (mỗi cấp +2% tốc độ). Cho ăn <b>Thảo liệu</b> để lên nhanh.</p>`
       : `<div class="bst-stats"><span>Công</span>${bar(d.pet.atk, 2)}<b>${o ? g.companions.petAtk.call({ g, petId: sel }) : '—'}</b></div><p class="bst-skill">${icon('sparkles')} ${SKILL_TEXT[d.pet.skill]}</p><p class="muted sm">Linh thú cùng chủ đánh địch, lên cấp khi chủ diệt quái. Cho ăn <b>Linh thú đan</b> để lên nhanh.</p>`;
+    // tâm giao: thân mật, tiến hoá, ký ức (chỉ linh thú)
+    let bondHtml = '';
+    if (tab === 'pet' && o) {
+      const bd = g.bond, rec = bd.rec(sel), ti = bd.tier(sel), stg = bd.stage(sel), nx = STAGES[stg + 1], nt = BOND_TIERS[ti + 1];
+      const mems = bd.memories(sel);
+      bondHtml = `<div class="bond">
+        <div class="bond-head"><span class="han">${STAGES[stg].han}</span><b>${STAGES[stg].name}</b><span class="bond-tier"><span class="han">${BOND_TIERS[ti].han}</span> ${BOND_TIERS[ti].name}</span></div>
+        <div class="bond-bar">${bar(rec.bond, nt ? nt.at : MAX_BOND, 'linear-gradient(90deg,#ff8ab0,#ffd86a)')}<small>Thân mật ${rec.bond}${nt ? ` / ${nt.at} → ${nt.name}` : ' · tối đa'}</small></div>
+        <div class="bond-stages">${STAGES.map((st, i) => `<span class="${i <= stg ? 'on' : ''}" title="${st.unlock || ''}"><i class="han">${st.han}</i>${st.name}</span>`).join('<em>›</em>')}</div>
+        ${nx ? `<p class="sm">Tiến hoá <b>${nx.name}</b>: cấp ${o.lv}/${nx.lv} · thân mật ${rec.bond}/${nx.bond}<br><span class="muted">Mở: ${nx.unlock}</span></p>` : '<p class="sm">Đã là <b>Thần thú</b>. Mọi hiệu quả ×1.5.</p>'}
+        ${STAGES.slice(1, stg + 1).map((st) => `<p class="bond-unl">${icon('check')} ${st.unlock}</p>`).join('')}
+        <p class="muted sm">Thân mật tăng khi cùng diệt quái, cho ăn, vuốt ve (5 phút một lần) và đi cùng nhau.</p>
+        ${mems.length ? `<details class="bond-mem"><summary>${icon('book')} Ký ức (${mems.length}/4)</summary>${mems.map((m, i) => `<p><b>${BOND_TIERS[i + 1].name}.</b> ${m}</p>`).join('')}</details>` : ''}
+      </div>`;
+    }
     const act = o
       ? `${cur === sel ? `<button class="ghost" disabled>${tab === 'mount' ? 'Đang dùng' : 'Đang theo'}</button>` : `<button class="primary" data-do="use">${tab === 'mount' ? 'Chọn làm thú cưỡi' : 'Cho xuất chiến'}</button>`}
          ${tab === 'mount' && cur === sel ? `<button class="primary" data-do="ride">${g.companions.riding ? 'Xuống' : 'Cưỡi ngay'} <kbd>H</kbd></button>` : ''}
          ${tab === 'pet' && cur === sel ? `<button class="ghost" data-do="rest">${g.sys.s.petOut === false ? 'Gọi ra' : 'Cho nghỉ'}</button>` : ''}
+         ${tab === 'pet' ? `<button class="ghost" data-do="pat">${icon('heart')} Vuốt ve</button>${g.bond.canEvolve(sel) ? `<button class="primary bond-evo" data-do="evolve">${icon('sparkles')} Tiến hoá</button>` : ''}` : ''}
          <button class="ghost" data-do="feed" ${o.lv >= MAX_LV ? 'disabled' : ''}>${itemIcon(tab === 'mount' ? 'fodder' : 'beast_pill', tab === 'mount' ? 'herb' : 'flask')} Cho ăn <small>(có ${r.bag[tab === 'mount' ? 'fodder' : 'beast_pill'] || 0})</small></button>`
       : d.price ? `<button class="primary" data-do="buy" ${r.gold < d.price ? 'disabled' : ''}>${icon('coins')} Mua · ${d.price} lượng</button>`
       : `<p class="bst-wild">${icon('map')} Thú hoang ở <b>${where || 'ngoài hoang dã'}</b>. Đánh còn dưới 35% khí huyết, đến gần bấm <kbd>E</kbd> với <b>Ngự thú phù</b> (có ${r.bag.tame_charm || 0}).</p>`;
@@ -179,6 +198,7 @@ Object.assign(UI.prototype, {
           ${o && o.lv < MAX_LV ? `<div class="bst-exp">${bar(o.exp, expNeedBeast(o.lv), '#8affc0')}<small>${o.exp}/${expNeedBeast(o.lv)}</small></div>` : ''}
           <p class="muted">${d.desc}</p>
           ${info}
+          ${bondHtml}
           <div class="acts">${act}</div>
           <p class="muted sm">${icon('coins')} ${r.gold} lượng · Đã có ${Object.keys(st.owned).length}/${Object.keys(BEASTS).length} thú</p>
         </div>
@@ -193,6 +213,8 @@ Object.assign(UI.prototype, {
       g.audio.chime();
       this.openCompanions(g, tab, sel);
     });
+    on('pat', () => { g.bond.pat(sel); this.openCompanions(g, tab, sel); });
+    on('evolve', () => { if (g.bond.evolve(sel)) { this.closePanel(); } });
     on('ride', () => { this.closePanel(); g.toggleMount(); });
     on('rest', async () => { g.sys.s.petOut = g.sys.s.petOut === false; await g.companions.spawnPet(); this.openCompanions(g, tab, sel); });
     on('feed', () => { const it = bs.feed(sel); if (!it) g.toast('Hết thức ăn — mua ở Tạp hoá', 1.5); else g.fx.burst(g.player.pos.clone().setY(g.player.pos.y + 1), 0x8affc0, 16); this.openCompanions(g, tab, sel); });

@@ -50,9 +50,33 @@ export const NAMED_WEAPONS = [
   { id: 'q_bowevil', name: 'Huyết Sát cung', han: '血煞弓', tier: 7, thumb: 'lt_q_bowevil', obj: 'Bow_Evil' },
 ];
 
+// ───────── 100 thần binh: 10 hệ khí × 10 loại binh khí (bậc 10–19, mạnh hơn mọi binh khí thường) ─────────
+// Màu hệ khí là màu khí của mỗi nhát chém khi cầm.
+export const ELEMENTS = [
+  { id: 'bang', name: 'Băng Phách', han: '冰魄', el: 'Băng', color: 0x8fe8ff, hue: 170 },
+  { id: 'hoa', name: 'Liệt Diễm', han: '烈焰', el: 'Hoả', color: 0xff6a2a, hue: -20 },
+  { id: 'loi', name: 'Lôi Đình', han: '雷霆', el: 'Lôi', color: 0xb08aff, hue: 250 },
+  { id: 'phong', name: 'Truy Phong', han: '追風', el: 'Phong', color: 0x8affc0, hue: 110 },
+  { id: 'kim', name: 'Kim Ô', han: '金烏', el: 'Kim', color: 0xffd24a, hue: 30 },
+  { id: 'moc', name: 'Thanh Mộc', han: '青木', el: 'Mộc', color: 0x6ad86a, hue: 80 },
+  { id: 'thuy', name: 'Bích Ba', han: '碧波', el: 'Thuỷ', color: 0x5ab8ff, hue: 190 },
+  { id: 'huyet', name: 'Thị Huyết', han: '嗜血', el: 'Huyết', color: 0xff3a5a, hue: -40 },
+  { id: 'quang', name: 'Thánh Quang', han: '聖光', el: 'Quang', color: 0xfff0c0, hue: 40 },
+  { id: 'u', name: 'U Minh', han: '幽冥', el: 'U Minh', color: 0x9a5aff, hue: 270 },
+];
+const DIVINE_KINDS = [
+  ['kiếm', '劍', 'q_sword2'], ['đao', '刀', 'q_claymore'], ['thương', '槍', 'q_spear'], ['cung', '弓', 'q_bowgold'], ['trượng', '杖', 'staff_b'],
+  ['chuỷ', '匕', 'dagger_b'], ['phủ', '斧', 'q_axedouble'], ['chuỳ', '錘', 'hammer_b'], ['kích', '戟', 'halberd'], ['trảo', '爪', 'fist_b'],
+];
+ELEMENTS.forEach((e, i) => DIVINE_KINDS.forEach(([kind, kh, base], j) => {
+  const b = NAMED_WEAPONS.find((w) => w.id === base);
+  NAMED_WEAPONS.push({ id: `div_${e.id}_${j}`, name: `${e.name} ${kind}`, han: e.han + kh, tier: 10 + ((i + j) % 10), thumb: b.thumb, elem: e.id, color: e.color, hue: e.hue, divine: true });
+}));
+export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((e) => [e.id, e]));
+
 /** Chọn binh khí có tên hợp cấp: ưu tiên bậc cao nhất được phép, phẩm cấp càng cao càng nhích lên. */
 export function pickNamedWeapon(lv, rarity) {
-  const maxTier = Math.min(9, Math.floor(lv / 3) + (rarity >= 3 ? 1 : 0));
+  const maxTier = Math.min(19, Math.floor(lv / 3) + (rarity >= 3 ? 1 : 0) + (rarity >= 4 ? 2 : 0));
   const pool = NAMED_WEAPONS.filter((w) => w.tier <= maxTier && w.tier >= maxTier - 3);
   return pool[Math.floor(Math.random() * pool.length)] || NAMED_WEAPONS[0];
 }

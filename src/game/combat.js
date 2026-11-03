@@ -68,7 +68,7 @@ export class Combat {
       this.game.camRig.shake = a.knock ? 0.7 : 0.35;
       p.inCombat = 8;
     }
-    this.game.fx.slash(p, a.knock ? 0xfff0c0 : 0xffffff);
+    this.game.fx.slash(p, p.swingColor || (a.knock ? 0xfff0c0 : 0xffffff));
   }
 
   enemyMelee(e, a) {

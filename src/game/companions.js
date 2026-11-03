@@ -114,13 +114,14 @@ export class Companions {
       g.scene.add(this.pet.root);
     }
     if (this.pet) this.pet.root.visible = !!d;
+    g.bond?.applyLook();
     g.rpg.apply();
   }
 
   petAtk() {
     const d = BEASTS[this.petId];
     // mạnh lên theo cấp chủ, cấp linh thú và 40% Công của chủ (để đánh phụ có ý nghĩa)
-    return Math.round((8 + this.g.rpg.level * 2.5 + this.g.beasts.lv(this.petId) * 3 + this.g.rpg.atk() * 0.4) * (d?.pet.atk || 1));
+    return Math.round((8 + this.g.rpg.level * 2.5 + this.g.beasts.lv(this.petId) * 3 + this.g.rpg.atk() * 0.4) * (d?.pet.atk || 1) * (this.g.bond?.mul(this.petId) || 1));
   }
 
   update(dt) {
@@ -171,7 +172,7 @@ export class Companions {
         if (foe.dead) return;
         g.combat.hurtEnemy(this, foe, this.petAtk() * (0.85 + Math.random() * 0.3), { knock: false });
         g.audio.hit();
-        if (foe.dead) g.beasts.gainExp(this.petId, 25); // linh thú lên cấp khi hạ quái
+        if (foe.dead) { g.beasts.gainExp(this.petId, 25); g.bond?.gain(this.petId, 2); } // linh thú lên cấp + thân thiết hơn khi hạ quái
       }, 280);
     } else this.pet.play(speed > 5 ? 'run' : speed ? 'walk' : 'idle');
     // kỹ năng linh thú

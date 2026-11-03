@@ -48,6 +48,7 @@ import { Telegraphs } from './telegraph.js';
 import { Clock } from './clock.js';
 import '../ui/panels3.js';
 import { GuideTrail, stepHint } from './guide.js';
+import { Bond } from './bond.js';
 import { trObjective } from '../story/objectives_i18n.js';
 
 export const LOOKS = {
@@ -202,6 +203,7 @@ export class Game {
     this.auto = new AutoPilot(this);
     this.chatT = 20;
     this.beasts = new Beasts(this);
+    this.bond = new Bond(this);
     // lồng tiếng + phụ đề cho lời dẫn truyện và câu nói nhanh
     this.ui.tr = (t) => trLine(t);
     this.ui.speak = (t, isHero) => this.audio.voice(t ? voiceOf(t, isHero !== false && this.profile.hero?.gender === 'female') : null);
@@ -1321,6 +1323,7 @@ export class Game {
     this.sys.update(dt);
     if (!this.activity) this.spawner.update(dt);
     this.companions.update(dt);
+    this.bond.update(dt);
     this.vfx.update(dt);
     this.updateRings(dt);
     REVEAL.uReveal.value.copy(pp);

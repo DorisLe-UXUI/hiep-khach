@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { Actor } from './actor.js';
 import { PALETTES, ULT_HAN } from '../game/vfx.js';
+import { ELEMENT_BY_ID } from '../game/loot.js';
 
 const SKY = { kiem: 'blade', thuong: 'fire', cung: 'arrow', phap: 'bolt', dao: 'talisman' };
+const _qi = new THREE.Vector3(), _qv = new THREE.Vector3();
 const hex = (c) => '#' + c.toString(16).padStart(6, '0');
 
 const _move = new THREE.Vector3();
@@ -27,7 +29,7 @@ export class Player extends Actor {
     this.iframes = 0;
     this.airJumps = 0;
     this.gliding = false;
-    this.cooldowns = { dash: 0, cast: 0, potion: 0, atk: 0, u1: 0, u2: 0 };
+    this.cooldowns = { dash: 0, cast: 0, potion: 0, atk: 0, u1: 0, u2: 0, qi: 0 };
     this.attackBonus = 0;
     this.storyHp = 0;
     this.storyMp = 0;
@@ -41,14 +43,20 @@ export class Player extends Actor {
 
   setState(s) { this.state = s; this.stateT = 0; this.hitDone = false; }
 
-  get pal() { return PALETTES[this.clsId] || PALETTES.kiem; }
+  /** Bảng màu khí: theo môn phái, cầm thần binh thì hệ khí của binh khí chen vào (nhát chém đổi màu theo). */
+  get pal() {
+    const base = PALETTES[this.clsId] || PALETTES.kiem, el = ELEMENT_BY_ID[this.rpg?.gear?.weapon?.elem];
+    if (!el) return base;
+    if (this._palKey !== el.id + this.clsId) { this._palKey = el.id + this.clsId; this._pal = [el.color, base[0], el.color, base[1]]; }
+    return this._pal;
+  }
 
   /** Sát thương cơ bản theo cấp, trang bị, độ khó, võ học. */
   damage(mul, skill = 'sword') {
     const r = this.rpg;
     const lv = r.skills[skill] || 0;
     const per = { sword: 0.1, dash: 0.15, palm: 0.18 }[skill] || 0.1;
-    const base = r.atk() * this.cls.dmgMul * mul * (1 + lv * per) * this.game.diff.playerDmg * (this.game.fury?.mult() || 1);
+    const base = r.atk() * this.cls.dmgMul * mul * (1 + lv * per) * this.game.diff.playerDmg * (this.game.fury?.mult() || 1) * (this.qiT > 0 ? 1.3 : 1);
     return base * (0.9 + Math.random() * 0.2);
   }
 
@@ -68,7 +76,10 @@ export class Player extends Actor {
     this.char.play(a.anim, { once: true, fade: 0.08, speed: (a.speed ?? 1.2) * (this.cls.speed ?? 1), restart: true, onDone: () => this.endAttack() });
     this.game.audio.swoosh(key === 'C' ? 1.3 : 1);
     this.st = Math.max(0, this.st - 6);
-    const col = { kiem: 0xcfe8ff, thuong: 0xffd27a, dao: 0x9fe8c8 }[this.clsId] || 0xffffff;
+    // mỗi nhát một màu khí (theo bảng màu môn phái)
+    this.swing = (this.swing || 0) + 1;
+    const col = this.swingColor = this.pal[this.swing % this.pal.length];
+    this.qiGlow = 0.6;
     setTimeout(() => this.game.vfx.slash(this, col, { flip: key === 'B', wide: key === 'C' ? 1.45 : 1, reach: this.cls.range * 0.75, tilt: key === 'C' ? 0.6 : 0.25 }), key === 'C' ? 220 : 120);
     // đòn thứ ba: thêm lớp kiếm khí màu môn phái + tiếng ngân
     if (key === 'C') setTimeout(() => { this.game.vfx.slash(this, this.pal[2], { wide: 1.7, reach: this.cls.range * 0.95, tilt: -0.4 }); this.game.audio.skill('slash', 0.5); }, 280);
@@ -112,6 +123,42 @@ export class Player extends Actor {
     const h = new THREE.Vector3();
     (this.char.bones.hand_r || this.char.bones.Head).getWorldPosition(h);
     return h.addScaledVector(this.forward(), 0.35);
+  }
+
+  /** Vận công (phím 3): gồng khí 1 giây, hồi 35% nội lực, 8 giây sát thương +30%, khí toả màu môn phái. */
+  channelQi() {
+    if ((this.cooldowns.qi || 0) > 0) { this.game.toast(`Vận công hồi sau ${Math.ceil(this.cooldowns.qi)} giây`, 1); return; }
+    this.cooldowns.qi = 15;
+    this.setState('cast');
+    this.char.play('Spell_Simple_Enter', { once: true, fade: 0.08, speed: 1.1, restart: true, onDone: () => this.state === 'cast' && this.setState('free') });
+    const v = this.game.vfx;
+    v.aura(this, this.pal, 1.4, 2.4);
+    v.spiral(this.pos.clone(), this.pal, 80, 4, 1.1);
+    this.game.audio.skill('charge', 1.1);
+    setTimeout(() => {
+      this.mp = Math.min(this.maxMp, this.mp + this.maxMp * 0.35);
+      this.qiT = 8;
+      v.rings(this.pos.clone(), this.pal, 4);
+      this.game.audio.skill('boom', 0.5);
+      this.game.toast('<span class="han">運功</span> Vận công: nội lực +35%, sát thương +30% trong 8 giây', 2);
+    }, 900);
+  }
+
+  /** Khí màu quanh người: khi đang giao chiến, vừa chém, hoặc đang vận công. */
+  qiUpdate(dt) {
+    this.qiT = Math.max(0, (this.qiT || 0) - dt);
+    this.qiGlow = Math.max(0, (this.qiGlow || 0) - dt);
+    const fx = this.game.fx;
+    if (!fx || this.dead) return;
+    const strong = this.qiT > 0, rate = strong ? 40 : this.qiGlow > 0 ? 26 : this.inCombat > 0 ? 6 : 0;
+    if (!rate || Math.random() > rate * dt) return;
+    for (let i = 0, n = strong ? 2 : 1; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, r = 0.35 + Math.random() * 0.35;
+      const c = this.qiGlow > 0 && this.swingColor ? this.swingColor : this.pal[Math.random() * this.pal.length | 0];
+      _qi.set(this.pos.x + Math.cos(a) * r, this.pos.y + 0.2 + Math.random() * 1.4, this.pos.z + Math.sin(a) * r);
+      _qv.set(Math.cos(a) * 0.4, 1.6 + Math.random() * 1.6, Math.sin(a) * 0.4);
+      fx.emit(_qi, _qv, c, strong ? 0.16 : 0.12, 0.6 + Math.random() * 0.4, -0.3);
+    }
   }
 
   /** Tuyệt kỹ Q / F theo phái. */
@@ -216,6 +263,7 @@ export class Player extends Actor {
       v.skyRain(this.pos, pal, SKY[this.clsId] || 'blade', 7.5, 18, 1.4);
       v.flashScreen(hex(sk.color), 0.55);
       au.skill('ult');
+      this.game.bond?.onUlt();
       this.game.camRig.shake = 1.1;
       this.game.mhud?.announce(`${this.game.profile.name} thi triển tuyệt kỹ <b>${sk.name}</b>!`);
       if (sk.heal) { this.heal(this.maxHp * 0.35); this.game.status?.add('shield', 8, 0.3); this.game.status?.clearBad(); }
@@ -272,6 +320,7 @@ export class Player extends Actor {
     s.iframes = Math.max(0, s.iframes - dt);
     for (const k in s.cooldowns) s.cooldowns[k] = Math.max(0, s.cooldowns[k] - dt);
     s.inCombat = Math.max(0, s.inCombat - dt);
+    s.qiUpdate(dt);
     if (s.dead) { s.vel.x = s.vel.z = 0; s.physics(dt); s.char.update(dt); return; }
 
     const f = cam.forward(), r = cam.right();
@@ -306,6 +355,7 @@ export class Player extends Actor {
       if (input.pressed('KeyF') && !busy) s.useSkill('f');
       if (input.pressed('Digit1') && !busy) s.useSkill('u1');
       if (input.pressed('Digit2') && !busy) s.useSkill('u2');
+      if (input.pressed('Digit3') && !busy && grounded) s.channelQi();
       if (input.pressed('KeyR') && !busy && s.cooldowns.potion <= 0) {
         if (s.rpg.use('potion')) { s.cooldowns.potion = 6; s.setState('drink'); s.char.play('Consume', { once: true, fade: 0.08, speed: 1.8, restart: true, onDone: () => s.state === 'drink' && s.setState('free') }); }
         else s.game.hud.flashSlot('potion');

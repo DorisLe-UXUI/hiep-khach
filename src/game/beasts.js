@@ -75,14 +75,14 @@ export class Beasts {
     let v = 0;
     const p = this.petDef();
     if (p) {
-      const sk = p.pet.skill, plv = this.lv(this.s.pet);
-      if (key === 'crit' && sk === 'charm') v += 0.06;
-      if (key === 'def' && sk === 'loyal') v += 0.04;
-      if (key === 'def' && sk === 'iron') v += 0.08;
-      if (key === 'hpMul' && sk === 'iron') v += 0.1;
-      if (key === 'atkMul' && sk === 'breath') v += 0.05;
-      if (key === 'gold' && sk === 'fortune') v += 0.2;
-      if (key === 'drop' && sk === 'greed') v += 0.5;
+      const sk = p.pet.skill, plv = this.lv(this.s.pet), k = (this.g.bond?.stage(this.s.pet) || 0) >= 3 ? 1.5 : 1; // Thần uy
+      if (key === 'crit' && sk === 'charm') v += 0.06 * k;
+      if (key === 'def' && sk === 'loyal') v += 0.04 * k;
+      if (key === 'def' && sk === 'iron') v += 0.08 * k;
+      if (key === 'hpMul' && sk === 'iron') v += 0.1 * k;
+      if (key === 'atkMul' && sk === 'breath') v += 0.05 * k;
+      if (key === 'gold' && sk === 'fortune') v += 0.2 * k;
+      if (key === 'drop' && sk === 'greed') v += 0.5 * k;
       if (key === 'magnet' && (sk === 'greed' || sk === 'loyal')) v = 1;
       if (key === 'atk') v += Math.round(plv * 0.6);
     }
@@ -130,6 +130,7 @@ export class Beasts {
     const item = d.pet && (!d.mount || id === this.s.pet) ? 'beast_pill' : 'fodder';
     if (!r.remove(item)) return null;
     this.gainExp(id, item === 'beast_pill' ? 120 : 90);
+    this.g.bond?.gain(id, 15);
     return item;
   }
 
