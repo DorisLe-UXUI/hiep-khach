@@ -1429,3 +1429,54 @@ img.ico.img3d { object-fit: contain; vertical-align: middle; filter: drop-shadow
 .map-head .han { text-shadow: 0 0 12px rgba(255,80,60,.5); }
 .map-side { background: rgba(0,0,0,.18); border-radius: 12px; padding: 8px !important; }
 .ms-item:hover { background: rgba(63,201,168,.12) !important; }
+
+/* ═════════════ ĐĂNG NHẬP & TẠO NHÂN VẬT (tông ngọc – kim) ═════════════ */
+.login-card { border-radius: 18px !important; border: 2px solid var(--gold-2) !important; border-top-width: 2px !important;
+  background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(63,201,168,.18), transparent 70%), linear-gradient(180deg, rgba(15,42,42,.92), rgba(8,22,22,.95)) !important;
+  box-shadow: 0 0 0 4px rgba(10,28,29,.8), 0 0 0 5px rgba(255,231,163,.35), 0 30px 80px rgba(0,0,0,.6), 0 0 40px rgba(63,201,168,.12) !important; }
+.login-card::before, .login-card::after { background: radial-gradient(circle at 40% 35%, #fff2c8, #d9a441) !important; border-radius: 3px; box-shadow: 0 0 10px rgba(255,200,100,.7); }
+.login-card .tabs .tab { border-radius: 10px 10px 0 0; } .login-card .tabs .tab.on { color: #fff2c8 !important; text-shadow: 0 0 10px rgba(255,200,100,.6); }
+.login-card .field { border-radius: 12px !important; background: rgba(0,0,0,.35) !important; border: 1px solid rgba(63,201,168,.35) !important; }
+.login-card .field:focus-within { border-color: var(--gold-1) !important; box-shadow: 0 0 0 3px rgba(217,164,65,.25); }
+.login-alt .alt { border-radius: 999px !important; border: 1px solid rgba(63,201,168,.45) !important; background: rgba(63,201,168,.1) !important; color: #c8f4e8 !important; }
+.login-alt .alt:not(:disabled):hover { background: rgba(63,201,168,.22) !important; }
+#login-guest { background: linear-gradient(180deg, rgba(63,201,168,.35), rgba(20,90,80,.5)) !important; color: #fff !important; border-color: var(--jade-hi) !important; box-shadow: 0 0 14px rgba(63,201,168,.35); }
+.login-logo { animation: logoIn 1s var(--ease), logoFloat 5s ease-in-out 1s infinite; }
+@keyframes logoFloat { 50% { transform: translateY(-6px); filter: drop-shadow(0 14px 30px rgba(0,0,0,.8)) drop-shadow(0 0 18px rgba(255,190,90,.35)); } }
+/* tạo nhân vật */
+.cls { border-radius: 999px 14px 14px 999px !important; transition: transform .15s, box-shadow .2s; }
+.cls:hover { transform: translateX(4px); }
+.cls.on { box-shadow: 0 0 0 2px var(--gold-1), 0 0 22px rgba(217,164,65,.45) !important; background: linear-gradient(90deg, rgba(217,164,65,.35), rgba(15,42,42,.85)) !important; }
+.cr-custom, .cr-info { border-radius: 16px !important; border: 1px solid rgba(255,231,163,.35) !important; background: linear-gradient(180deg, rgba(15,42,42,.88), rgba(8,22,22,.92)) !important; }
+#cr-name { border-radius: 999px !important; border-color: rgba(63,201,168,.5) !important; background: rgba(0,0,0,.45) !important; padding-left: 18px !important; }
+.seg.big { border-radius: 999px; overflow: hidden; }
+
+/* ═════════════ ĐIỆN THOẠI NGANG (màn thấp) ═════════════ */
+@media (max-height: 520px) {
+  /* đăng nhập gọn: logo nhỏ, thẻ thu lại, không bị cắt nút */
+  #login { justify-content: center !important; overflow-y: auto; }
+  .login-logo { width: min(200px, 30vh, 40vw) !important; margin-bottom: -10px !important; }
+  .login-card { padding: 14px 20px 12px !important; width: min(420px, 92vw) !important; }
+  .login-card .field { margin-bottom: 6px !important; } .login-card .field input { padding-top: 8px !important; padding-bottom: 8px !important; }
+  .login-row { margin: 2px 0 !important; } #login-err { min-height: 0 !important; margin: 0 !important; }
+  #login-go { padding: 9px !important; font-size: 15px !important; }
+  .login-alt { margin-top: 8px !important; } .login-alt .alt { padding: 6px 10px !important; font-size: 13px !important; }
+  /* tạo nhân vật: hàng dưới không đè nhau */
+  .cr-bottom { right: 10px !important; bottom: 8px !important; gap: 6px !important; }
+  .seg.big button { padding: 7px 12px !important; font-size: 14px !important; }
+  #cr-name { width: 118px !important; padding: 8px 12px !important; font-size: 14px !important; }
+  .cr-bottom .primary { padding: 8px 16px !important; font-size: 14px !important; }
+  .cr-classes { max-height: calc(100vh - 90px); overflow-y: auto; }
+  /* bản đồ: bỏ chú giải, cột bên hẹp lại, bản đồ to hơn */
+  .map-frame { padding: 8px 10px !important; height: 96vh !important; width: 98vw !important; }
+  .map-head { padding-bottom: 4px !important; } .map-head .han { font-size: 22px !important; } .map-head h2 { font-size: 18px !important; }
+  .map-legend { display: none !important; }
+  .map-body { gap: 8px !important; } .map-side { width: 220px !important; }
+  .ms-item p { display: none; } .ms-obj small { display: none; }
+  .map-tools button { width: 34px !important; height: 34px !important; font-size: 16px !important; }
+}
+@media (max-width: 560px) { .map-side { display: none; } }
+/* nút Nam/Nữ: nền tối rõ chữ, nút chọn vàng kim */
+#cr-gender { background: rgba(8,22,22,.85); border: 1px solid rgba(255,231,163,.45) !important; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+#cr-gender button { color: #d8eee6 !important; font-weight: 600; }
+#cr-gender button.on { background: linear-gradient(180deg, #ffe7a3, #d9a441) !important; color: #4a1e02 !important; }
