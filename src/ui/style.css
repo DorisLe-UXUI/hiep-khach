@@ -1349,3 +1349,13 @@ img.ico.img3d { object-fit: contain; vertical-align: middle; filter: drop-shadow
 .gcell.divine .thumb-img { filter: hue-rotate(var(--eh)) saturate(1.6) drop-shadow(0 0 6px var(--ec)); animation: divGlow 2s ease-in-out infinite; }
 .gcell .gel { position: absolute; left: 2px; top: 2px; padding: 0 4px; font: 700 10px/14px var(--serif); color: #160c04; background: var(--ec); border-radius: 3px; }
 @keyframes divGlow { 50% { filter: hue-rotate(var(--eh)) saturate(2) brightness(1.25) drop-shadow(0 0 10px var(--ec)); } }
+
+/* đạo lộ */
+.adv-row { display: flex; align-items: stretch; gap: 6px; margin: 10px 0; } .adv-row > em { align-self: center; color: var(--ink-faint); font-style: normal; }
+.adv-step { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--edge-soft); border-radius: 6px; background: rgba(255,255,255,.03); opacity: .6; }
+.adv-step.on { opacity: 1; border-color: var(--gold); background: rgba(214,176,98,.12); } .adv-step.next { opacity: 1; border-style: dashed; border-color: var(--cinnabar-hi); }
+.adv-step .han { display: block; font-size: 30px; color: var(--gold-hi); } .adv-step b { display: block; } .adv-step small { color: var(--ink-faint); } .adv-step p { margin: 6px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--ink-dim); }
+.fac-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.fac { padding: 14px; border: 1px solid var(--fc); border-radius: 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--fc) 14%, transparent), transparent); }
+.fac > .han { font-size: 42px; color: var(--fc); text-shadow: 0 0 14px var(--fc); } .fac > b { display: block; font-size: 17px; margin: 4px 0; } .fac p { font-size: 13px; line-height: 1.5; }
+@media (max-width: 700px) { .adv-row { flex-direction: column; } .adv-row > em { display: none; } .fac-pick { grid-template-columns: 1fr; } }

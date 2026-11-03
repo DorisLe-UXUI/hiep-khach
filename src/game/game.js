@@ -49,6 +49,7 @@ import { Clock } from './clock.js';
 import '../ui/panels3.js';
 import { GuideTrail, stepHint } from './guide.js';
 import { Bond } from './bond.js';
+import { Path } from './path.js';
 import { trObjective } from '../story/objectives_i18n.js';
 
 export const LOOKS = {
@@ -70,6 +71,10 @@ export const LOOKS = {
   hanxue: { outfit: 'female_ranger', base: 'female', hair: ['hair_long'], brows: 'eyebrows_female', outfitColor: '#d8e4f0', hairColor: '#e8eef4', hideHood: true },
   honglian: { outfit: 'female_ranger', base: 'female', hair: ['hair_buns'], brows: 'eyebrows_female', outfitColor: '#7a1428', hairColor: '#0c0a0a', hideHood: true },
   huyetma: { outfit: 'male_ranger', base: 'male', hair: ['hair_long'], brows: 'eyebrows_regular', outfitColor: '#2a0006', hairColor: '#ff3030', hideHood: true },
+  // Hồi III
+  situ: { outfit: 'male_ranger', base: 'male', hair: ['hair_long', 'hair_beard'], brows: 'eyebrows_regular', outfitColor: '#e8dcc0', hairColor: '#8a8478', hideHood: true },
+  wumian: { outfit: 'male_ranger', base: 'male', hair: [], brows: 'eyebrows_regular', outfitColor: '#20242c', hairColor: '#0e0b09' },
+  mguard: { outfit: 'male_ranger', base: 'male', hair: ['hair_simpleparted'], brows: 'eyebrows_regular', outfitColor: '#c8b070', hairColor: '#1a1410' },
 };
 
 const ENEMY_TYPES = {
@@ -86,6 +91,12 @@ const ENEMY_TYPES = {
   hanxue: { look: 'hanxue', name: 'Hàn Tuyết', hp: 1500, dmg: 24, exp: 1200, gold: 400, weapon: 'sword', speed: 6.6 },
   honglian: { look: 'honglian', name: 'Hồng Liên', hp: 2000, dmg: 27, exp: 1600, gold: 600, weapon: 'sword', speed: 6.4, caster: true },
   huyetma: { look: 'huyetma', name: 'Huyết Ma · Mộ Dung Huyết', hp: 3400, dmg: 32, exp: 3000, gold: 1200, weapon: 'golden', scale: 1.3, caster: true },
+  // Hồi III
+  duelist: { look: 'bandit2', name: 'Cao thủ luận võ', hp: 900, dmg: 26, exp: 600, gold: 200, weapon: 'sword', speed: 6 },
+  wumian: { look: 'wumian', name: 'Vô Diện', hp: 4200, dmg: 34, exp: 3500, gold: 1500, weapon: 'sword', speed: 6.8 },
+  mguard: { look: 'mguard', name: 'Võ Lâm Minh vệ', hp: 1100, dmg: 28, exp: 700, gold: 240, weapon: 'saber', speed: 5.8 },
+  thief: { look: 'assassin', name: 'Hắc y nhân', hp: 950, dmg: 27, exp: 650, gold: 220, weapon: 'sword', speed: 6.2 },
+  situ: { look: 'situ', name: 'Võ Lâm Minh chủ · Tư Đồ Phong', hp: 6000, dmg: 40, exp: 6000, gold: 3000, weapon: 'golden', scale: 1.15, caster: true, speed: 6.6 },
 };
 
 for (const k in LOOKS) LOOKS[k]._role = k;
@@ -204,6 +215,7 @@ export class Game {
     this.chatT = 20;
     this.beasts = new Beasts(this);
     this.bond = new Bond(this);
+    this.path = new Path(this);
     // lồng tiếng + phụ đề cho lời dẫn truyện và câu nói nhanh
     this.ui.tr = (t) => trLine(t);
     this.ui.speak = (t, isHero) => this.audio.voice(t ? voiceOf(t, isHero !== false && this.profile.hero?.gender === 'female') : null);
@@ -481,7 +493,7 @@ export class Game {
       if (n.home) n.placeAt(n.home[0], n.home[1], n.homeYaw);
     }
     // Uyển Nhi vắng mặt ở trấn khi ở Kiếm Mộ hoặc đang đồng hành Hồi II
-    const away = ['c5', 'c6', 'c7', 'c8'].includes(ch.id);
+    const away = ['c5', 'c6', 'c7', 'c8', 'c10'].includes(ch.id);
     this.npcById.maiden.hidden = away;
     this.npcById.maiden.root.visible = !away;
     this.chestOpened = this.chapterIdx > 2;
@@ -754,6 +766,7 @@ export class Game {
 
   // ─────────────────── chiến đấu, phần thưởng ───────────────────
   onEnemyKilled(e) {
+    this.path?.onKill(e);
     if (e.group) this.kills[e.group] = (this.kills[e.group] || 0) + 1;
     this.side?.onKill(e);
     if (e.group === 'doba') this.dobaSpot = { x: e.pos.x, z: e.pos.z };
@@ -1247,6 +1260,7 @@ export class Game {
       const open = (fn) => { this.input.unlock(); fn(); };
       if (input.pressed('KeyJ') || input.pressed('Tab')) open(() => this.ui.openQuests(this));
       if (input.pressed('KeyO')) open(() => this.ui.openWelfare(this));
+      if (input.pressed('KeyU')) open(() => this.ui.openPath(this));
       if (input.pressed('KeyN')) open(() => this.ui.openEvents(this));
       if (input.pressed('KeyP')) open(() => this.ui.openRanking(this));
       if (input.pressed('KeyG')) open(() => this.ui.openGuild(this));
@@ -1324,6 +1338,7 @@ export class Game {
     if (!this.activity) this.spawner.update(dt);
     this.companions.update(dt);
     this.bond.update(dt);
+    this.path.update(dt);
     this.vfx.update(dt);
     this.updateRings(dt);
     REVEAL.uReveal.value.copy(pp);
@@ -1355,7 +1370,7 @@ export class Game {
     if (a) this.hud.objective(`<span class="han">${a.han}</span>${a.title}`, a.waves.length > 1 ? `Đợt ${a.wave + 1}/${a.waves.length} · còn ${a.left} địch` : `Đánh bại đối thủ`);
     else this.hud.objective(`<span class="han">${ch.han}</span>${ch.title} · ${ch.subtitle}`, st ? this.ui.nh(trObjective(st.objective(this))) : '');
     const htEl = (this._heroTitleEl ||= document.getElementById('hero-title'));
-    const ht = `${this.player.cls.name} · Cấp ${this.rpg.level}`;
+    const ht = `${this.path.advName()[0]}${this.path.s.faction ? ' · ' + this.path.rankName() : ''} · Cấp ${this.rpg.level}`;
     // so với chuỗi đã ghi (không so DOM): bản tiếng Anh/Trung dịch lại nội dung nên DOM luôn khác
     if (ht !== this._heroTitle) { htEl.textContent = ht; this._heroTitle = ht; }
     this.hud.hint(a ? '' : stepHint(this));

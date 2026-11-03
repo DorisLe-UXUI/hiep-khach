@@ -10,6 +10,7 @@ import { TITLES, TITLE_BADGE } from '../game/titles.js';
 import { BEASTS, SKILL_TEXT, MAX_LV, expNeedBeast, WILD } from '../game/beasts.js';
 import { BOND_TIERS, STAGES, MAX_BOND } from '../game/bond.js';
 import { ELEMENT_BY_ID } from '../game/loot.js';
+import { ADV, ADV_LV, ADV_TEXT, FACTIONS, MERIT } from '../game/path.js';
 import { ZONES } from '../game/bestiary.js';
 import { MERIDIANS, pointValue, pointCost, pointRate } from '../game/meridian.js';
 
@@ -149,6 +150,39 @@ Object.assign(UI.prototype, {
         </div>`; }).join('')}</div>`);
     this.bindGearTabs(g, body);
     body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { r.title = b.dataset.t; r.apply(); g.audio.chime(); this.openTitles(g); }));
+    this.relock(g);
+  },
+
+  // ───────────── ĐẠO LỘ: CHUYỂN CHỨC & CHÍNH TÀ ─────────────
+  openPath(g, tab = 'adv') {
+    const pa = g.path, s = pa.s, lv = g.rpg.level, cls = pa.cls, a = pa.adv();
+    const bar = (v, max, c) => `<div class="statbar"><div style="width:${Math.min(100, (v / max) * 100)}%;${c ? 'background:' + c : ''}"></div></div>`;
+    let html = `<div class="ctabs" style="--cols:2"><button data-tab="adv" class="${tab === 'adv' ? 'on' : ''}">${icon('crown')}Chuyển chức</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">${icon('scales')}Chính · Tà</button></div>`;
+    if (tab === 'adv') {
+      html += `<p class="muted">Đủ cấp thì nhận thử thách: đánh bại người thủ thí để thăng chức. Mỗi bậc mạnh hơn và chiêu thức đẹp hơn.</p><div class="adv-row">${(ADV[cls] || ADV.kiem).map(([n, h], i) => `
+        <div class="adv-step ${i <= a ? 'on' : ''} ${i === a + 1 ? 'next' : ''}"><span class="han">${h}</span><b>${n}</b><small>Cấp ${ADV_LV[i]}</small>${i ? `<p>${ADV_TEXT[i]}</p>` : '<p>Khởi đầu</p>'}</div>`).join('<em>›</em>')}</div>`;
+      if (a < 3) html += `<div class="acts">${pa.canAdvance() ? `<button class="primary" data-do="trial">${icon('swords')} Nhận thử thách · ${pa.advName(a + 1)[0]}</button>` : `<button class="ghost" disabled>Cần cấp ${ADV_LV[a + 1]} (đang ${lv})</button>`}</div>`;
+      else html += '<p class="sm">Đã đạt bậc cao nhất.</p>';
+    } else {
+      const F = FACTIONS[s.faction];
+      if (!F) {
+        html += `<p class="muted">Từ cấp 20 có thể gia nhập một phe. Đổi phe về sau sẽ mất một nửa công trạng.</p><div class="fac-pick">${Object.entries(FACTIONS).map(([id, f]) => `
+          <div class="fac" style="--fc:${f.color}"><span class="han">${f.han}</span><b>${f.name}</b><p>${f.desc}</p><p class="sm muted">Phẩm hàm: ${f.ranks.join(' › ')}</p>
+          <button class="primary" data-join="${id}" ${lv < 20 ? 'disabled' : ''}>${lv < 20 ? `Cần cấp 20` : `Gia nhập ${f.name}`}</button></div>`).join('')}</div>`;
+      } else {
+        const r = pa.rank(), nx = MERIT[r + 1], d = s.daily.d === new Date().toDateString() ? s.daily.n : 0;
+        html += `<div class="fac on" style="--fc:${F.color}"><span class="han">${F.han}</span><b>${F.name} · ${F.ranks[r]}</b>
+          <div>${bar(s.merit, nx || s.merit, F.color)}<small>Công trạng ${s.merit}${nx ? ` / ${nx} → ${F.ranks[r + 1]}` : ' · tối đa'}</small></div>
+          <p>${F.desc}</p><p class="sm">Đang được: ${s.faction === 'chinh' ? `Khí huyết +${(r + 1) * 4}%, Giảm sát thương +${(r + 1) * 2}%` : `Bạo kích +${(r + 1) * 2}%, hút máu ${(r + 1)}%`}</p>
+          <p class="sm">${icon('skull')} <b>${F.patrol}</b> xuất hiện ở các khu săn quái. Mỗi tên +15 công trạng. Nhiệm vụ ngày: diệt 10 tên (${Math.min(10, d)}/10) thưởng +100.</p>
+          <button class="ghost" data-do="leave">Rời ${F.name} (mất nửa công trạng)</button></div>`;
+      }
+    }
+    const body = this.openPanel('Đạo lộ', html);
+    body.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => this.openPath(g, b.dataset.tab)));
+    body.querySelector('[data-do="trial"]')?.addEventListener('click', async () => { this.closePanel(); await pa.startTrial(); });
+    body.querySelectorAll('[data-join]').forEach((b) => (b.onclick = () => { pa.join(b.dataset.join); this.openPath(g, 'fac'); }));
+    body.querySelector('[data-do="leave"]')?.addEventListener('click', () => { pa.leave(); this.openPath(g, 'fac'); });
     this.relock(g);
   },
 

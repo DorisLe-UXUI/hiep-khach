@@ -150,7 +150,7 @@ export class Player extends Actor {
     this.qiGlow = Math.max(0, (this.qiGlow || 0) - dt);
     const fx = this.game.fx;
     if (!fx || this.dead) return;
-    const strong = this.qiT > 0, rate = strong ? 40 : this.qiGlow > 0 ? 26 : this.inCombat > 0 ? 6 : 0;
+    const strong = this.qiT > 0, rate = strong ? 40 : this.qiGlow > 0 ? 26 : this.inCombat > 0 ? 6 : (this.game.path?.adv() || 0) >= 3 ? 3 : 0;
     if (!rate || Math.random() > rate * dt) return;
     for (let i = 0, n = strong ? 2 : 1; i < n; i++) {
       const a = Math.random() * Math.PI * 2, r = 0.35 + Math.random() * 0.35;
@@ -222,7 +222,7 @@ export class Player extends Actor {
     const sk = this.pendingSkill;
     if (!sk) return;
     const c = this.game.combat;
-    const v = this.game.vfx, au = this.game.audio, pal = this.pal;
+    const v = this.game.vfx, au = this.game.audio, pal = this.pal, adv = this.game.path?.adv() || 0, um = this.game.path?.ultMul() || 1;
     if (sk.kind === 'orb') { c.fireOrb(this, this.handPos(), this.aimDir(), { dmg: this.damage(1.8, 'palm'), palette: pal }); au.skill(this.clsId === 'dao' ? 'zap' : 'slash', 0.7); }
     if (sk.kind === 'bigorb') { c.fireOrb(this, this.handPos(), this.aimDir(), { dmg: this.damage(3, 'palm'), size: 2, color: 0x9fe8ff, palette: [0x9fe8ff, 0xffffff, 0x6a9bff, 0xd8f4ff] }); au.skill('ice'); }
     if (sk.kind === 'volley') { c.fireArrows(this, this.handPos(), this.aimDir(), 5, this.damage(1.1), pal); au.skill('arrow'); }
@@ -244,10 +244,11 @@ export class Player extends Actor {
     if (sk.kind === 'heal') { this.heal(this.maxHp * 0.3); this.game.status?.add('regen', 6, 0.02); }
     if (sk.kind === 'wave') {
       const dir = this.aimDir();
-      for (let k = -1; k <= 1; k++) {
-        const d = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.22);
-        c.fireOrb(this, this.handPos(), d, { dmg: this.damage(1.6, 'palm'), size: 0.9, color: sk.color, speed: 30, palette: pal });
-        if (this.clsId === 'kiem' || this.clsId === 'thuong') v.crescent(this, d, pal, { dist: 14, size: 2, delay: (k + 1) * 50 });
+      const spread = adv >= 2 ? 2 : 1; // chuyển chức bậc 2: thêm 2 luồng
+      for (let k = -spread; k <= spread; k++) {
+        const d = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.2);
+        c.fireOrb(this, this.handPos(), d, { dmg: this.damage(1.6, 'palm') * um, size: 0.9, color: sk.color, speed: 30, palette: pal });
+        if (this.clsId === 'kiem' || this.clsId === 'thuong') v.crescent(this, d, pal, { dist: 14, size: 2, delay: (k + spread) * 50 });
       }
       if (this.clsId === 'phap') for (const e of c.enemies()) if (e.pos.distanceTo(this.pos) < 14) v.lightning(this.handPos(), e.pos.clone().setY(e.pos.y + 1), pal[Math.random() * 4 | 0], 0.25, 0.2);
       v.impact(this.handPos(), pal, 1.4);
@@ -255,12 +256,12 @@ export class Player extends Actor {
     }
     if (sk.kind === 'volley7') { c.fireArrows(this, this.handPos(), this.aimDir(), 7, this.damage(1.2), pal); v.impact(this.handPos(), pal, 1.4); au.skill('arrow', 1.2); }
     if (sk.kind === 'ult') {
-      c.nova(this, 7.5, this.damage(4.2, 'palm'), sk.color);
+      c.nova(this, 7.5 * (adv >= 3 ? 1.3 : 1), this.damage(4.2, 'palm') * um, sk.color);
       this.game.vfx.shockwave(this.pos.clone(), sk.color, 9);
       this.game.vfx.pillar(this.pos.clone(), sk.color, 8);
       v.rings(this.pos.clone(), pal, 10);
       v.spiral(this.pos.clone(), pal, 120, 6, 2.5);
-      v.skyRain(this.pos, pal, SKY[this.clsId] || 'blade', 7.5, 18, 1.4);
+      v.skyRain(this.pos, pal, SKY[this.clsId] || 'blade', 7.5 * (adv >= 3 ? 1.3 : 1), adv >= 3 ? 36 : 18, 1.4);
       v.flashScreen(hex(sk.color), 0.55);
       au.skill('ult');
       this.game.bond?.onUlt();

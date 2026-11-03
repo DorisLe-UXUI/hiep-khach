@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { WATER_LEVEL } from '../world/layout.js';
 import { LANG, SPEAKER_NAMES } from '../i18n.js';
 
-const ZH_NAMES = { guard: '王老伯', keeper: '劉掌櫃', maiden: '林婉兒', doba: '屠霸', hanbang: '寒冰', villain: '慕容血', tieuho: '小虎', hanxue: '寒雪', honglian: '紅蓮', huyetma: '血魔', villager: '村民', captive: '被囚者' };
+const ZH_NAMES = { guard: '王老伯', keeper: '劉掌櫃', maiden: '林婉兒', doba: '屠霸', hanbang: '寒冰', villain: '慕容血', tieuho: '小虎', hanxue: '寒雪', honglian: '紅蓮', huyetma: '血魔', situ: '司徒鋒', wumian: '無面', villager: '村民', captive: '被囚者' };
 
 const N = 8, GAP = 2.6, START = 2.2;
 

@@ -29,10 +29,14 @@ export const SPEAKERS = {
   hanxue: { name: 'Hàn Tuyết', han: '寒雪', look: 'hanxue' },
   honglian: { name: 'Hồng Liên', han: '紅蓮', look: 'honglian' },
   huyetma: { name: 'Huyết Ma', han: '血魔', look: 'huyetma' },
+  situ: { name: 'Tư Đồ Phong', han: '司徒鋒', look: 'situ' },
+  wumian: { name: 'Vô Diện', han: '無面', look: 'wumian' },
 };
 
 // vùng đất Hồi II (trùng khu săn quái trong bestiary.js)
 const ICE = { x: -40, z: -245 }, VALLEY = { x: 150, z: -120 }, FIRE = { x: 215, z: -215 };
+const ARENA = { x: 132, z: 150 }; // Hồi III: Võ Lâm Đại Hội ở chiến trường đông nam
+const facName = (g) => ({ chinh: 'Chính phái', ta: 'Tà phái' })[g.path?.s.faction] || null;
 const off = (c, dx, dz) => ({ x: c.x + dx, z: c.z + dz });
 const ACT2_FLAGS = ['sparedHanxue', 'killedHanxue', 'hanxueAlly', 'savedChild', 'chasedHonglian', 'sparedHonglian', 'jailedHonglian', 'absorbed', 'destroyedOrb', 'tookOrb', 'restoredAll', 'villagersSaved', 'altarDone0', 'altarDone1', 'altarDone2'];
 
@@ -831,13 +835,262 @@ export const CHAPTERS = [
           g.save();
         },
         talk: {
-          maiden: (g) => [g.flags.tookOrb ? ['maiden', '...Trà nguội rồi, công tử.'] : ['maiden', 'Trà vừa pha xong. Lần này, chúng ta thật sự được nghỉ ngơi rồi.']],
+          maiden: (g) => [
+            g.flags.tookOrb ? ['maiden', '...Trà nguội rồi, công tử.'] : ['maiden', 'Trà vừa pha xong. Lần này, chúng ta thật sự được nghỉ ngơi rồi.'],
+            ['maiden', '(đưa ra một tấm thiệp vàng) Sáng nay có người của Võ Lâm Minh mang tới. Minh chủ Tư Đồ Phong mời công tử dự Võ Lâm Đại Hội.'],
+            { choice: [
+              { text: 'Lên đường dự Võ Lâm Đại Hội (bắt đầu Hồi III)', then: (g) => { g.finishChapter(); } },
+              { text: 'Để sau. Hôm nay chỉ uống trà.', then: () => [['maiden', 'Vâng. Khi nào công tử muốn đi, cứ nói với tiểu nữ.']] },
+            ] },
+          ],
           keeper: () => [['keeper', 'Đại hiệp về rồi! Tiểu Hổ, mang rượu Nữ Nhi Hồng ra đây!']],
         },
       },
     ],
   },
 
+
+  // ═════════════════════════════ HỒI III · VÕ LÂM MINH ═════════════════════════════
+  {
+    id: 'c9',
+    han: '第九章',
+    hanSub: '武林大會',
+    title: 'Chương Cửu',
+    subtitle: 'Võ Lâm Đại Hội',
+    time: 'noon',
+    bg: 'town',
+    spawn: { x: P.square.x + 20, z: P.square.z + 30, yaw: Math.PI * 0.75 },
+    narration: (g) => [
+      'Ba tháng sau trận Hỏa Diệm Sơn. Giang hồ yên ắng như mặt hồ trước cơn bão.',
+      'Võ Lâm Minh mở Đại Hội ở cánh đồng đông nam trấn Thanh Phong. Minh chủ Tư Đồ Phong muốn chọn "Thiên hạ đệ nhất", và lập danh sách truy nã tàn dư Huyết Ảnh Môn.',
+      g.flags.hanxueAlly || g.flags.sparedHonglian ? 'Trong danh sách ấy, có cả những cái tên Tiêu Vân từng tha mạng.' : 'Không ai hỏi danh sách ấy do ai viết.',
+    ],
+    steps: [
+      {
+        objective: () => 'Tới Võ Lâm Đại Hội ở đông nam trấn',
+        marker: () => ARENA,
+        done: (g) => near(g, ARENA.x, ARENA.z, 20),
+      },
+      {
+        objective: () => 'Ra mắt Minh chủ Tư Đồ Phong',
+        marker: () => ARENA,
+        enter: (g) => g.dialog([
+          ['situ', '(Một lão nhân tóc bạc, áo trắng thêu kim tuyến, bước xuống đài cao) Thanh Phong Hiệp! Lão phu đợi ngươi đã lâu.'],
+          ['situ', 'Ngươi diệt Huyết Ma, cứu cả giang hồ. Hôm nay, lão phu muốn tận mắt thấy kiếm pháp của truyền nhân Lý Mộ Bạch.'],
+          ['hero', 'Minh chủ quen sư phụ tại hạ?'],
+          ['situ', '(cười) Ba mươi năm trước, lão phu và Mộ Bạch huynh từng uống chung một vò rượu. Đáng tiếc, người tốt thường chết sớm.'],
+          facName(g)
+            ? ['situ', `Ngươi đã vào ${facName(g)}. ${g.path.s.faction === 'chinh' ? 'Tốt. Võ Lâm Minh cần những người như ngươi.' : 'Hừ. Tà phái cũng được, miễn là kiếm của ngươi đủ nhanh.'}`]
+            : ['situ', 'Ngươi chưa thuộc phe nào. Trên đài luận võ, chỉ có kiếm nói chuyện.'],
+          { run: (g) => { if (!g.path?.s.faction && g.rpg.level >= 20) g.toast('Có thể gia nhập <b>Chính / Tà phái</b> ở bảng <b>Đạo lộ</b> (U)', 4); } },
+          ['situ', 'Luận võ bắt đầu! Ba cao thủ các phái, rồi tới trận chung kết.'],
+          { run: (g) => g.next() },
+        ]),
+      },
+      {
+        objective: (g) => `Luận võ: đánh bại các cao thủ (${g.killCount('duel')}/3)`,
+        marker: (g) => g.nearestOf('duel') || ARENA,
+        enter: (g) => {
+          [['Không Động · Thiết Chưởng', 'axe', 8, 6], ['Nga Mi · Diệu Thanh', 'sword', -8, 6], ['Cái Bang · Túy Côn', 'staff', 0, -9]].forEach(([name, weapon, dx, dz]) =>
+            g.spawn('duelist', ARENA.x + dx, ARENA.z + dz, { group: 'duel', name, weapon, aggro: 40 }));
+          g.tip('Đánh bại cả ba cao thủ · Vận công (phím 3) để tăng sát thương', 6);
+        },
+        done: (g) => killed(g, 'duel', 3),
+      },
+      {
+        objective: () => 'Chung kết: đánh bại Vô Diện',
+        marker: (g) => g.nearestOf('wumian') || ARENA,
+        enter: (g) => g.dialog([
+          ['wumian', '(Một kẻ đeo mặt nạ trắng trơn, không mắt không miệng, nhảy lên đài.)'],
+          ['wumian', 'Thanh Phong Hiệp. Để ta xem, kiếm của ngươi có xứng với tên không.'],
+          { run: (g) => g.spawn('wumian', ARENA.x, ARENA.z - 6, { group: 'wumian', boss: true, name: 'Vô Diện', aggro: 80 }) },
+        ]),
+        done: (g) => killed(g, 'wumian', 1),
+      },
+      {
+        objective: () => 'Nói chuyện với Minh chủ',
+        marker: () => ARENA,
+        enter: (g) => g.dialog([
+          ['hero', '(Mặt nạ vỡ làm đôi. Bên dưới là một gương mặt lạ, đã tắt thở. Trong tay hắn, chiêu cuối cùng hắn ra...)'],
+          ['hero', '...Thanh Phong Phất Liễu. Đó là kiếm pháp của sư môn. Ngoài sư phụ và ta, không ai biết!'],
+          ['situ', '(sắc mặt khẽ đổi, rồi cười lớn) Thiên hạ đệ nhất đã có! Còn kẻ này... chắc là tàn dư Huyết Ảnh trộm học được. Để Võ Lâm Minh điều tra.'],
+          ['hero', '(Kiếm phổ Thanh Phong được chôn ở Kiếm Mộ. Nếu có kẻ học được... thì Kiếm Mộ đã bị đào.)'],
+          { run: (g) => { g.rpg.gainExp(800); g.toast('Danh hiệu giang hồ: <b>Thiên hạ đệ nhất</b> · Kinh nghiệm +800', 4); g.finishChapter(); } },
+        ]),
+      },
+    ],
+  },
+
+  {
+    id: 'c10',
+    han: '第十章',
+    hanSub: '劍譜失竊',
+    title: 'Chương Thập',
+    subtitle: 'Kiếm phổ thất lạc',
+    time: 'dawn2',
+    bg: 'bamboo',
+    spawn: { x: P.tomb.x + 20, z: P.tomb.z + 50, yaw: Math.PI },
+    narration: (g) => [
+      'Đêm đó, Tiêu Vân và Lâm Uyển Nhi lên Kiếm Mộ.',
+      'Cửa mộ đã bị phá. Trên nền đá có dấu giày, và mùi trầm hương của những kẻ quen đi lại nơi cung điện.',
+    ],
+    steps: [
+      {
+        objective: () => 'Leo lên Kiếm Mộ kiểm tra kiếm phổ',
+        marker: () => P.tomb,
+        enter: (g) => g.storyAlly('maiden', 'maiden', 'Lâm Uyển Nhi', 'dagger', { hp: 900, atk: 40, color: 0xffb0d0 }),
+        done: (g) => near(g, P.tomb.x, P.tomb.z, 26),
+      },
+      {
+        objective: (g) => `Hạ đám hắc y nhân đang đào mộ (${g.killCount('thieves')}/6)`,
+        marker: (g) => g.nearestOf('thieves') || P.tomb,
+        enter: (g) => {
+          [[8, 6], [-8, 6], [12, -4], [-12, -4], [4, 12], [-4, 12]].forEach(([dx, dz]) => g.spawn('thief', P.tomb.x + dx, P.tomb.z + dz, { group: 'thieves', aggro: 50 }));
+          g.say('maiden', 'Bọn chúng mặc đồ đen nhưng đi giày quan! Công tử, cẩn thận!');
+        },
+        done: (g) => killed(g, 'thieves', 6),
+      },
+      {
+        objective: () => 'Tra hỏi hắc y nhân còn sống',
+        marker: () => P.tomb,
+        enter: (g) => g.dialog([
+          ['hero', '(Một tên còn thoi thóp. Trong ngực áo hắn rơi ra một tấm lệnh bài vàng, khắc chữ 盟.)'],
+          ['maiden', 'Lệnh bài của Võ Lâm Minh...!'],
+          ['hero', 'Ai sai các ngươi tới đây?'],
+          ['villager', '(ho ra máu) Minh chủ... nói... Huyết Ảnh chưởng chỉ là nửa cuốn... nửa kia... là Thanh Phong kiếm phổ...'],
+          ['villager', 'Ba mươi năm trước... chính Minh chủ... trao Huyết Ảnh chưởng cho Mộ Dung Huyết...'],
+          ['hero', '(Tên hắc y nhân tắt thở. Gió đêm thổi qua những thanh kiếm cắm trên mộ, kêu như tiếng khóc.)'],
+          ...(g.flags.hanxueAlly ? [['hanxue', '(Từ trong bóng tối bước ra) Tỷ tỷ ta trước khi chết có nói: "Huyết Ảnh có hai chủ nhân." Giờ thì ta hiểu rồi.']] : []),
+          ...(g.flags.sparedHonglian ? [['honglian', '(Một mũi tên cắm xuống chân Tiêu Vân, buộc theo một lá thư) "Phụ thân ta mỗi năm đều nhận một rương vàng từ phương bắc. Người gửi ký tên: Phong." ...Ta trả nợ lần nữa.']] : []),
+          ['maiden', 'Công tử... nếu là thật, thì người hại chết phụ thân tiểu nữ và sư bá... đang ngồi trên ghế Minh chủ.'],
+          { choice: [
+            { text: '"Ta sẽ tới tổng đàn hỏi thẳng hắn."', then: (g) => { g.flag('confrontSitu'); return [['maiden', 'Tiểu nữ đi cùng công tử.']]; } },
+            { text: '"Chưa đủ bằng chứng. Ta sẽ âm thầm điều tra trước."', then: (g) => { g.flag('secretInvestigate'); g.karma(1); return [['maiden', 'Công tử cẩn thận. Kẻ ngồi cao nhất thường có nhiều tai mắt nhất.']]; } },
+          ] },
+          { run: (g) => g.finishChapter() },
+        ]),
+      },
+    ],
+  },
+
+  {
+    id: 'c11',
+    han: '第十一章',
+    hanSub: '盟主',
+    title: 'Chương Thập Nhất',
+    subtitle: 'Minh chủ',
+    time: 'night',
+    bg: 'valley',
+    spawn: { x: P.camp.x, z: P.camp.z + 70, yaw: Math.PI },
+    narration: (g) => [
+      'Hắc Phong trại năm xưa, nay là tổng đàn Võ Lâm Minh. Cờ trắng thêu chữ 盟 bay phần phật trên vách núi.',
+      g.flags.secretInvestigate ? 'Mười ngày dò xét, Tiêu Vân có đủ thư từ, sổ sách, nhân chứng. Đêm nay, chàng tới đòi một câu trả lời.' : 'Tiêu Vân không gửi thiệp. Chàng đi thẳng vào cổng, kiếm đã tuốt khỏi vỏ.',
+    ],
+    steps: [
+      {
+        objective: () => 'Tới tổng đàn Võ Lâm Minh (Hắc Phong trại cũ)',
+        marker: () => ({ x: P.camp.x, z: P.camp.z + 30 }),
+        enter: (g) => {
+          g.storyAlly('maiden', 'maiden', 'Lâm Uyển Nhi', 'dagger', { hp: 1000, atk: 44, color: 0xffb0d0 });
+          if (g.flags.hanxueAlly) g.storyAlly('hanxue', 'hanxue', 'Hàn Tuyết', 'sword', { hp: 1300, atk: 56, color: 0xbfe6ff });
+        },
+        done: (g) => near(g, P.camp.x, P.camp.z + 30, 16),
+      },
+      {
+        objective: (g) => `Phá vòng Minh vệ (${g.killCount('mguard')}/6)`,
+        marker: (g) => g.nearestOf('mguard') || P.camp,
+        enter: (g) => {
+          [[-6, 10], [6, 10], [-12, 0], [12, 0], [-6, -8], [6, -8]].forEach(([dx, dz]) => g.spawn('mguard', P.camp.x + dx, P.camp.z + dz, { group: 'mguard', aggro: 50 }));
+          g.say('situ', 'Thanh Phong Hiệp đêm khuya tới thăm, lại mang theo kiếm. Minh vệ, tiếp khách!');
+        },
+        done: (g) => killed(g, 'mguard', 6),
+      },
+      {
+        objective: () => 'Đánh bại Tư Đồ Phong',
+        marker: (g) => g.nearestOf('situ') || P.camp,
+        enter: (g) => g.dialog([
+          ['situ', '(chắp tay sau lưng, bình thản) Ngươi tới vì lệnh bài, hay vì Mộ Bạch?'],
+          ['hero', 'Ba mươi năm trước, ông trao Huyết Ảnh chưởng cho Mộ Dung Huyết. Vì sao?'],
+          ['situ', 'Vì giang hồ cần một con quỷ, thì mới cần một Minh chủ. Không có Huyết Ảnh, ai sẽ quỳ dưới lá cờ này?'],
+          ['situ', 'Mộ Bạch biết chuyện. Hắn định nói ra. Nên Mộ Dung Huyết phải tới Bạch Vân sơn đêm đó. Lão phu chỉ... chỉ đường thôi.'],
+          ['maiden', '(run giọng) Còn phụ thân tôi?'],
+          ['situ', 'Lâm Thiên Hải giấu nửa kiếm phổ. Kẻ giấu đồ của Minh chủ, đáng chết.'],
+          g.path?.s.faction === 'chinh' ? ['situ', 'Ngươi là người Chính phái. Chém lão phu, cả Chính phái sẽ sụp. Ngươi gánh nổi không?']
+            : g.path?.s.faction === 'ta' ? ['situ', 'Một tên Tà phái muốn dạy lão phu đạo nghĩa? Nực cười!']
+            : ['situ', 'Ngươi không thuộc phe nào, nên nghĩ mình trong sạch? Giang hồ không có ai trong sạch.'],
+          ['hero', 'Sư phụ dạy ta: kiếm tại nhân tâm. Hôm nay, tâm ta muốn một câu công đạo.'],
+          { run: (g) => g.spawn('situ', P.camp.x, P.camp.z - 4, { group: 'situ', boss: true, aggro: 100 }) },
+        ]),
+        done: (g) => killed(g, 'situ', 1),
+      },
+      {
+        objective: () => 'Quyết định số phận Võ Lâm Minh',
+        marker: () => P.camp,
+        enter: (g) => g.dialog([
+          ['situ', '(quỳ một gối, máu nhuộm áo trắng) Ha... ha... Mộ Bạch huynh, đệ tử của huynh... giỏi lắm.'],
+          ['hero', '(Các phái chưởng môn kéo tới, đứng vây quanh. Tất cả chờ Tiêu Vân lên tiếng.)'],
+          { choice: [
+            { text: 'Công bố sự thật trước võ lâm, giao Tư Đồ Phong cho các phái xử', then: (g) => { g.flag('exposedSitu'); g.karma(2); return [
+              ['hero', '(Tiêu Vân đọc từng lá thư, từng dòng sổ sách. Cả đại sảnh lặng như tờ.)'],
+              ['maiden', 'Phụ thân, sư bá... hôm nay hai người có thể yên nghỉ rồi.'],
+            ]; } },
+            { text: 'Một kiếm kết liễu: "Nợ máu trả bằng máu."', then: (g) => { g.flag('killedSitu'); g.karma(-1); return [
+              ['hero', '(Kiếm quang loé lên. Tư Đồ Phong ngã xuống, mắt vẫn mở.)'],
+              ['maiden', '...Thù đã trả. Sao tiểu nữ vẫn thấy lạnh thế này.'],
+            ]; } },
+            { text: g.path?.s.faction === 'ta' ? 'Ngồi lên ghế Minh chủ: "Từ nay, giang hồ theo luật của Tà phái."' : 'Ngồi lên ghế Minh chủ: "Võ Lâm Minh cần người dẫn dắt."', then: (g) => { g.flag('tookSeat'); g.karma(g.path?.s.faction === 'ta' ? -3 : 0); return [
+              ['hero', '(Tiêu Vân bước lên đài, ngồi xuống chiếc ghế còn ấm hơi người cũ.)'],
+              ['maiden', '(lùi lại một bước) Công tử... chiếc ghế ấy đã làm hỏng một người tốt rồi.'],
+            ]; } },
+          ] },
+          { run: (g) => { g.path?.addMerit(500); g.finishChapter(); } },
+        ]),
+      },
+    ],
+  },
+
+  // ───────────────────────────── VĨ THANH HỒI III ─────────────────────────────
+  {
+    id: 'epilogue3',
+    han: '尾聲',
+    hanSub: '劍在人心',
+    title: 'Vĩ Thanh · Hồi III',
+    subtitle: 'Kiếm tại nhân tâm',
+    time: 'sunrise',
+    bg: 'town',
+    spawn: { x: P.pavilion.x + 6, z: P.pavilion.z + 2, yaw: -Math.PI / 2 },
+    narration: (g) => {
+      const f = g.path?.s.faction, l = [];
+      if (g.flags.tookSeat) {
+        l.push(f === 'ta' ? 'Tà phái lần đầu tiên nắm Võ Lâm Minh. Giang hồ gọi Tiêu Vân là "Tà Minh chủ", vừa sợ vừa phục.' : 'Tiêu Vân ngồi lên ghế Minh chủ. Năm đầu, chàng xoá danh sách truy nã, mở cửa cho những người từng lầm đường.');
+        l.push('Nhưng đêm đêm, chàng vẫn mơ thấy chiếc ghế ấy biết nói, bằng giọng của Tư Đồ Phong.');
+      } else if (g.flags.exposedSitu) {
+        l.push('Võ Lâm Minh giải tán. Các phái lập lại "Hội Nghị Giang Hồ", không ai được ngồi cao hơn ai.');
+        l.push(f === 'chinh' ? 'Chính phái tôn Tiêu Vân làm "Thanh Phong Hiệp" lần thứ hai. Chàng từ chối mọi chức vị.' : 'Người ta nói, giang hồ yên bình được là nhờ một kiếm khách không chịu ngồi lên bất kỳ chiếc ghế nào.');
+      } else {
+        l.push('Tư Đồ Phong chết, Võ Lâm Minh rối loạn suốt một mùa đông. Các phái tranh nhau chiếc ghế trống.');
+        l.push('Tiêu Vân không ở lại xem. Chàng về hồ Bích Thủy, chôn thanh kiếm cũ của sư phụ dưới gốc liễu.');
+      }
+      l.push(g.karmaVal >= 4 ? 'Kiếm tại nhân tâm. Ba hồi giang hồ, tâm chàng vẫn trong như nước hồ.' : g.karmaVal <= -3 ? 'Kiếm tại nhân tâm. Chỉ là tâm ấy, giờ đã nhuốm đỏ.' : 'Kiếm tại nhân tâm. Còn tâm ở đâu... mỗi người tự biết.');
+      return l;
+    },
+    steps: [
+      {
+        objective: () => 'Tự do ngao du giang hồ',
+        marker: () => null,
+        enter: (g) => {
+          const name = g.flags.tookSeat ? (g.path?.s.faction === 'ta' ? 'Tà Minh chủ' : 'Tân Minh chủ') : g.flags.exposedSitu ? 'Công đạo giang hồ' : 'Kiếm về hồ liễu';
+          g.flag('act3Done');
+          g.toast(`<b>HOÀN · HỒI III</b><br>Kết cục: <b>${name}</b><br><span class="sm">Đạo tâm ${g.karmaVal >= 0 ? '+' : ''}${g.karmaVal}${facName(g) ? ' · ' + facName(g) : ''}</span>`, 9);
+          g.sys.checkAchievements?.();
+          g.save();
+        },
+        talk: {
+          maiden: (g) => [g.flags.tookSeat ? ['maiden', 'Minh chủ bận rộn, còn nhớ đường về hồ Bích Thủy sao?'] : ['maiden', 'Lần này, thật sự hết chuyện rồi chứ, công tử? ...Tiểu nữ không tin đâu.']],
+        },
+      },
+    ],
+  },
 ];
 
 /** Thoại mặc định khi bước hiện tại không có thoại riêng. */

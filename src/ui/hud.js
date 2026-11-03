@@ -63,6 +63,7 @@ export class HUD {
       ['hub', 'Chức năng', 'gear', 'Y', () => g.ui.openHub(g)],
     ];
     const top = [
+      ['path', 'Đạo lộ', 'crown', 'U', () => g.ui.openPath(g)],
       ['meridian', 'Kinh mạch', 'qi', '', () => g.ui.openMeridian(g)],
       ['welfare', 'Phúc lợi', 'present', 'O', () => g.ui.openWelfare(g)],
       ['events', 'Hoạt động', 'calendar', 'N', () => g.ui.openEvents(g)],

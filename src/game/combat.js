@@ -39,7 +39,7 @@ export class Combat {
     const crit = Math.random() < this.game.rpg.crit();
     dmg = Math.round(dmg * (crit ? 1.8 : 1));
     e.takeDamage(dmg, p, opts);
-    if (p === this.game.player) this.game.fury?.hit(dmg);
+    if (p === this.game.player) { this.game.fury?.hit(dmg); const ls = this.game.path?.bonus('leech'); if (ls) p.hp = Math.min(p.maxHp, p.hp + dmg * ls); }
     this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
     this.game.vfx.flash(e, crit ? 0xffe080 : 0xffffff);
     if (crit) { this.game.vfx.impact(e.pos.clone().setY(e.pos.y + 1.2), this.game.player.pal, 2.2); this.game.audio.crit(); }

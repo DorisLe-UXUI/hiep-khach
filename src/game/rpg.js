@@ -86,17 +86,17 @@ export class RPG {
 
   baseHp() { return 200 + (this.level - 1) * 22; }
   baseMp() { return 90 + (this.level - 1) * 8; }
-  atk() { return Math.round((this.g.sys?.buff('atk') ? 1.05 : 1) * (1 + (this.g.beasts?.bonus('atkMul') || 0)) * this.atkRaw()); }
+  atk() { return Math.round((this.g.sys?.buff('atk') ? 1.05 : 1) * (1 + (this.g.beasts?.bonus('atkMul') || 0) + (this.g.path?.bonus('atkMul') || 0)) * this.atkRaw()); }
   atkRaw() { return 18 + (this.level - 1) * 2 + this.stat('atk') + (this.g.beasts?.bonus('atk') || 0) + (this.enh?.[this.equip.weapon] || 0) * 3 + (this.g.player?.attackBonus || 0); }
-  crit() { return 0.08 + this.stat('crit') + (this.g.beasts?.bonus('crit') || 0); }
-  def() { return Math.min(0.65, this.stat('def') + this.skills.guard * 0.04 + (this.g.beasts?.bonus('def') || 0)); }
+  crit() { return 0.08 + this.stat('crit') + (this.g.beasts?.bonus('crit') || 0) + (this.g.path?.bonus('crit') || 0); }
+  def() { return Math.min(0.65, this.stat('def') + this.skills.guard * 0.04 + (this.g.beasts?.bonus('def') || 0) + (this.g.path?.bonus('def') || 0)); }
 
   /** Áp chỉ số vào người chơi (khi lên cấp, đổi trang bị, tải game). */
   apply(heal = false) {
     const p = this.g.player;
     if (!p) return;
     const bonusHp = p.storyHp || 0, bonusMp = p.storyMp || 0;
-    p.maxHp = Math.round((this.baseHp() + this.stat('hp') + bonusHp) * (this.g.sys?.buff('hp') ? 1.08 : 1) * (1 + (this.g.beasts?.bonus('hpMul') || 0)));
+    p.maxHp = Math.round((this.baseHp() + this.stat('hp') + bonusHp) * (this.g.sys?.buff('hp') ? 1.08 : 1) * (1 + (this.g.beasts?.bonus('hpMul') || 0) + (this.g.path?.bonus('hpMul') || 0)));
     p.maxMp = this.baseMp() + this.stat('mp') + bonusMp;
     if (heal) { p.hp = p.maxHp; p.mp = p.maxMp; }
     p.hp = Math.min(p.hp, p.maxHp);

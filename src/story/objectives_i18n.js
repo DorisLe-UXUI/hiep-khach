@@ -53,6 +53,18 @@ const OBJ = {
   'Tới Vọng Nguyệt đình': ['Go to the Moonwatch Pavilion', '前往望月亭'],
   'Mang kiếm về cho Vương lão bá': ['Bring the sword back to Elder Wang', '把劍帶回給王老伯'],
   'Quay về Hàn Băng Cốc gặp Hàn Tuyết': ['Return to Frost Valley to see Han Xue', '回寒冰谷見寒雪'],
+  'Tới Võ Lâm Đại Hội ở đông nam trấn': ['Go to the Martial Assembly southeast of town', '前往鎮東南的武林大會'],
+  'Ra mắt Minh chủ Tư Đồ Phong': ['Meet Alliance Leader Situ Feng', '拜見盟主司徒鋒'],
+  'Luận võ: đánh bại các cao thủ (#/#)': ['Tournament: defeat the masters (#/#)', '論武：擊敗各派高手（#/#）'],
+  'Chung kết: đánh bại Vô Diện': ['Final: defeat the Faceless', '決賽：擊敗無面'],
+  'Nói chuyện với Minh chủ': ['Talk to the Alliance Leader', '與盟主交談'],
+  'Leo lên Kiếm Mộ kiểm tra kiếm phổ': ['Climb to the Sword Tomb and check the manual', '登上劍冢查看劍譜'],
+  'Hạ đám hắc y nhân đang đào mộ (#/#)': ['Defeat the men in black robbing the tomb (#/#)', '擊敗盜墓的黑衣人（#/#）'],
+  'Tra hỏi hắc y nhân còn sống': ['Question the surviving man in black', '審問倖存的黑衣人'],
+  'Tới tổng đàn Võ Lâm Minh (Hắc Phong trại cũ)': ['Go to the Alliance headquarters (the old Black Wind Camp)', '前往武林盟總壇（舊黑風寨）'],
+  'Phá vòng Minh vệ (#/#)': ['Break through the Alliance guards (#/#)', '突破盟衛（#/#）'],
+  'Đánh bại Tư Đồ Phong': ['Defeat Situ Feng', '擊敗司徒鋒'],
+  'Quyết định số phận Võ Lâm Minh': ['Decide the fate of the Martial Alliance', '決定武林盟的命運'],
   'Quay lại gặp Đồ Bá': ['Go back to Tu Ba', '回去找屠霸'],
 };
 
