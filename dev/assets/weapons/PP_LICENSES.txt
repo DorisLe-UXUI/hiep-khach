@@ -1,0 +1,38 @@
+Vũ khí tải từ poly.pizza (giấy phép CC0 1.0, dùng tự do kể cả thương mại):
+Katana | Pichuliru | CC0 1.0 | https://poly.pizza/m/15A7InejC7
+Sword | Quaternius | CC0 1.0 | https://poly.pizza/m/9lLmH8Et4K
+Dagger | Quaternius | CC0 1.0 | https://poly.pizza/m/kSMpR711Y2
+Wooden Bow | Quaternius | CC0 1.0 | https://poly.pizza/m/QnpqjLSKFU
+Crossbow | CreativeTrio | CC0 1.0 | https://poly.pizza/m/kHb0kA11oD
+Spear | Quaternius | CC0 1.0 | https://poly.pizza/m/fH1zmvjPNx
+Trident | MiniPoly | CC0 1.0 | https://poly.pizza/m/fephtx6tRg
+Axe | Quaternius | CC0 1.0 | https://poly.pizza/m/W0UYZPYSXf
+Doublesided Hammer | Quaternius | CC0 1.0 | https://poly.pizza/m/UIXvQ73DS1
+Staff | Quaternius | CC0 1.0 | https://poly.pizza/m/PnGRvO4Lwd
+Scythe | Quaternius | CC0 1.0 | https://poly.pizza/m/yE9TKCewO8
+Shuriken | iPoly3D | CC0 1.0 | https://poly.pizza/m/wA3sKdCzYd
+Sickle | CreativeTrio | CC0 1.0 | https://poly.pizza/m/M0eBGCueYE
+Knife | Quaternius | CC0 1.0 | https://poly.pizza/m/N9bfPFP1hr
+Machete | CreativeTrio | CC0 1.0 | https://poly.pizza/m/SMBU5kBYtZ
+Claymore | Quaternius | CC0 1.0 | https://poly.pizza/m/BBhN1O6TOL
+Cutlass | Quaternius | CC0 1.0 | https://poly.pizza/m/tzwQ8g5dBy
+Sword Diamond | Quaternius | CC0 1.0 | https://poly.pizza/m/WPj4nM1PFL
+Sword | MiniPoly | CC0 1.0 | https://poly.pizza/m/toZKKGhFWc
+Devil's Sword | MiniPoly | CC0 1.0 | https://poly.pizza/m/jnbswi1cj5
+Sword | MiniPoly | CC0 1.0 | https://poly.pizza/m/B1yrrN3ImH
+Sword | Quaternius | CC0 1.0 | https://poly.pizza/m/cDsobPucFA
+Sword | Quaternius | CC0 1.0 | https://poly.pizza/m/Ds2bJiNI5w
+Bow | CreativeTrio | CC0 1.0 | https://poly.pizza/m/H6vbuPvWtg
+Axe Small | Quaternius | CC0 1.0 | https://poly.pizza/m/o54NXjRI4V
+Axe Double | Quaternius | CC0 1.0 | https://poly.pizza/m/uHXdfMmO8g
+Axe | MiniPoly | CC0 1.0 | https://poly.pizza/m/lmO4Yq56e5
+Fire Axe | Pichuliru | CC0 1.0 | https://poly.pizza/m/0kgjDkCRmx
+
+Vũ khí tải từ OpenGameArt.org (CC0, đã chuyển sang glb, tô màu lại):
+og_s1..og_s9 | 3D Swords Pack | CC0 | https://opengameart.org/content/3d-swords-pack
+og_ha..og_hj | Cethiel's Weapons 3D | CC0 | https://opengameart.org/content/cethiels-weapons-3d
+og_heavy | Heavy Greatsword | CC0 | https://opengameart.org/content/heavy-greatsword
+og_mace | CC0 Morning Star | CC0 | https://opengameart.org/content/cc0-morning-star
+og_katana | Katana | CC0 | https://opengameart.org/content/katana-2
+
+my_* | mẫu tạo bằng Meshy AI, do chủ dự án cung cấp
