@@ -27,3 +27,12 @@ Axe Small | Quaternius | CC0 1.0 | https://poly.pizza/m/o54NXjRI4V
 Axe Double | Quaternius | CC0 1.0 | https://poly.pizza/m/uHXdfMmO8g
 Axe | MiniPoly | CC0 1.0 | https://poly.pizza/m/lmO4Yq56e5
 Fire Axe | Pichuliru | CC0 1.0 | https://poly.pizza/m/0kgjDkCRmx
+
+Vũ khí tải từ OpenGameArt.org (CC0, đã chuyển sang glb, tô màu lại):
+og_s1..og_s9 | 3D Swords Pack | CC0 | https://opengameart.org/content/3d-swords-pack
+og_ha..og_hj | Cethiel's Weapons 3D | CC0 | https://opengameart.org/content/cethiels-weapons-3d
+og_heavy | Heavy Greatsword | CC0 | https://opengameart.org/content/heavy-greatsword
+og_mace | CC0 Morning Star | CC0 | https://opengameart.org/content/cc0-morning-star
+og_katana | Katana | CC0 | https://opengameart.org/content/katana-2
+
+my_* | mẫu tạo bằng Meshy AI, do chủ dự án cung cấp
