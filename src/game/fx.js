@@ -14,16 +14,18 @@ export class FX {
     this.posArr = new Float32Array(this.max * 3);
     this.colArr = new Float32Array(this.max * 3);
     this.sizeArr = new Float32Array(this.max);
+    this.alphaArr = new Float32Array(this.max);
     geo.setAttribute('position', new THREE.BufferAttribute(this.posArr, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(this.colArr, 3));
     geo.setAttribute('size', new THREE.BufferAttribute(this.sizeArr, 1));
+    geo.setAttribute('alpha', new THREE.BufferAttribute(this.alphaArr, 1));
     const mat = new THREE.ShaderMaterial({
       vertexColors: true,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      vertexShader: `attribute float size; varying vec3 vC; void main(){ vC = color; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = size * 300.0 / -mv.z; gl_Position = projectionMatrix * mv; }`,
-      fragmentShader: `varying vec3 vC; void main(){ float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(vC * (1.0 - d * 2.0), 1.0); }`,
+      blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+      vertexShader: `attribute float size; attribute float alpha; varying vec3 vC; varying float vA; void main(){ vC = color; vA = alpha; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = size * 300.0 / -mv.z; gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `varying vec3 vC; varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; float f = 1.0 - d * 2.0; gl_FragColor = vec4(vC * f * 1.2, vA * f * 0.55); }`,
     });
     this.points = new THREE.Points(geo, mat);
     this.points.frustumCulled = false;
@@ -146,10 +148,11 @@ export class FX {
       this.posArr[i3] = q.x; this.posArr[i3 + 1] = q.y; this.posArr[i3 + 2] = q.z;
       this.colArr[i3] = q.r * k; this.colArr[i3 + 1] = q.g * k; this.colArr[i3 + 2] = q.b * k;
       this.sizeArr[i] = q.size;
+      this.alphaArr[i] = k;
     }
     const g = this.points.geometry;
     g.setDrawRange(0, len);
-    g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = g.attributes.size.needsUpdate = true;
+    g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = g.attributes.size.needsUpdate = g.attributes.alpha.needsUpdate = true;
 
     // vệt kiếm: ghi lại vị trí chuôi/mũi kiếm mỗi frame
     const c = this.trailOwner;

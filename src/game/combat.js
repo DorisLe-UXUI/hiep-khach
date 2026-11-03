@@ -42,6 +42,7 @@ export class Combat {
     if (p === this.game.player) this.game.fury?.hit(dmg);
     this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
     this.game.vfx.flash(e, crit ? 0xffe080 : 0xffffff);
+    if (crit) { this.game.vfx.impact(e.pos.clone().setY(e.pos.y + 1.2), this.game.player.pal, 2.2); this.game.audio.crit(); }
     return dmg;
   }
 
@@ -57,7 +58,7 @@ export class Combat {
       if (p === this.game.player) this.game.fury?.hit(dmg);
       this.game.hud.damage(e.pos.clone().setY(e.pos.y + 1.9), dmg, crit ? 'crit' : '');
       this.game.vfx.flash(e, crit ? 0xffe080 : 0xffffff);
-      if (crit) this.game.vfx.shockwave(e.pos.clone(), 0xffd27a, 2);
+      if (crit) { this.game.vfx.shockwave(e.pos.clone(), 0xffd27a, 2); this.game.vfx.impact(e.pos.clone().setY(e.pos.y + 1.2), p.pal || [0xffd27a, 0xffffff], 2.2); this.game.audio.crit(); }
       this.game.fx.blood(e.pos.clone().setY(e.pos.y + 1.2), p.forward());
       hits++;
     }
@@ -86,7 +87,7 @@ export class Combat {
   }
 
   /** Chưởng khí. Của người chơi thì trúng địch, của địch thì trúng người chơi. */
-  fireOrb(owner, from, dir, { dmg = 30, size = 1, color = 0xbfe6ff, speed = 26 } = {}) {
+  fireOrb(owner, from, dir, { dmg = 30, size = 1, color = 0xbfe6ff, speed = 26, palette = null } = {}) {
     const { mat, glow } = this.orbMat(color);
     const mesh = new THREE.Mesh(this.orbGeo, mat);
     mesh.scale.setScalar(size);
@@ -96,7 +97,8 @@ export class Combat {
     s.scale.setScalar(2.4);
     mesh.add(s);
     this.game.scene.add(mesh);
-    this.orbs.push({ mesh, vel: dir.clone().normalize().multiplyScalar(speed), life: 1.8, owner, dmg, color, hostile: !!owner.isEnemy, r: 0.5 * size });
+    if (palette) { const s2 = new THREE.Sprite(this.orbMat(palette[1]).glow); s2.scale.setScalar(4); mesh.add(s2); }
+    this.orbs.push({ mesh, vel: dir.clone().normalize().multiplyScalar(speed), life: 1.8, owner, dmg, color, palette, hostile: !!owner.isEnemy, r: 0.5 * size, t: 0 });
     this.game.audio.whoosh();
   }
 
@@ -118,7 +120,7 @@ export class Combat {
   }
 
   /** Bắn n mũi tên toả hình quạt. */
-  fireArrows(owner, from, dir, n, dmg) {
+  fireArrows(owner, from, dir, n, dmg, palette = null) {
     if (!this.arrowGeo) {
       this.arrowGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.9, 5).rotateX(Math.PI / 2);
       this.arrowMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2b, emissive: 0x3a2a10 });
@@ -131,7 +133,9 @@ export class Combat {
       mesh.position.copy(from);
       mesh.lookAt(from.clone().add(d));
       this.game.scene.add(mesh);
-      this.orbs.push({ mesh, vel: d.multiplyScalar(42), life: 1.1, owner, dmg, color: 0xffe6b0, arrow: true, hostile: false, r: 0.35 });
+      // tên của chiêu: phát sáng theo màu môn phái, có vệt
+      if (palette) { const s2 = new THREE.Sprite(this.orbMat(palette[i % palette.length]).glow); s2.scale.set(1.2, 1.2, 1); mesh.add(s2); }
+      this.orbs.push({ mesh, vel: d.multiplyScalar(42), life: 1.1, owner, dmg, color: palette ? palette[i % palette.length] : 0xffe6b0, palette, arrow: true, hostile: false, r: 0.35, t: 0 });
     }
     this.game.audio.swoosh(0.6);
   }
@@ -151,7 +155,9 @@ export class Combat {
       const o = this.orbs[i];
       o.life -= dt;
       o.mesh.position.addScaledVector(o.vel, dt);
-      if (!o.arrow) this.game.fx.trailPuff(o.mesh.position, o.color);
+      o.t++;
+      if (o.palette) { this.game.fx.trailPuff(o.mesh.position, o.palette[o.t % o.palette.length]); if (!o.arrow && o.t % 2) this.game.fx.trailPuff(o.mesh.position, o.palette[(o.t + 2) % o.palette.length]); }
+      else if (!o.arrow) this.game.fx.trailPuff(o.mesh.position, o.color);
       let hit = o.mesh.position.y < this.game.terrain.heightAt(o.mesh.position.x, o.mesh.position.z);
       if (o.hostile) {
         const p = this.game.player;
@@ -172,6 +178,7 @@ export class Combat {
       }
       if (hit || o.life <= 0) {
         if (!o.arrow || hit) this.game.fx.burst(o.mesh.position.clone(), o.color, o.arrow ? 10 : 30);
+        if (hit && o.palette) this.game.vfx.impact(o.mesh.position.clone(), o.palette, o.arrow ? 1.2 : 2);
         if (hit) this.game.audio.hit();
         this.game.scene.remove(o.mesh);
         this.orbs.splice(i, 1);

@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { Actor } from './actor.js';
+import { PALETTES, ULT_HAN } from '../game/vfx.js';
+
+const SKY = { kiem: 'blade', thuong: 'fire', cung: 'arrow', phap: 'bolt', dao: 'talisman' };
+const hex = (c) => '#' + c.toString(16).padStart(6, '0');
 
 const _move = new THREE.Vector3();
 
@@ -37,6 +41,8 @@ export class Player extends Actor {
 
   setState(s) { this.state = s; this.stateT = 0; this.hitDone = false; }
 
+  get pal() { return PALETTES[this.clsId] || PALETTES.kiem; }
+
   /** Sát thương cơ bản theo cấp, trang bị, độ khó, võ học. */
   damage(mul, skill = 'sword') {
     const r = this.rpg;
@@ -64,6 +70,8 @@ export class Player extends Actor {
     this.st = Math.max(0, this.st - 6);
     const col = { kiem: 0xcfe8ff, thuong: 0xffd27a, dao: 0x9fe8c8 }[this.clsId] || 0xffffff;
     setTimeout(() => this.game.vfx.slash(this, col, { flip: key === 'B', wide: key === 'C' ? 1.45 : 1, reach: this.cls.range * 0.75, tilt: key === 'C' ? 0.6 : 0.25 }), key === 'C' ? 220 : 120);
+    // đòn thứ ba: thêm lớp kiếm khí màu môn phái + tiếng ngân
+    if (key === 'C') setTimeout(() => { this.game.vfx.slash(this, this.pal[2], { wide: 1.7, reach: this.cls.range * 0.95, tilt: -0.4 }); this.game.audio.skill('slash', 0.5); }, 280);
   }
 
   endAttack() {
@@ -123,6 +131,9 @@ export class Player extends Actor {
       this.setState('cast');
       const ult = sk.kind === 'ult';
       this.game.vfx.magicCircle(this.pos.clone(), sk.color, ult ? 4.5 : 2.4, ult ? 1.6 : 1);
+      this.game.vfx.aura(this, this.pal, ult ? 1.6 : 0.9, ult ? 3 : 1.8);
+      this.game.audio.skill('charge', ult ? 1.3 : 0.8);
+      if (ult) { this.game.vfx.banner(ULT_HAN[this.clsId] || '絕技', sk.name, hex(sk.color)); this.game.vfx.flashScreen(hex(sk.color), 0.35); }
       this.char.play(ult ? 'Spell_Simple_Enter' : (this.cls.attack === 'melee' ? 'Sword_Regular_C' : 'Spell_Simple_Shoot'), { once: true, fade: 0.06, speed: ult ? 1 : 1.3, restart: true, onDone: () => this.state === 'cast' && this.setState('free') });
       this.game.audio.whoosh();
       if (ult) { this.game.camRig.shake = 0.6; this.iframes = 0.8; }
@@ -134,10 +145,13 @@ export class Player extends Actor {
     const k = sk.kind;
     const circleCol = { orb: 0x8fd8ff, bigorb: 0x9fe8ff, nova: this.cls.weapon === 'spear' ? 0xffc860 : 0xb7a8ff, heal: 0x8fe0a8, volley: 0xffe6a0, dash: 0xcfe8ff }[k];
     if (circleCol) this.game.vfx.magicCircle(this.pos.clone(), circleCol, k === 'nova' ? 3.2 : 2.2, 1.0);
+    if (k !== 'backflip') this.game.vfx.aura(this, this.pal, k === 'dash' ? 0.55 : 0.8, k === 'nova' ? 2.6 : 1.6);
     if (k === 'dash') {
       this.setState('dash');
       this.char.play('Sword_Dash', { once: true, fade: 0.06, speed: 1.3, restart: true, onDone: () => this.state === 'dash' && this.setState('free') });
       this.game.audio.swoosh(1.5);
+      this.game.audio.skill('slash', 0.8);
+      this.game.vfx.crescent(this, this.forward(), this.pal, { dist: 6, size: 1.4, delay: 60 });
     } else if (k === 'orb' || k === 'bigorb' || k === 'volley') {
       this.aimNow();
       this.setState('cast');
@@ -152,7 +166,7 @@ export class Player extends Actor {
       this.setState('roll');
       this.iframes = 0.5;
       this.yaw += Math.PI; // lộn ngược ra sau
-      this.char.play('Roll', { once: true, fade: 0.05, speed: 1.6, restart: true, onDone: () => { this.yaw -= Math.PI; this.root.rotation.y = this.yaw; if (this.state === 'roll') { this.setState('free'); this.game.combat.fireArrows(this, this.handPos(), this.aimDir(), 3, this.damage(0.9)); } } });
+      this.char.play('Roll', { once: true, fade: 0.05, speed: 1.6, restart: true, onDone: () => { this.yaw -= Math.PI; this.root.rotation.y = this.yaw; if (this.state === 'roll') { this.setState('free'); this.game.combat.fireArrows(this, this.handPos(), this.aimDir(), 3, this.damage(0.9), this.pal); this.game.audio.skill('arrow', 0.8); } } });
     }
   }
 
@@ -161,21 +175,48 @@ export class Player extends Actor {
     const sk = this.pendingSkill;
     if (!sk) return;
     const c = this.game.combat;
-    if (sk.kind === 'orb') c.fireOrb(this, this.handPos(), this.aimDir(), { dmg: this.damage(1.8, 'palm') });
-    if (sk.kind === 'bigorb') c.fireOrb(this, this.handPos(), this.aimDir(), { dmg: this.damage(3, 'palm'), size: 2, color: 0x9fe8ff });
-    if (sk.kind === 'volley') c.fireArrows(this, this.handPos(), this.aimDir(), 5, this.damage(1.1));
-    if (sk.kind === 'nova') { c.nova(this, 5, this.damage(2.2, 'palm'), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff); this.game.vfx.shockwave(this.pos.clone(), this.cls.weapon === 'spear' ? 0xffd27a : 0xb7a8ff, 6); }
-    if (sk.kind === 'heal') this.game.vfx.pillar(this.pos.clone(), 0x8fe0a8, 4);
+    const v = this.game.vfx, au = this.game.audio, pal = this.pal;
+    if (sk.kind === 'orb') { c.fireOrb(this, this.handPos(), this.aimDir(), { dmg: this.damage(1.8, 'palm'), palette: pal }); au.skill(this.clsId === 'dao' ? 'zap' : 'slash', 0.7); }
+    if (sk.kind === 'bigorb') { c.fireOrb(this, this.handPos(), this.aimDir(), { dmg: this.damage(3, 'palm'), size: 2, color: 0x9fe8ff, palette: [0x9fe8ff, 0xffffff, 0x6a9bff, 0xd8f4ff] }); au.skill('ice'); }
+    if (sk.kind === 'volley') { c.fireArrows(this, this.handPos(), this.aimDir(), 5, this.damage(1.1), pal); au.skill('arrow'); }
+    if (sk.kind === 'nova') {
+      const spear = this.cls.weapon === 'spear';
+      c.nova(this, 5, this.damage(2.2, 'palm'), spear ? 0xffd27a : 0xb7a8ff);
+      v.rings(this.pos.clone(), pal, 6.5);
+      v.spiral(this.pos.clone(), pal, 50, 3, 2.2);
+      if (spear) au.skill('fire');
+      else {
+        // Phong Lôi Trận: sét đánh xuống mọi kẻ địch trong vòng
+        for (const e of c.enemies()) if (e.pos.distanceTo(this.pos) < 6) v.lightning(e.pos.clone().setY(e.pos.y + 14), e.pos.clone().setY(e.pos.y + 0.8), pal[Math.random() * 4 | 0], 0.3);
+        v.skyRain(this.pos, pal, 'bolt', 5, 4, 0.4);
+        au.skill('zap');
+      }
+      au.skill('boom', 0.7);
+    }
+    if (sk.kind === 'heal') { v.pillar(this.pos.clone(), 0x8fe0a8, 4); v.spiral(this.pos.clone(), pal, 70, 4, 1.2); au.skill('heal'); }
     if (sk.kind === 'heal') { this.heal(this.maxHp * 0.3); this.game.status?.add('regen', 6, 0.02); }
     if (sk.kind === 'wave') {
       const dir = this.aimDir();
-      for (let k = -1; k <= 1; k++) c.fireOrb(this, this.handPos(), dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.22), { dmg: this.damage(1.6, 'palm'), size: 0.9, color: sk.color, speed: 30 });
+      for (let k = -1; k <= 1; k++) {
+        const d = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.22);
+        c.fireOrb(this, this.handPos(), d, { dmg: this.damage(1.6, 'palm'), size: 0.9, color: sk.color, speed: 30, palette: pal });
+        if (this.clsId === 'kiem' || this.clsId === 'thuong') v.crescent(this, d, pal, { dist: 14, size: 2, delay: (k + 1) * 50 });
+      }
+      if (this.clsId === 'phap') for (const e of c.enemies()) if (e.pos.distanceTo(this.pos) < 14) v.lightning(this.handPos(), e.pos.clone().setY(e.pos.y + 1), pal[Math.random() * 4 | 0], 0.25, 0.2);
+      v.impact(this.handPos(), pal, 1.4);
+      au.skill({ kiem: 'slash', thuong: 'fire', phap: 'zap', dao: 'zap' }[this.clsId] || 'slash');
     }
-    if (sk.kind === 'volley7') c.fireArrows(this, this.handPos(), this.aimDir(), 7, this.damage(1.2));
+    if (sk.kind === 'volley7') { c.fireArrows(this, this.handPos(), this.aimDir(), 7, this.damage(1.2), pal); v.impact(this.handPos(), pal, 1.4); au.skill('arrow', 1.2); }
     if (sk.kind === 'ult') {
       c.nova(this, 7.5, this.damage(4.2, 'palm'), sk.color);
       this.game.vfx.shockwave(this.pos.clone(), sk.color, 9);
       this.game.vfx.pillar(this.pos.clone(), sk.color, 8);
+      v.rings(this.pos.clone(), pal, 10);
+      v.spiral(this.pos.clone(), pal, 120, 6, 2.5);
+      v.skyRain(this.pos, pal, SKY[this.clsId] || 'blade', 7.5, 18, 1.4);
+      v.flashScreen(hex(sk.color), 0.55);
+      au.skill('ult');
+      this.game.camRig.shake = 1.1;
       this.game.mhud?.announce(`${this.game.profile.name} thi triển tuyệt kỹ <b>${sk.name}</b>!`);
       if (sk.heal) { this.heal(this.maxHp * 0.35); this.game.status?.add('shield', 8, 0.3); this.game.status?.clearBad(); }
     }

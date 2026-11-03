@@ -186,6 +186,7 @@ export class Game {
     this.freedCages = new Set();
     this.sys = new Systems(this);
     this.vfx = new VFX(this.scene);
+    Object.assign(this.vfx, { fx: this.fx, audio: this.audio, terrain: this.terrain });
     this.spawner = new Spawner(this);
     this.allies = [];
     this.life = new Life(this);
@@ -219,6 +220,7 @@ export class Game {
 
   applySettings(s) {
     this.settings = s;
+    if (this.vfx) this.vfx.quality = s.quality;
     saveSettings(s);
     const q = QUALITY[s.quality] || QUALITY.high;
     const pr = Math.min(devicePixelRatio, q.pixelRatio);

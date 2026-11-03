@@ -26,9 +26,14 @@ export class Fury {
     if (this.rage < 100 || this.burst > 0) return false;
     const g = this.g, p = g.player;
     this.rage = 0; this.burst = 10;
+    const rainbow = [0xff3a3a, 0xffa02a, 0xffe24a, 0xff5ae0];
     g.vfx.pillar(p.pos.clone(), 0xff5a2a, 8);
-    g.vfx.shockwave(p.pos.clone(), 0xff7a3a, 7);
-    g.audio.levelUp();
+    g.vfx.rings(p.pos.clone(), rainbow, 8);
+    g.vfx.spiral(p.pos.clone(), rainbow, 110, 6, 2);
+    g.vfx.aura(p, rainbow, 2, 2.4);
+    g.vfx.banner('怒', 'Bộc phát nộ khí', '#ff6a2a');
+    g.vfx.flashScreen('#ff4a1a', 0.45);
+    g.audio.skill('rage');
     g.camRig.shake = 0.8;
     g.mhud?.announce(`<b>${g.profile.name}</b> Bộc phát nộ khí! <span class="han">怒</span>`);
     g.sys.s.stats.bursts = (g.sys.s.stats.bursts || 0) + 1;
@@ -39,7 +44,7 @@ export class Fury {
     if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) this.combo = 0; }
     if (this.burst > 0) {
       this.burst = Math.max(0, this.burst - dt);
-      if (Math.random() < dt * 12) this.g.fx.sparkle(this.g.player.pos.clone().setY(this.g.player.pos.y + 0.4 + Math.random() * 1.6), 0xff6a2a);
+      if (Math.random() < dt * 12) this.g.fx.sparkle(this.g.player.pos.clone().setY(this.g.player.pos.y + 0.4 + Math.random() * 1.6), [0xff3a3a, 0xffa02a, 0xffe24a, 0xff5ae0][Math.random() * 4 | 0]);
     }
   }
 }
