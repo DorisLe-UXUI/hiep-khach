@@ -47,6 +47,8 @@ import { Meridian } from './meridian.js';
 import { Telegraphs } from './telegraph.js';
 import { Clock } from './clock.js';
 import '../ui/panels3.js';
+import { GuideTrail, stepHint } from './guide.js';
+import { trObjective } from '../story/objectives_i18n.js';
 
 export const LOOKS = {
   guard: { outfit: 'male_peasant', base: 'male', hair: ['hair_simpleparted', 'hair_beard'], brows: 'eyebrows_regular', outfitColor: '#6b5a44', hairColor: '#c9c4bb' },
@@ -313,6 +315,7 @@ export class Game {
     progress('Rải thảo dược...');
     await this.placeHerbs();
     this.hud = new HUD(this);
+    this.guide = new GuideTrail(this.scene, this.terrain);
     this.hud.setClass(this.profile.hero?.cls);
     this.mhud = new MobileHUD(this);
     this.mhud.setClass(this.profile.hero?.cls || 'kiem', this.player.cls);
@@ -684,14 +687,21 @@ export class Game {
     this.chestOpened = true;
     const p = this.player;
     p.setState('talk');
+    p.iframes = Math.max(p.iframes || 0, 1.5); // quái đánh trúng lúc mở rương sẽ cắt mất hoạt cảnh
     p.faceTowards(Math.atan2(PLACES.chest.x - p.pos.x, PLACES.chest.z - p.pos.z), 1, 100);
     this.fx.burst(this.chest.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0xffe2a0, 40);
-    p.char.play('Chest_Open', { once: true, restart: true, onDone: () => {
-      p.setState('free');
+    // Phần thưởng không phụ thuộc hoạt cảnh: bị thay hoạt cảnh (trúng đòn, thiếu clip) vẫn chạy tiếp sau 1,4 s
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (p.state === 'talk') p.setState('free');
       this.rpg.giveEquip('bishui');
       this.rpg.addGold(80);
       cb?.();
-    } });
+    };
+    p.char.play('Chest_Open', { once: true, restart: true, onDone: finish });
+    setTimeout(finish, 1400);
   }
 
   nextCage() {
@@ -1288,8 +1298,10 @@ export class Game {
     const ch = this.chapter;
     const a = this.activity;
     if (a) this.hud.objective(`<span class="han">${a.han}</span>${a.title}`, a.waves.length > 1 ? `Đợt ${a.wave + 1}/${a.waves.length} · còn ${a.left} địch` : `Đánh bại đối thủ`);
-    else this.hud.objective(`<span class="han">${ch.han}</span>${ch.title} · ${ch.subtitle}`, st ? this.ui.nh(st.objective(this)) : '');
+    else this.hud.objective(`<span class="han">${ch.han}</span>${ch.title} · ${ch.subtitle}`, st ? this.ui.nh(trObjective(st.objective(this))) : '');
     document.getElementById('hero-title').textContent = `${this.player.cls.name} · Cấp ${this.rpg.level}`;
+    this.hud.hint(a ? '' : stepHint(this));
+    this.guide.update(dt, this);
     this.hud.update(dt);
   }
 

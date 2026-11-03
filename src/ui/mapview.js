@@ -3,20 +3,38 @@ import { icon } from './icons.js';
 import { WORLD_SIZE, PLACES, PATHS, WATER_LEVEL } from '../world/layout.js';
 import { ZONES, MONSTERS } from '../game/bestiary.js';
 import { rng } from '../world/noise.js';
+import { LANG, trData } from '../i18n.js';
+import { trObjective } from '../story/objectives_i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const S = 1024; // độ phân giải bản đồ vẽ sẵn
+const trObj = (t) => trObjective(t);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// [id, icon, chữ Hán, tên {vi,en,zh}, ghi chú {vi,en,zh}, nhóm]
 const PLACE_INFO = [
-  ['gate', 'door', '清風鎮', 'Cổng Thanh Phong', 'Cửa ngõ vào trấn. Lão gác cổng Vương lão bá.'],
-  ['inn', 'bag', '悅來客棧', 'Duyệt Lai khách điếm', 'Tiệm, nghỉ ngơi, Lưu chưởng quỹ.'],
-  ['pavilion', 'lotus', '望月亭', 'Vọng Nguyệt đình', 'Đình ven hồ, nơi Lâm Uyển Nhi thường ngồi.'],
-  ['lake', 'wave', '碧水湖', 'Hồ Bích Thủy', 'Mặt hồ rộng, có thể chạy trên nước bằng Lăng Ba Vi Bộ.'],
-  ['bamboo', 'cloud', '竹林', 'Rừng trúc', 'Rừng trúc tây bắc, nơi cất giấu Bích Thủy kiếm.'],
-  ['camp', 'skull', '黑風寨', 'Hắc Phong trại', 'Sào huyệt sơn tặc. Phó bản Luyện Võ Trường.'],
-  ['tomb', 'sword', '劍冢', 'Kiếm Mộ', 'Nơi chôn kiếm của Thanh Phong kiếm phái.'],
+  ['square', 'village', '清風鎮', ['Trấn Thanh Phong', 'Pure Wind Town', '清風鎮'], ['Trung tâm trấn: người dân, chợ, nơi bắt đầu mọi chuyến đi.', 'Town centre: townsfolk, market, where every journey starts.', '鎮中心：鎮民、市集，一切旅程由此開始。'], 'town'],
+  ['gate', 'door', '鎮門', ['Cổng trấn', 'Town gate', '鎮門'], ['Cửa ngõ phía nam. Vương lão bá gác cổng, hay kể chuyện cũ.', 'South entrance. Old Wang keeps the gate and knows old tales.', '南面入口。王老伯守門，熟知舊事。'], 'town'],
+  ['inn', 'bag', '悅來客棧', ['Duyệt Lai khách điếm', 'Welcome Inn', '悅來客棧'], ['Mua bán, nghỉ ngơi hồi đầy máu, hỏi tin tức từ Lưu chưởng quỹ.', 'Buy and sell, rest to full HP, ask Shopkeeper Liu for news.', '買賣、休息回滿氣血，向劉掌櫃打聽消息。'], 'town'],
+  ['home', 'home', '家園', ['Gia viên', 'Your home', '家園'], ['Nhà riêng của ngươi: bày trí, nâng cấp, nghỉ ngơi.', 'Your own house: decorate, upgrade, rest.', '你的住所：佈置、升級、休息。'], 'town'],
+  ['pavilion', 'lotus', '望月亭', ['Vọng Nguyệt đình', 'Moonwatch Pavilion', '望月亭'], ['Đình ven hồ, nơi Lâm Uyển Nhi thường ngồi. (Chương Nhị)', "Lakeside pavilion where Lin Wan'er sits. (Chapter 2)", '湖畔小亭，林婉兒常坐於此。（第二章）'], 'story'],
+  ['lake', 'wave', '碧水湖', ['Hồ Bích Thủy', 'Jade Water Lake', '碧水湖'], ['Hồ lớn. Học Lăng Ba Vi Bộ rồi giữ Shift để chạy trên mặt nước.', 'A wide lake. Learn Water Skimming, then hold Shift to run on water.', '大湖。學會凌波微步後按住 Shift 可踏水而行。'], 'story'],
+  ['bamboo', 'cloud', '竹林', ['Rừng trúc', 'Bamboo Forest', '竹林'], ['Rừng phía tây bắc, có thám báo Hắc Phong trại canh giữ.', 'Northwest woods, watched by Black Wind scouts.', '西北竹林，有黑風寨探子把守。'], 'story'],
+  ['chest', 'chest', '木箱', ['Rương gỗ', 'Wooden chest', '木箱'], ['Giữa rừng trúc. Cất Bích Thủy kiếm và thư của Lâm Thiên Hải. Bấm E để mở.', 'In the heart of the bamboo forest: the Jade Water Sword and a letter. Press E to open.', '竹林深處，藏有碧水劍與書信。按 E 打開。'], 'story'],
+  ['camp', 'skull', '黑風寨', ['Hắc Phong trại', 'Black Wind Camp', '黑風寨'], ['Sào huyệt sơn tặc của Đồ Bá. Có lồng giam người. (Chương Tam)', "Tu Ba's bandit lair, with captives in cages. (Chapter 3)", '屠霸的山寨，關押著百姓。（第三章）'], 'story'],
+  ['tomb', 'temple', '劍冢', ['Kiếm Mộ', 'Sword Tomb', '劍冢'], ['Trên núi tây, nơi chôn kiếm của các đời chưởng môn Thanh Phong.', 'On the western mountain, where Pure Wind masters lie with their swords.', '西山之上，清風歷代掌門埋劍之地。'], 'story'],
+  ['battle', 'battle', '戰場', ['Chiến trường', 'Battlefield', '戰場'], ['Cùng đệ tử Thanh Phong đánh 3 đợt Huyết Ảnh Môn (hoạt động).', 'Fight three waves of the Blood Shadow Sect beside Pure Wind disciples (activity).', '與清風弟子並肩迎戰血影門三波攻勢（活動）。'], 'act'],
+  ['ice', 'moon', '寒冰谷', ['Hàn Băng Cốc', 'Frost Valley', '寒冰谷'], ['Thung lũng tuyết phía nam. Hồi II bắt đầu ở đây.', 'Snowy valley to the south. Act II begins here.', '南方雪谷，第二幕由此開始。'], 'act2'],
+  ['valley', 'ancient', '妖魔谷', ['Yêu Ma Cốc', 'Demon Valley', '妖魔谷'], ['Thung lũng đầy yêu ma, dấu vết Huyết Ảnh Môn.', 'A valley of demons and Blood Shadow traces.', '妖魔橫行之谷，血影門的蹤跡。'], 'act2'],
+  ['fire', 'sun', '火焰山', ['Hỏa Diệm Sơn', 'Flame Mountain', '火焰山'], ['Núi lửa phía đông nam, trận cuối của Hồi II.', 'Volcano to the southeast, the last battle of Act II.', '東南火山，第二幕的最終決戰。'], 'act2'],
 ];
+const XPLACES = { ...PLACES, ice: { x: -40, z: -245 }, valley: { x: 150, z: -120 }, fire: { x: 215, z: -215 } };
+const GROUPS = { town: ['Trong trấn', 'In town', '鎮內'], story: ['Cốt truyện Hồi I', 'Act I story', '第一幕主線'], act: ['Hoạt động', 'Activities', '活動'], act2: ['Hồi II', 'Act II', '第二幕'] };
+const ZONE_NAMES = { dongco: ['Pure Wind Meadow', '清風草原'], rungnam: ['Mushroom Forest', '蘑菇林'], bangho: ['Jade Water Shore', '碧水湖畔'], doigio: ['Windy Hills', '風丘'], thunglung: ['Demon Valley', '妖魔谷'], hangtuyet: ['Frost Valley', '寒冰谷'], hoason: ['Flame Mountain', '火焰山'] };
+const L = (v) => (Array.isArray(v) ? (LANG === 'en' ? v[1] : LANG === 'zh' ? v[2] : v[0]) : v);
+const T = (vi, en, zh) => L([vi, en, zh]);
+const zoneName = (z) => (LANG === 'vi' ? z.name : ZONE_NAMES[z.id]?.[LANG === 'en' ? 0 : 1] || z.name);
+const mobName = (id) => { const m = MONSTERS[id]; return LANG === 'zh' ? m.han : LANG === 'en' ? trData(m.name) || m.name : m.name; };
 
 /** Vẽ nền bản đồ kiểu tranh màu (một lần, từ lưới độ cao có sẵn — nhanh). */
 function paintBase(terrain) {
@@ -125,15 +143,60 @@ Object.assign(UI.prototype, {
     const P = (x, z) => [((x + WORLD_SIZE / 2) / WORLD_SIZE) * S, ((z + WORLD_SIZE / 2) / WORLD_SIZE) * S];
     const lbl = (x, z, cls, inner, data = '') => { const [px, py] = P(x, z); return `<div class="map-lbl ${cls}" style="left:${px}px;top:${py}px" ${data}>${inner}</div>`; };
 
-    // nhãn
-    let html = PLACE_INFO.map(([id, ic, hz, vi], i) => lbl(PLACES[id].x, PLACES[id].z, 'place', `<div class="pin">${icon(ic)}</div><div class="hz">${hz}</div><div class="vi">${vi}</div>`, `data-i="p${i}"`)).join('');
-    html += ZONES.map((z, i) => { const lv = z.mobs.map((m) => MONSTERS[m].lv); return lbl(z.x, z.z, 'zone', `<div class="ring" style="width:${(z.r * 2 / WORLD_SIZE) * S}px;height:${(z.r * 2 / WORLD_SIZE) * S}px"></div><div class="pin">${icon(z.elite ? 'dragon' : 'skull')}</div><div class="hz">${z.han}</div><div class="vi">${z.name} · Lv.${Math.min(...lv)}–${Math.max(...lv)}</div>`, `data-i="z${i}"`); }).join('');
+    // đường chỉ tới mục tiêu (vẽ lên canvas, mỗi lần mở)
     const mk = g.markerPos();
-    if (mk) html += lbl(mk.x, mk.z, 'quest', `<div class="pin">${icon('star')}</div><div class="vi">Mục tiêu</div>`);
     const p = g.player.pos;
+    const cg = cv.getContext('2d');
+    if (mk) {
+      const [ax, ay] = P(p.x, p.z), [bx, by] = P(mk.x, mk.z);
+      cg.save(); cg.lineCap = 'round';
+      cg.strokeStyle = 'rgba(40,20,5,.55)'; cg.lineWidth = 7; cg.setLineDash([2, 12]);
+      cg.beginPath(); cg.moveTo(ax, ay); cg.lineTo(bx, by); cg.stroke();
+      cg.strokeStyle = '#ffd36a'; cg.lineWidth = 4;
+      cg.beginPath(); cg.moveTo(ax, ay); cg.lineTo(bx, by); cg.stroke();
+      cg.restore();
+    }
+    const near = (x, z) => PLACE_INFO.some(([id]) => Math.hypot(XPLACES[id].x - x, XPLACES[id].z - z) < 12);
+    const cur = g.chapter?.subtitle;
+
+    // nhãn: số thứ tự + chữ Hán + tên theo ngôn ngữ
+    let html = PLACE_INFO.map(([id, ic, hz, nm, , grp], i) => {
+      if (id === 'chest' && !(g.step?.interact?.chest && !g.chestOpened)) return ''; // chỉ hiện khi đang tìm rương
+      const hot = nm[0] === cur ? ' hot' : '';
+      return lbl(XPLACES[id].x, XPLACES[id].z, `place g-${grp}${hot}`, `<div class="pin">${icon(ic)}<i class="no">${i + 1}</i></div>${LANG === 'zh' ? '' : `<div class="hz">${hz}</div>`}<div class="vi">${esc(L(nm))}</div>`, `data-i="p${i}"`);
+    }).join('');
+    html += ZONES.map((z, i) => {
+      const lv = z.mobs.map((m) => MONSTERS[m].lv), lvT = `Lv.${Math.min(...lv)}–${Math.max(...lv)}`;
+      const ring = `<div class="ring" style="width:${(z.r * 2 / WORLD_SIZE) * S}px;height:${(z.r * 2 / WORLD_SIZE) * S}px"></div>`;
+      if (near(z.x, z.z)) return lbl(z.x, z.z, 'zone ring-only', ring, `data-i="z${i}"`);
+      return lbl(z.x, z.z, 'zone', `${ring}<div class="pin">${icon(z.elite ? 'dragon' : 'skull')}</div><div class="vi">${esc(zoneName(z))} · ${lvT}</div>`, `data-i="z${i}"`);
+    }).join('');
+    let objT = '';
+    try { objT = g.step?.objective?.(g) || ''; } catch { objT = ''; }
+    if (mk) html += lbl(mk.x, mk.z, 'quest', `<div class="pin">${icon('star')}</div><div class="vi">${T('Mục tiêu', 'Objective', '目標')}</div>`);
     html += lbl(p.x, p.z, 'me', `<div class="pin" style="transform:rotate(${-g.player.yaw + Math.PI}rad)">${icon('dash')}</div><div class="vi">${esc(g.profile.name)}</div>`);
     if (g.auto.dest) html += lbl(g.auto.dest.x, g.auto.dest.z, 'dest', `<div class="pin">${icon('plus')}</div>`);
     $('map-labels').innerHTML = html;
+
+    // cột bên: mục tiêu hiện tại + danh sách địa danh có ghi chú
+    const side = $('map-side');
+    const dist = (x, z) => Math.round(Math.hypot(x - p.x, z - p.z));
+    let sh = '';
+    if (mk) sh += `<div class="ms-obj"><div class="ms-k">${T('Nhiệm vụ hiện tại', 'Current quest', '當前任務')}</div><b>${esc(trObj(g.ui.nh(objT)))}</b><small>${T('Cách', 'Distance', '距離')} ${dist(mk.x, mk.z)} ${T('trượng', 'm', '丈')} · ${T('đường vàng trên bản đồ', 'follow the gold line', '沿地圖金線前進')}</small><button class="primary sm" data-go="obj">${icon('dash')} ${T('Tự tìm đường', 'Auto-path', '自動尋路')}</button></div>`;
+    for (const [grp, gname] of Object.entries(GROUPS)) {
+      sh += `<div class="ms-g">${L(gname)}</div>`;
+      PLACE_INFO.forEach(([id, ic, hz, nm, note, g2], i) => {
+        if (g2 !== grp) return;
+        const hot = nm[0] === cur ? ' hot' : '';
+        sh += `<div class="ms-item${hot}" data-i="p${i}"><span class="ms-no">${i + 1}</span><div><b>${esc(L(nm))} <em>${hz}</em></b><p>${esc(L(note))}</p><small>${dist(XPLACES[id].x, XPLACES[id].z)} ${T('trượng', 'm', '丈')}${hot ? ` · <span class="ms-now">${T('chương đang chơi', 'current chapter', '當前章節')}</span>` : ''}</small></div></div>`;
+      });
+    }
+    sh += `<div class="ms-g">${T('Khu săn quái', 'Hunting grounds', '狩獵區')}</div>`;
+    ZONES.forEach((z, i) => {
+      const lv = z.mobs.map((m) => MONSTERS[m].lv);
+      sh += `<div class="ms-item zone" data-i="z${i}"><span class="ms-no">${icon(z.elite ? 'dragon' : 'skull')}</span><div><b>${esc(zoneName(z))} <em>${z.han}</em></b><p>Lv.${Math.min(...lv)}–${Math.max(...lv)} · ${z.mobs.slice(0, 4).map(mobName).join(', ')}…</p></div></div>`;
+    });
+    side.innerHTML = sh;
 
     // lướt + phóng to
     const wrap = $('map-wrap'), stage = $('map-stage');
@@ -182,26 +245,30 @@ Object.assign(UI.prototype, {
     $('map-me').onclick = () => centerOn(p.x, p.z);
     $('map-all').onclick = () => { st.z = fit; st.x = (wrap.clientWidth - S * fit) / 2; st.y = (wrap.clientHeight - S * fit) / 2; apply(); };
 
-    // bấm địa danh: thông tin + tự tìm đường
+    // bấm địa danh (trên bản đồ hoặc cột bên): thông tin + tự tìm đường
     const info = $('map-info');
     info.classList.add('hidden');
-    $('map-labels').querySelectorAll('[data-i]').forEach((el) => (el.onclick = (e) => {
-      e.stopPropagation();
-      const k = el.dataset.i, isZone = k[0] === 'z', i = Number(k.slice(1));
+    info.classList.add('no-i18n');
+    const show = (k) => {
+      const isZone = k[0] === 'z', i = Number(k.slice(1));
       let x, z, title, han, desc;
       if (isZone) {
-        const zn = ZONES[i]; x = zn.x; z = zn.z; title = zn.name; han = zn.han;
-        desc = `Quái: ${zn.mobs.map((m) => MONSTERS[m].name).join(', ')}${zn.elite ? `<br>Tinh anh: <b>${MONSTERS[zn.elite].name}</b>` : ''}`;
+        const zn = ZONES[i]; x = zn.x; z = zn.z; title = zoneName(zn); han = zn.han;
+        desc = `${T('Quái', 'Monsters', '怪物')}: ${zn.mobs.map(mobName).join(', ')}${zn.elite ? `<br>${T('Tinh anh', 'Elite', '精英')}: <b>${mobName(zn.elite)}</b>` : ''}`;
       } else {
-        const [id, , hz, vi, d] = PLACE_INFO[i]; x = PLACES[id].x; z = PLACES[id].z; title = vi; han = hz; desc = d;
+        const [id, , hz, nm, note] = PLACE_INFO[i]; x = XPLACES[id].x; z = XPLACES[id].z; title = L(nm); han = hz; desc = esc(L(note));
       }
-      const dist = Math.round(Math.hypot(x - p.x, z - p.z));
-      info.innerHTML = `<div class="mi-han">${han}</div><b>${title}</b><p>${desc}</p><small>Cách ${dist} trượng</small><button class="primary sm" id="map-go">${icon('dash')} Tự tìm đường</button>`;
+      info.innerHTML = `<div class="mi-han">${han}</div><b>${esc(title)}</b><p>${desc}</p><small>${T('Cách', 'Distance', '距離')} ${dist(x, z)} ${T('trượng', 'm', '丈')}</small><button class="primary sm" id="map-go">${icon('dash')} ${T('Tự tìm đường', 'Auto-path', '自動尋路')}</button>`;
       info.classList.remove('hidden');
+      centerOn(x, z);
       $('map-go').onclick = () => { g.auto.goTo(x, z, title); close(); };
-    }));
+    };
+    $('map-labels').querySelectorAll('[data-i]').forEach((el) => (el.onclick = (e) => { e.stopPropagation(); show(el.dataset.i); }));
+    side.querySelectorAll('[data-i]').forEach((el) => (el.onclick = () => show(el.dataset.i)));
+    side.querySelector('[data-go]')?.addEventListener('click', () => { g.auto.goTo(mk.x, mk.z, T('Mục tiêu', 'Objective', '目標')); close(); });
 
-    $('map-legend').innerHTML = [['door', 'Cổng trấn'], ['bag', 'Khách điếm'], ['skull', 'Khu săn quái'], ['dragon', 'Có tinh anh'], ['star', 'Mục tiêu'], ['dash', 'Vị trí của ngươi']].map(([i, t]) => `<span>${icon(i)}${t}</span>`).join('') + '<span class="muted">Kéo để lướt · Cuộn/chụm để phóng to · Bấm địa danh để tự tìm đường</span>';
+    $('map-legend').classList.add('no-i18n');
+    $('map-legend').innerHTML = [['pagoda', T('Địa danh (số = danh sách bên phải)', 'Place (number = list on the right)', '地點（編號對應右側列表）')], ['skull', T('Khu săn quái', 'Hunting ground', '狩獵區')], ['dragon', T('Có tinh anh', 'Elite inside', '有精英')], ['star', T('Mục tiêu nhiệm vụ', 'Quest objective', '任務目標')], ['dash', T('Vị trí của ngươi', 'You are here', '你的位置')]].map(([i, t]) => `<span>${icon(i)}${t}</span>`).join('') + `<span class="muted">${T('Kéo để lướt · Cuộn/chụm để phóng to · Bấm địa danh để xem ghi chú và tự tìm đường', 'Drag to pan · Scroll/pinch to zoom · Click a place for notes and auto-path', '拖曳移動 · 滾輪/雙指縮放 · 點擊地點查看說明並自動尋路')}</span>`;
     const close = () => { box.classList.add('hidden'); removeEventListener('keydown', onKey, true); if (g.running && !g.paused) g.input.lock(); };
     const onKey = (e) => { if (e.code === 'Escape' || e.code === 'KeyM') { e.stopPropagation(); close(); } };
     addEventListener('keydown', onKey, true);

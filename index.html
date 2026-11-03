@@ -152,6 +152,7 @@
         <div id="obj-chapter"></div>
         <div id="obj-text"></div>
         <div id="obj-dist"></div>
+        <div id="obj-hint"></div>
       </div>
     </div>
 
@@ -162,7 +163,7 @@
 
     <div id="toasts"></div>
     <div id="tip" class="hidden"></div>
-    <div id="marker"><div class="dia"></div><div class="dist" id="marker-dist"></div></div>
+    <div id="marker"><div class="arr" id="marker-arr"></div><div class="dia"></div><div class="dist" id="marker-dist"></div></div>
     <div id="plates"></div>
     <div id="dmg-layer"></div>
     <div id="prompt" class="hidden"><kbd>E</kbd><span id="prompt-text"></span></div>
@@ -185,10 +186,13 @@
   <section id="worldmap" class="modal hidden">
     <div class="map-frame">
       <div class="map-head"><span class="han">江湖輿圖</span><h2>Bản đồ giang hồ</h2><button class="x" id="map-close">✕</button></div>
-      <div class="map-wrap" id="map-wrap">
-        <div id="map-stage"><canvas id="map-canvas" width="1024" height="1024"></canvas><div id="map-labels"></div></div>
-        <div class="map-tools"><button id="map-zin" title="Phóng to">＋</button><button id="map-zout" title="Thu nhỏ">－</button><button id="map-me" title="Về vị trí của ta">◎</button><button id="map-all" title="Toàn cảnh">⤢</button></div>
-        <div class="map-info hidden" id="map-info"></div>
+      <div class="map-body">
+        <div class="map-wrap" id="map-wrap">
+          <div id="map-stage"><canvas id="map-canvas" width="1024" height="1024"></canvas><div id="map-labels" class="no-i18n"></div></div>
+          <div class="map-tools"><button id="map-zin" title="Phóng to">＋</button><button id="map-zout" title="Thu nhỏ">－</button><button id="map-me" title="Về vị trí của ta">◎</button><button id="map-all" title="Toàn cảnh">⤢</button></div>
+          <div class="map-info hidden" id="map-info"></div>
+        </div>
+        <aside class="map-side no-i18n" id="map-side"></aside>
       </div>
       <div class="map-legend" id="map-legend"></div>
     </div>

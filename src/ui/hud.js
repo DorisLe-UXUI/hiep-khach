@@ -139,6 +139,14 @@ export class HUD {
     else { $('prompt-text').textContent = text; $('prompt').classList.remove('hidden'); }
   }
 
+  hint(html) {
+    if (this.hintHtml === html) return;
+    this.hintHtml = html;
+    const el = $('obj-hint');
+    el.innerHTML = html;
+    el.style.display = html ? '' : 'none';
+  }
+
   objective(chapter, text) {
     $('obj-chapter').innerHTML = chapter;
     const el = $('obj-text');
@@ -225,8 +233,13 @@ export class HUD {
       // giữ dấu chỉ đường trong vùng giữa màn, không đè lên khung nhân vật, menu, minimap, nút kỹ năng
       const mx = Math.min(250, innerWidth * 0.3), top = 175, bot = 170;
       if (s.behind) { s.x = innerWidth - s.x; s.y = innerHeight - bot; }
+      const rx = s.x, ry = s.y, behind = s.behind;
       s.x = Math.min(innerWidth - mx, Math.max(mx, s.x));
       s.y = Math.min(innerHeight - bot, Math.max(top, s.y));
+      // mục tiêu ngoài màn hình: mũi tên chỉ hướng phải quay về
+      const arr = $('marker-arr'), off = behind || rx !== s.x || ry !== s.y;
+      arr.style.display = off ? 'block' : 'none';
+      if (off) arr.style.transform = `rotate(${behind ? Math.PI / 2 : Math.atan2(ry - innerHeight / 2, rx - innerWidth / 2)}rad)`;
       mEl.style.display = 'flex';
       mEl.style.left = s.x + 'px';
       mEl.style.top = s.y + 'px';
