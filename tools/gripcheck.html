@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#2a2320}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script></head>
+<body><canvas id="c" width="200" height="320"></canvas>
+<script type="module">
+// Kiểm tra điểm cầm: dựng vũ khí như chibi.equip (chuôi ở dưới, chấm đỏ = tay). ?m=my_axe&grip=0.15&pre=0,0,1.57&flip=1
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const q = new URLSearchParams(location.search), grip = +(q.get('grip') || 0.15), len = 1;
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+r.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x554433, 2.2));
+const dl = new THREE.DirectionalLight(0xffffff, 2.5); dl.position.set(2, 3, 4); scene.add(dl);
+const cam = new THREE.OrthographicCamera(-0.4, 0.4, 1.0, -0.28, 0.01, 10); cam.position.set(0, 0, 3);
+new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(`/public/assets/weapons/${q.get('m')}.glb`, (gl) => {
+  let w = gl.scene;
+  if (q.get('pca')) { // trục chính của đám đỉnh → góc xoay pre để dựng đứng
+    w.updateMatrixWorld(true); const pts = []; const v = new THREE.Vector3();
+    w.traverse((o) => { if (o.isMesh) { const a = o.geometry.attributes.position; for (let i = 0; i < a.count; i += 7) pts.push(v.fromBufferAttribute(a, i).applyMatrix4(o.matrixWorld).clone()); } });
+    const c = pts.reduce((s, p) => s.add(p), new THREE.Vector3()).divideScalar(pts.length);
+    let d = new THREE.Vector3(1, 1, 1).normalize();
+    for (let it = 0; it < 50; it++) { const n = new THREE.Vector3(); for (const p of pts) { const x = p.clone().sub(c); n.addScaledVector(x, x.dot(d)); } d = n.normalize(); }
+    const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(d, new THREE.Vector3(0, 1, 0)));
+    window.__euler = [e.x, e.y, e.z].map((x) => +x.toFixed(3));
+  }
+  const pre = q.get('pre'), flip = q.get('flip') === '1';
+  if (pre || flip) {
+    const f = new THREE.Group(); f.add(w);
+    if (pre) f.rotation.set(...pre.split(',').map(Number));
+    f.updateMatrixWorld(true);
+    if (flip) { const g2 = new THREE.Group(); g2.add(f); const s = new THREE.Box3().setFromObject(f).getSize(new THREE.Vector3()); g2.rotation[s.x > s.y && s.x > s.z ? 'y' : s.y > s.z ? 'z' : 'x'] = Math.PI; w = g2; } else w = f;
+    w.updateMatrixWorld(true);
+  }
+  const holder = new THREE.Group();
+  const box = new THREE.Box3().setFromObject(w), size = box.getSize(new THREE.Vector3());
+  const axis = size.x > size.y && size.x > size.z ? 'x' : size.y > size.z ? 'y' : 'z';
+  const k = len / size[axis];
+  w.scale.setScalar(k);
+  w.position.set(-(box.min.x + box.max.x) / 2 * k, -(box.min.y + box.max.y) / 2 * k, -(box.min.z + box.max.z) / 2 * k);
+  w.position[axis] = -box.min[axis] * k - len * grip;
+  if (axis === 'x') w.rotation.z = Math.PI / 2;
+  if (axis === 'z') w.rotation.x = -Math.PI / 2;
+  holder.add(w); scene.add(holder);
+  holder.rotation.y = +(q.get('ry') || 0.5);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03), new THREE.MeshBasicMaterial({ color: 0xff2020, depthTest: false })); dot.renderOrder = 9; scene.add(dot);
+  r.render(scene, cam); window.__done = true;
+});
+</script></body></html>

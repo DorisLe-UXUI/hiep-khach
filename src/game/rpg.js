@@ -246,7 +246,7 @@ export class RPG {
     const m = this.gear.weapon?.model, cls = this.g.profile.hero?.cls, ch = this.g.player?.char;
     if (!ch?.swapWeapon) return;
     if (!m) return this.g.player.applyWeaponGlow?.();
-    const FIT = { kiem: /katana|sword|cutlass|claymore|machete|axe|hammer|darkblade|og_|blade|angular|mace/, thuong: /spear|trident|scythe|claymore|hammer|axe|bustersword|og_s6|og_s9|og_hg|og_heavy|mace/, cung: /bow|crossbow/, phap: /staff/, dao: /knife|dagger|sickle|staff/ };
+    const FIT = { kiem: /katana|sword|cutlass|claymore|machete|axe|hammer|darkblade|og_|blade|angular|mace|aetherstorm|celestial|cosmic|nebula|dragonscale|reaper|bluediamond/, thuong: /spear|trident|scythe|claymore|hammer|axe|bustersword|og_s6|og_s9|og_hg|og_heavy|mace|my_u1|bluediamond/, cung: /bow|crossbow/, phap: /staff|serpent/, dao: /knife|dagger|sickle|staff|serpent/ };
     if (!(FIT[cls] || FIT.kiem).test(m)) return this.g.player.applyWeaponGlow?.();
     if (ch.weaponKind === m) return this.g.player.applyWeaponGlow?.();
     Promise.resolve(ch.swapWeapon(m)).then(() => this.g.player.applyWeaponGlow?.());

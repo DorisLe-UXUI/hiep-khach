@@ -120,6 +120,36 @@ const WEAPONS = {
   my_amethystmace: [{ path: '/assets/weapons/my_amethystmace.glb', hand: 'r', len: 1.1, grip: 0.18 }],
   my_celestspear: [{ path: '/assets/weapons/my_celestspear.glb', hand: 'r', len: 1.9, grip: 0.4 }],
   my_ancientxbow: [{ path: '/assets/weapons/my_ancientxbow.glb', hand: 'l', len: 1.3, grip: 0.5 }],
+  my_aetherstorm: [{ path: '/assets/weapons/my_aetherstorm.glb', hand: 'r', len: 1.2, grip: 0.12, flip: true }],
+  my_azurescythe: [{ path: '/assets/weapons/my_azurescythe.glb', hand: 'r', len: 1.8, grip: 0.3 }],
+  my_azuretrident: [{ path: '/assets/weapons/my_azuretrident.glb', hand: 'r', len: 1.9, grip: 0.4 }],
+  my_bluediamond: [{ path: '/assets/weapons/my_bluediamond.glb', hand: 'r', len: 1.35, grip: 0.1 }],
+  my_celestial: [{ path: '/assets/weapons/my_celestial.glb', hand: 'r', len: 1.2, grip: 0.12, flip: true }],
+  my_clockxbow: [{ path: '/assets/weapons/my_clockxbow.glb', hand: 'l', len: 0.9, grip: 0.5 }],
+  my_cosmic: [{ path: '/assets/weapons/my_cosmic.glb', hand: 'r', len: 1.25, grip: 0.12, pre: [0,0,-0.577] }],
+  my_crimsonsword: [{ path: '/assets/weapons/my_crimsonsword.glb', hand: 'r', len: 1.2, grip: 0.12, flip: true }],
+  my_dragonscale: [{ path: '/assets/weapons/my_dragonscale.glb', hand: 'r', len: 1.2, grip: 0.12, flip: true }],
+  my_emberblade: [{ path: '/assets/weapons/my_emberblade.glb', hand: 'r', len: 1.2, grip: 0.12, flip: true }],
+  my_etherspear: [{ path: '/assets/weapons/my_etherspear.glb', hand: 'r', len: 1.9, grip: 0.4, pre: [0.467,0.243,0.95] }],
+  my_exodastaff: [{ path: '/assets/weapons/my_exodastaff.glb', hand: 'r', len: 1.6, grip: 0.4 }],
+  my_frostaxe: [{ path: '/assets/weapons/my_frostaxe.glb', hand: 'r', len: 1.15, grip: 0.15, pre: [-0.319,-0.381,1.752], flip: true }],
+  my_frostblade: [{ path: '/assets/weapons/my_frostblade.glb', hand: 'r', len: 1.2, grip: 0.12 }],
+  my_hallowscythe: [{ path: '/assets/weapons/my_hallowscythe.glb', hand: 'r', len: 1.8, grip: 0.3 }],
+  my_heartblade: [{ path: '/assets/weapons/my_heartblade.glb', hand: 'r', len: 1.2, grip: 0.12, flip: true }],
+  my_nebula: [{ path: '/assets/weapons/my_nebula.glb', hand: 'r', len: 1.25, grip: 0.12, pre: [-0.707,0.133,-0.358] }],
+  my_reaper: [{ path: '/assets/weapons/my_reaper.glb', hand: 'r', len: 1.2, grip: 0.12, flip: true }],
+  my_runeblade: [{ path: '/assets/weapons/my_runeblade.glb', hand: 'r', len: 1.2, grip: 0.12, flip: true }],
+  my_runexbow: [{ path: '/assets/weapons/my_runexbow.glb', hand: 'l', len: 0.9, grip: 0.5 }],
+  my_runexbow2: [{ path: '/assets/weapons/my_runexbow2.glb', hand: 'l', len: 0.9, grip: 0.5 }],
+  my_serpent: [{ path: '/assets/weapons/my_serpent.glb', hand: 'r', len: 1.6, grip: 0.4 }],
+  my_skullaxe: [{ path: '/assets/weapons/my_skullaxe.glb', hand: 'r', len: 1.2, grip: 0.15, pre: [0.053,-0.021,-0.742] }],
+  my_skullblade: [{ path: '/assets/weapons/my_skullblade.glb', hand: 'r', len: 1.05, grip: 0.15, flip: true }],
+  my_stylxbow: [{ path: '/assets/weapons/my_stylxbow.glb', hand: 'l', len: 0.9, grip: 0.5 }],
+  my_thornscythe: [{ path: '/assets/weapons/my_thornscythe.glb', hand: 'r', len: 1.8, grip: 0.3 }],
+  my_u1: [{ path: '/assets/weapons/my_u1.glb', hand: 'r', len: 1.9, grip: 0.4, pre: [0.09,0.075,1.387] }],
+  my_verdantspear: [{ path: '/assets/weapons/my_verdantspear.glb', hand: 'r', len: 1.9, grip: 0.4 }],
+  my_voidxbow: [{ path: '/assets/weapons/my_voidxbow.glb', hand: 'l', len: 0.9, grip: 0.5 }],
+  my_wingedbow: [{ path: '/assets/weapons/my_wingedbow.glb', hand: 'l', len: 1.3, grip: 0.5 }],
   px_crystalsword: [{ path: '/assets/weapons/px_crystalsword.glb', hand: 'r', len: 1.15, grip: 0.14 }],
   px_devilsword: [{ path: '/assets/weapons/px_devilsword.glb', hand: 'r', len: 1.2, grip: 0.14 }],
   px_redsword: [{ path: '/assets/weapons/px_redsword.glb', hand: 'r', len: 1.15, grip: 0.14 }],
@@ -132,7 +162,7 @@ const WEAPONS = {
   px_longbow: [{ path: '/assets/weapons/px_longbow.glb', hand: 'l', len: 1.4, grip: 0.5 }],
   px_goldspear: [{ path: '/assets/weapons/px_goldspear.glb', hand: 'r', len: 2.0, grip: 0.4 }],
 };
-const STYLE_OF = { og_s6: 'spear', og_s9: 'spear', og_hg: 'spear', og_heavy: 'spear', my_celestspear: 'spear', my_ancientxbow: 'bow', px_bustersword: 'spear', px_battleaxe: 'spear', px_longbow: 'bow', px_goldspear: 'spear', pp_spear: 'spear', pp_trident: 'spear', pp_scythe: 'spear', pp_claymore: 'spear', pp_staff: 'staff', pp_bow: 'bow', pp_crossbow: 'bow', pp_dagger: 'dual', pp_knife: 'dual', pp_sickle: 'dual', kk_spear: 'spear', kk_halberd: 'spear', kk_bow_a: 'bow', kk_bow_b: 'bow', kk_staff_a: 'staff', kk_staff_b: 'staff', kk_wand: 'staff', kk_dagger_a: 'dual', kk_dagger_b: 'dual', kk_claw: 'dual', bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
+const STYLE_OF = { my_azurescythe: 'spear', my_azuretrident: 'spear', my_bluediamond: 'spear', my_clockxbow: 'bow', my_etherspear: 'spear', my_exodastaff: 'staff', my_hallowscythe: 'spear', my_runexbow: 'bow', my_runexbow2: 'bow', my_serpent: 'staff', my_stylxbow: 'bow', my_thornscythe: 'spear', my_u1: 'spear', my_verdantspear: 'spear', my_voidxbow: 'bow', my_wingedbow: 'bow', og_s6: 'spear', og_s9: 'spear', og_hg: 'spear', og_heavy: 'spear', my_celestspear: 'spear', my_ancientxbow: 'bow', px_bustersword: 'spear', px_battleaxe: 'spear', px_longbow: 'bow', px_goldspear: 'spear', pp_spear: 'spear', pp_trident: 'spear', pp_scythe: 'spear', pp_claymore: 'spear', pp_staff: 'staff', pp_bow: 'bow', pp_crossbow: 'bow', pp_dagger: 'dual', pp_knife: 'dual', pp_sickle: 'dual', kk_spear: 'spear', kk_halberd: 'spear', kk_bow_a: 'bow', kk_bow_b: 'bow', kk_staff_a: 'staff', kk_staff_b: 'staff', kk_wand: 'staff', kk_dagger_a: 'dual', kk_dagger_b: 'dual', kk_claw: 'dual', bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
 
 let clipsP = null;
 function loadClips() {
@@ -227,6 +257,14 @@ export class ChibiCharacter {
       if (d.obj || d.len) {
         // OBJ hoặc glb tải về (tỉ lệ tuỳ ý): chuẩn hoá theo trục dài nhất, cầm ở vị trí grip
         w = d.obj ? await loadKitOBJ(d.obj) : (await loadGLTF(d.path)).scene.clone(true);
+        if (d.pre || d.flip) {
+          // xoay sẵn mẫu nằm nghiêng; flip: chuôi đang ở đầu lớn của trục dài thì lật lại
+          const f = new THREE.Group(); f.add(w);
+          if (d.pre) f.rotation.set(...d.pre);
+          f.updateMatrixWorld(true);
+          if (d.flip) { const g2 = new THREE.Group(); g2.add(f); const s = new THREE.Box3().setFromObject(f).getSize(new THREE.Vector3()); g2.rotation[s.x > s.y && s.x > s.z ? 'y' : s.y > s.z ? 'z' : 'x'] = Math.PI; w = g2; } else w = f;
+          w.updateMatrixWorld(true);
+        }
         const holder = new THREE.Group();
         const box = new THREE.Box3().setFromObject(w), size = box.getSize(new THREE.Vector3());
         const axis = size.x > size.y && size.x > size.z ? 'x' : size.y > size.z ? 'y' : 'z';

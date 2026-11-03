@@ -67,9 +67,9 @@ export const ELEMENTS = [
 // [tên loại, chữ Hán, mẫu cầm tay (chibi WEAPONS), ảnh]
 // mỗi loại có vài mẫu, hệ khí khác nhau dùng mẫu khác nhau
 const DIVINE_KINDS = [
-  ['kiếm', '劍', ['px_crystalsword', 'my_angular', 'px_devilsword', 'og_he', 'px_redsword', 'my_shadowblade', 'og_hd', 'px_silversword', 'og_s8', 'pp_katana']], ['đao', '刀', ['og_hj', 'px_darkblade', 'og_hf', 'og_ha', 'pp_cutlass', 'og_hc', 'px_bustersword']],
-  ['thương', '槍', ['my_celestspear', 'px_goldspear', 'pp_trident', 'pp_spear']], ['cung', '弓', ['px_longbow', 'my_ancientxbow', 'pp_bow']], ['trượng', '杖', ['pp_staff']],
-  ['chuỷ', '匕', ['pp_knife']], ['phủ', '斧', ['my_axe', 'px_battleaxe', 'px_crescentaxe', 'px_hewaxe', 'pp_axe']], ['chuỳ', '錘', ['my_amethystmace', 'og_mace', 'pp_hammer']], ['kích', '戟', ['pp_scythe']], ['trảo', '爪', ['pp_sickle']],
+  ['kiếm', '劍', ['px_crystalsword', 'my_angular', 'px_devilsword', 'og_he', 'px_redsword', 'my_shadowblade', 'og_hd', 'px_silversword', 'og_s8', 'pp_katana']], ['đao', '刀', ['my_reaper', 'my_skullblade', 'og_hj', 'px_darkblade', 'og_hf', 'og_ha', 'pp_cutlass', 'og_hc', 'px_bustersword']],
+  ['thương', '槍', ['my_etherspear', 'my_celestspear', 'my_verdantspear', 'px_goldspear', 'my_u1', 'pp_spear']], ['cung', '弓', ['my_wingedbow', 'px_longbow', 'my_voidxbow', 'my_ancientxbow', 'my_runexbow2', 'pp_bow']], ['trượng', '杖', ['my_serpent', 'my_exodastaff', 'pp_staff']],
+  ['chuỷ', '匕', ['pp_knife']], ['phủ', '斧', ['my_axe', 'my_frostaxe', 'my_skullaxe', 'px_battleaxe', 'px_crescentaxe', 'px_hewaxe', 'pp_axe']], ['chuỳ', '錘', ['my_amethystmace', 'og_mace', 'pp_hammer']], ['kích', '戟', ['my_azuretrident', 'my_thornscythe', 'my_azurescythe', 'my_hallowscythe', 'pp_scythe']], ['trảo', '爪', ['pp_sickle']],
 ];
 ELEMENTS.forEach((e, i) => DIVINE_KINDS.forEach(([kind, kh, models], j) => {
   const model = models[i % models.length];
@@ -96,6 +96,36 @@ ELEMENTS.forEach((e, i) => DIVINE_KINDS.forEach(([kind, kh, models], j) => {
   ['og_heavy', 'Huyền Thiết trọng kiếm', '玄鐵重劍', 14], ['og_he', 'Kim Ô kiếm', '金烏劍', 15], ['og_hf', 'Độc Hạt đao', '毒蠍刀', 16], ['my_angular', 'Xích Huyết kiếm', '赤血劍', 16],
   ['og_hj', 'Phượng Hoàng đao', '鳳凰刀', 17], ['my_amethystmace', 'Tử Tinh chuỳ', '紫晶錘', 17], ['my_celestspear', 'Thiên Thạch thương', '天石槍', 17],
   ['my_axe', 'Băng Phách phủ', '冰魄斧', 18], ['my_shadowblade', 'Tử U kiếm', '紫幽劍', 19],
+  ['my_aetherstorm', 'Lôi Vân kiếm', '雷雲劍', 18],
+  ['my_azurescythe', 'Thanh Minh liêm', '青冥鐮', 16],
+  ['my_azuretrident', 'Hải Vương kích', '海王戟', 17],
+  ['my_bluediamond', 'Lam Ngọc đại kiếm', '藍玉大劍', 15],
+  ['my_celestial', 'Thiên Quang kiếm', '天光劍', 16],
+  ['my_clockxbow', 'Cơ Quan liên nỏ', '機關連弩', 15],
+  ['my_cosmic', 'Tinh Hà kiếm', '星河劍', 19],
+  ['my_crimsonsword', 'Huyết Long kiếm', '血龍劍', 17],
+  ['my_dragonscale', 'Long Lân kiếm', '龍鱗劍', 14],
+  ['my_emberblade', 'Viêm Tâm kiếm', '炎心劍', 15],
+  ['my_etherspear', 'Huyễn Linh thương', '幻靈槍', 18],
+  ['my_exodastaff', 'Sinh Mệnh trượng', '生命杖', 16],
+  ['my_frostaxe', 'Băng Hà phủ', '冰河斧', 17],
+  ['my_frostblade', 'Vĩnh Đông kiếm', '永冬劍', 18],
+  ['my_hallowscythe', 'U Linh liêm', '幽靈鐮', 15],
+  ['my_heartblade', 'Xích Tâm kiếm', '赤心劍', 16],
+  ['my_nebula', 'Tinh Vân kiếm', '星雲劍', 17],
+  ['my_reaper', 'Địa Ngục đao', '地獄刀', 18],
+  ['my_runeblade', 'Băng Phù kiếm', '冰符劍', 19],
+  ['my_runexbow', 'Phù Văn nỏ', '符文弩', 16],
+  ['my_runexbow2', 'Phù Văn thần nỏ', '符文神弩', 18],
+  ['my_serpent', 'Linh Xà trượng', '靈蛇杖', 18],
+  ['my_skullaxe', 'Toái Lô chiến phủ', '碎顱戰斧', 16],
+  ['my_skullblade', 'Quỷ Đầu đao', '鬼頭刀', 15],
+  ['my_stylxbow', 'Hắc Thiết nỏ', '黑鐵弩', 13],
+  ['my_thornscythe', 'Kinh Cức liêm', '荊棘鐮', 17],
+  ['my_u1', 'Huyết Ảnh thương', '血影槍', 14],
+  ['my_verdantspear', 'Bích Hà thương', '碧霞槍', 15],
+  ['my_voidxbow', 'Hư Không nỏ', '虛空弩', 19],
+  ['my_wingedbow', 'Phượng Dực cung', '鳳翼弓', 17],
 ].forEach(([model, name, han, tier]) => NAMED_WEAPONS.push({ id: 'n_' + model, name, han, tier, thumb: 'wpn_' + model, model }));
 export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((e) => [e.id, e]));
 
