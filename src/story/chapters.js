@@ -1,5 +1,6 @@
 import { PLACES } from '../world/layout.js';
 import { ZONES } from '../game/bestiary.js';
+import { ARCS } from './ladder_story.js';
 
 /**
  * CỐT TRUYỆN: "Thanh Phong Kiếm Ký"
@@ -32,6 +33,7 @@ export const SPEAKERS = {
   huyetma: { name: 'Huyết Ma', han: '血魔', look: 'huyetma' },
   situ: { name: 'Tư Đồ Phong', han: '司徒鋒', look: 'situ' },
   wumian: { name: 'Vô Diện', han: '無面', look: 'wumian' },
+  ttkeeper: { name: 'Thủ hộ Thiên Thê', han: '守關', look: 'wumian' },
 };
 
 // vùng đất Hồi II (trùng khu săn quái trong bestiary.js)
@@ -881,7 +883,7 @@ export const CHAPTERS = [
           ['hero', 'Minh chủ quen sư phụ tại hạ?'],
           ['situ', '(cười) Ba mươi năm trước, lão phu và Mộ Bạch huynh từng uống chung một vò rượu. Đáng tiếc, người tốt thường chết sớm.'],
           facName(g)
-            ? ['situ', `Ngươi đã vào ${facName(g)}. ${g.path.s.faction === 'chinh' ? 'Tốt. Võ Lâm Minh cần những người như ngươi.' : 'Hừ. Tà phái cũng được, miễn là kiếm của ngươi đủ nhanh.'}`]
+            ? ['situ', g.path.s.faction === 'chinh' ? 'Tốt. Võ Lâm Minh cần những người như ngươi.' : 'Hừ. Tà phái cũng được, miễn là kiếm của ngươi đủ nhanh.']
             : ['situ', 'Ngươi chưa thuộc phe nào. Trên đài luận võ, chỉ có kiếm nói chuyện.'],
           { run: (g) => { if (!g.path?.s.faction && g.rpg.level >= 20) g.toast('Có thể gia nhập <b>Chính / Tà phái</b> ở bảng <b>Đạo lộ</b> (U)', 4); } },
           ['situ', 'Luận võ bắt đầu! Ba cao thủ các phái, rồi tới trận chung kết.'],
@@ -1127,7 +1129,7 @@ function ladderChapter(n) {
   const req = Math.min(1990, n * 20), L = LADDER_PLACES[(n - 1) % LADDER_PLACES.length];
   const [btype, bname] = LADDER_BOSS[(n - 1) % LADDER_BOSS.length], ep = LADDER_EPITHET[Math.min(9, Math.floor((n - 1) / 10))];
   const boss = `${bname} · ${ep}`, grp = 'tt' + n, cnt = 5 + Math.min(5, Math.floor(n / 20));
-  const zone = ZONES.find((z) => z.id === L.zone) || ZONES[0];
+  const zone = ZONES.find((z) => z.id === L.zone) || ZONES[0], arc = ARCS[Math.min(9, Math.floor((n - 1) / 10))];
   return {
     id: grp,
     han: '天梯',
@@ -1137,11 +1139,7 @@ function ladderChapter(n) {
     time: ['morning', 'noon', 'dawn2', 'night', 'sunrise'][n % 5],
     bg: L.bg,
     spawn: { x: L.x, z: L.z + 40, yaw: Math.PI },
-    narration: () => [
-      `Thiên Thê, tầng thứ ${n}. Bậc thang ánh sáng dẫn xuống ${L.name}.`,
-      LADDER_LINES[n % LADDER_LINES.length],
-      n % 10 === 0 ? `Tầng ${n} là một cửa ải lớn. Kẻ gác cổng ở đây mạnh hơn hẳn những tầng trước.` : `Kẻ trấn giữ: ${boss}.`,
-    ],
+    narration: () => [`Thiên Thê · Tầng ${n} · ${arc.name[0]}`, arc.lines[(n - 1) % 10][0]],
     steps: [
       {
         objective: (g) => `Tu luyện đạt cấp ${req} để mở tầng ${n} (đang cấp ${g.rpg.level})`,
@@ -1169,8 +1167,8 @@ function ladderChapter(n) {
         objective: () => `Đánh bại ${boss}`,
         marker: (g) => g.nearestOf(grp + 'b') || { x: L.x, z: L.z },
         enter: (g) => g.dialog([
-          ['hero', `(Bậc thang rung chuyển. ${boss} hiện ra giữa ${L.name}.)`],
-          ['hero', n % 10 === 0 ? 'Cửa ải lớn... Sư phụ, xin người phù hộ.' : 'Tầng này, ta sẽ qua.'],
+          ['hero', '(Bậc thang rung chuyển. Kẻ trấn giữ tầng này hiện ra.)'],
+          ...(n % 10 === 0 ? [['hero', 'Cửa ải lớn... Sư phụ, xin người phù hộ.'], ['ttkeeper', arc.gate[0][0]], ['hero', arc.gate[1][0]]] : [['hero', 'Tầng này, ta sẽ qua.']]),
           { run: (g) => g.spawn(btype, L.x, L.z - 6, { group: grp + 'b', boss: true, name: `${boss} · Lv.${req + 5}`, lv: req + 5 + (n % 10 === 0 ? 5 : 0), aggro: 100 }) },
         ]),
         done: (g) => killed(g, grp + 'b', 1),

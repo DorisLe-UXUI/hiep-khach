@@ -696,7 +696,7 @@ export class Game {
         const sub = trLine(text);
         await this.ui.line(name, this.portraits[who], sub ? this.zhGender(sub, who === 'hero') : this.ui.gender(text, who === 'hero'), false, sp.han && who !== 'hero' ? sp.han : '');
       } else if (l.choice) {
-        const i = await this.ui.choose(l.choice);
+        const i = await this.ui.choose(l.choice.map((c) => ({ ...c, text: trLine(c.text) || c.text })));
         const more = l.choice[i].then?.(this);
         if (more) await this.runLines(more);
       } else if (l.run) {

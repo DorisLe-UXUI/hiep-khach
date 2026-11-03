@@ -1,6 +1,26 @@
 import { VOICE_LINES } from './story/voice.js';
 import { ZH_LINES } from './story/zh.js';
 import { NAMES as EN_NAMES, LINES as EN_LINES } from './i18n_en.js';
+import { ACT3 } from './story/act3_i18n.js';
+import { ARCS, LADDER_STATIC } from './story/ladder_story.js';
+
+// thoại thêm (Hồi III, Thiên Thê): câu tiếng Việt → [en, zh]; '#' = số trong câu
+const EXTRA = { ...ACT3 };
+for (const [vi, en, zh] of LADDER_STATIC) EXTRA[vi] = [en, zh];
+for (const a of ARCS) {
+  for (const [vi, en, zh] of [...a.lines, ...a.gate]) EXTRA[vi] = [en, zh];
+  EXTRA[`Thiên Thê · Tầng # · ${a.name[0]}`] = [`Heavenly Ladder · Floor # · ${a.name[1]}`, `天梯 · 第 # 層 · ${a.name[2]}`];
+}
+function extraLine(vi) {
+  let r = EXTRA[vi];
+  if (r) return r[LANG === 'en' ? 0 : 1];
+  const nums = vi.match(/\d+/g);
+  if (!nums) return null;
+  r = EXTRA[vi.replace(/\d+/g, '#')];
+  if (!r) return null;
+  let k = 0;
+  return r[LANG === 'en' ? 0 : 1].replace(/#/g, () => nums[k++] ?? '');
+}
 
 /**
  * Ngôn ngữ: Tiếng Việt / English / 中文 cho phụ đề thoại và giao diện. Giọng lồng tiếng luôn là tiếng Anh.
@@ -19,7 +39,7 @@ export function voiceKey(s) {
 export function trLine(vi) {
   if (LANG === 'vi') return null;
   const k = voiceKey(vi);
-  return LANG === 'en' ? VOICE_LINES[k]?.en || null : ZH_LINES[k] || null;
+  return (LANG === 'en' ? VOICE_LINES[k]?.en : ZH_LINES[k]) || extraLine(vi) || null;
 }
 /** File giọng tiếng Anh của câu thoại */
 export function voiceOf(vi, female) {
@@ -30,7 +50,7 @@ export function voiceOf(vi, female) {
 
 export const SPEAKER_NAMES = {
   en: { guard: 'Elder Wang', keeper: 'Innkeeper Liu', maiden: "Lin Wan'er", doba: 'Tu Ba', hanbang: 'Han Bing', villain: 'Murong Xue', captive: 'Captive', villager: 'Villager',
-    merchant: 'Qian Duobao', smith: 'Iron Ox', apothecary: 'Su Ling', auctioneer: 'Old Jin', trainer: 'Instructor Li Hu', mentor: 'Xuanji Zi', herald: 'War Herald', fisher: 'Old Fisherman', matchmaker: 'Matchmaker Hong', steward: 'Steward' },
+    merchant: 'Qian Duobao', smith: 'Iron Ox', apothecary: 'Su Ling', auctioneer: 'Old Jin', trainer: 'Instructor Li Hu', mentor: 'Xuanji Zi', herald: 'War Herald', fisher: 'Old Fisherman', matchmaker: 'Matchmaker Hong', steward: 'Steward', situ: 'Situ Feng', wumian: 'The Faceless', ttkeeper: 'Ladder Keeper' },
 };
 
 // ───────── từ điển giao diện: tiếng Việt → [English, 中文] ─────────
