@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Actor } from './actor.js';
 
+const _to = new THREE.Vector3(), _tv = new THREE.Vector3();
+
 /** NPC đứng/đi lại, có thể nói chuyện. */
 export class NPC extends Actor {
   constructor(game, character, { name, dialogue, idleAnim = 'Idle_Loop', talkAnim = 'Idle_Talking_Loop', route = null }) {
@@ -20,20 +22,20 @@ export class NPC extends Actor {
     const p = this.game.player;
     let speed = 0, dir = null;
     if (this.talking) {
-      const to = new THREE.Vector3().subVectors(p.pos, this.pos);
+      const to = _to.subVectors(p.pos, this.pos);
       this.faceTowards(Math.atan2(to.x, to.z), dt, 6);
     } else if (this.route) {
       if (this.wait > 0) this.wait -= dt;
       else {
         const wp = this.route[this.routeIdx];
-        const to = new THREE.Vector3(wp[0] - this.pos.x, 0, wp[1] - this.pos.z);
+        const to = _to.set(wp[0] - this.pos.x, 0, wp[1] - this.pos.z);
         if (to.length() < 0.8) { this.routeIdx = (this.routeIdx + 1) % this.route.length; this.wait = 2 + Math.random() * 4; }
         else { dir = to.normalize(); speed = 1.4; this.faceTowards(Math.atan2(dir.x, dir.z), dt, 4); }
       }
     } else {
       this.faceTowards(this.homeYaw, dt, 2);
     }
-    const tv = dir ? dir.multiplyScalar(speed) : new THREE.Vector3();
+    const tv = dir ? dir.multiplyScalar(speed) : _tv.set(0, 0, 0);
     this.vel.x = tv.x; this.vel.z = tv.z;
     this.physics(dt);
     if (this.talking) this.char.play(this.talkAnim);

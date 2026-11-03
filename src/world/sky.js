@@ -42,10 +42,12 @@ export class Sky {
     this.pmrem = new THREE.PMREMGenerator(renderer);
     this.cache = new Map();
     this.lanternSpots = lights || [];
-    // đèn lồng: 8 đèn điểm luân chuyển tới các vị trí gần người chơi nhất
+    // đèn lồng: 4 đèn điểm luân chuyển tới các vị trí gần người chơi nhất.
+    // Chỉ bật visible khi có đèn lồng: số đèn hiện nằm trong khoá shader, đổi số đèn là dịch lại mọi vật liệu.
     this.pool = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 4; i++) {
       const l = new THREE.PointLight(0xff9a48, 0, 16, 1.6);
+      l.visible = false;
       scene.add(l);
       this.pool.push(l);
     }
@@ -140,9 +142,7 @@ export class Sky {
       u.sunColor.value.set(t.color);
       u.waterColor.value.set(timeName === 'night' ? 0x07121a : 0x1d3b3a);
     }
-    this.lanterns = !!t.lanterns;
-    this.glows.forEach((g) => (g.visible = this.lanterns));
-    if (!this.lanterns) this.pool.forEach((l) => (l.intensity = 0));
+    this.setLanterns(!!t.lanterns);
   }
 
   setToon(timeName, t) {
@@ -175,9 +175,13 @@ export class Sky {
       w.waterColor.value.set(timeName === 'night' ? 0x0a2a4a : 0x1a8ab0);
       w.distortionScale.value = 1.2;
     }
-    this.lanterns = !!t.lanterns;
-    this.glows.forEach((g) => (g.visible = this.lanterns));
-    if (!this.lanterns) this.pool.forEach((l) => (l.intensity = 0));
+    this.setLanterns(!!t.lanterns);
+  }
+
+  setLanterns(on) {
+    this.lanterns = on;
+    this.glows.forEach((g) => (g.visible = on));
+    this.pool.forEach((l) => { l.visible = on; l.intensity = 0; });
   }
 
   /** Gọi mỗi frame: chuyển đèn điểm tới các đèn lồng gần người chơi. */
@@ -190,11 +194,20 @@ export class Sky {
       }
     }
     if (!this.lanterns) return;
-    const near = this.lanternSpots.map((p, i) => [p.distanceToSquared(pos), i]).sort((a, b) => a[0] - b[0]);
+    // chọn 4 đèn lồng gần nhất (không sắp xếp cả mảng, không cấp phát)
+    const N = this.pool.length, bi = this._bi ||= new Int32Array(N), bd = this._bd ||= new Float64Array(N);
+    bi.fill(-1); bd.fill(Infinity);
+    this.lanternSpots.forEach((p, i) => {
+      const d = p.distanceToSquared(pos);
+      if (d >= bd[N - 1]) return;
+      let k = N - 1;
+      for (; k > 0 && bd[k - 1] > d; k--) { bd[k] = bd[k - 1]; bi[k] = bi[k - 1]; }
+      bd[k] = d; bi[k] = i;
+    });
     this.pool.forEach((l, k) => {
-      const n = near[k];
-      if (!n) { l.intensity = 0; return; }
-      l.position.copy(this.lanternSpots[n[1]]);
+      // đèn thừa vẫn visible (cường độ 0) để số đèn không đổi giữa các khung hình
+      if (bi[k] < 0) { l.intensity = 0; return; }
+      l.position.copy(this.lanternSpots[bi[k]]);
       l.intensity = 14 * (0.9 + Math.sin(time * 9 + k * 1.7) * 0.06 + Math.sin(time * 23 + k) * 0.04);
     });
   }

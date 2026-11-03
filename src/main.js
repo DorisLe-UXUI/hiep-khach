@@ -41,6 +41,13 @@ if (import.meta.env.VITE_LITE) {
 }
 
 const ui = new UI();
+// bản dev (…/dev/): huy hiệu DEV để không nhầm với bản chính
+if (import.meta.env.VITE_DEV_BUILD) {
+  const b = document.createElement('div');
+  b.textContent = 'DEV ' + (import.meta.env.VITE_DEV_SHA || '');
+  b.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;padding:2px 8px;border-radius:4px;background:#c0392b;color:#fff;font:600 11px/1.6 monospace;pointer-events:none;opacity:.85';
+  document.body.appendChild(b);
+}
 ui.decorate();
 const settings = loadSettings();
 setLang(settings.lang || 'vi');
@@ -58,7 +65,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-setMaxAnisotropy(renderer.capabilities.getMaxAnisotropy());
+setMaxAnisotropy(Math.min(8, renderer.capabilities.getMaxAnisotropy())); // 16x tốn băng thông mà khó thấy khác
 
 let pct = 0;
 let stepText = 'Đang mài kiếm...';
@@ -71,8 +78,8 @@ let game = null;
 const preview = { char: null, token: 0, angle: 0.35 };
 
 async function boot() {
-  // chibi: tải song song mọi model của màn hình chính ngay từ đầu
-  if (Character.chibi) preloadModels();
+  // chibi: tải song song model cần cho màn hình chính + nhân vật đang dùng ngay từ đầu
+  if (Character.chibi) preloadModels(currentProfile()?.hero || defaultHero());
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0xb7c0c2, 0.003);
   const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeight, 0.3, 1500);
@@ -121,6 +128,12 @@ async function boot() {
 
   step('Mài kiếm...', 96);
   await renderer.compileAsync(scene, camera);
+  // dịch sẵn biến thể shader có đèn lồng (đêm) để lúc chuyển giờ không bị khựng
+  if (sky.lanternSpots.length && !sky.lanterns) {
+    sky.pool.forEach((l) => (l.visible = true));
+    await renderer.compileAsync(scene, camera).catch(() => {});
+    sky.setLanterns(sky.lanterns);
+  }
   step('Sẵn sàng.', 100);
 
   // khớp khung vẽ với cửa sổ; bỏ qua lúc cửa sổ tạm có cỡ 0 (bị ẩn) và tự sửa ở khung hình sau
@@ -137,7 +150,7 @@ async function boot() {
 
   const clock = new THREE.Clock();
   // độ phân giải tự động: giữ khoảng 50+ khung hình/giây
-  let avg = 16, adjT = 0, slowT = 0;
+  let avg = 16, adjT = 0, slowT = 0, idleF = 0;
   const loopErrs = new Set();
   const maxPR = () => Math.min(devicePixelRatio, ({ low: 0.75, medium: 1, high: 1.5 })[game.settings.quality] || 1);
   renderer.setAnimationLoop(() => {
@@ -146,11 +159,14 @@ async function boot() {
     const dt = Math.min(raw, 1 / 20);
     avg = avg * 0.95 + raw * 1000 * 0.05;
     adjT += raw;
+    // bảng/tạm dừng/bản đồ đang mở (nền mờ che cảnh): chỉ vẽ cảnh 1/4 khung hình cho đỡ nóng máy
+    const idle = mode !== 'create' && (game.paused || game.panelOpen());
+    if (idle) adjT = 0; // không chỉnh độ phân giải theo khung hình bị bỏ vẽ
     if (adjT > 1.5 && document.visibilityState === 'visible') {
       adjT = 0;
       const pr = renderer.getPixelRatio();
       if (avg > 22 && pr > 0.55) renderer.setPixelRatio(Math.max(0.55, pr - 0.15));
-      else if (avg < 14 && pr < maxPR()) renderer.setPixelRatio(Math.min(maxPR(), pr + 0.1));
+      else if (avg < 14 && pr < maxPR() && !(game._autoLow && game.settings.quality === 'low')) renderer.setPixelRatio(Math.min(maxPR(), pr + 0.1));
       // đã hạ độ phân giải hết mức mà vẫn chậm: tự chuyển đồ hoạ Thấp (một lần)
       slowT = mode === 'play' && avg > 30 && renderer.getPixelRatio() <= 0.56 ? slowT + 1 : 0;
       if (slowT >= 5 && game.settings.quality !== 'low' && !game._autoLow) {
@@ -164,7 +180,9 @@ async function boot() {
     try {
       if (mode === 'create') updatePreview(dt);
       else game.update(dt, clock.elapsedTime);
-      if (mode === 'create' && stage) renderer.render(stage.scene, stage.camera); else renderer.render(scene, camera);
+      if (idle && idleF++ % 4) { /* bỏ khung này */ }
+      else if (mode === 'create' && stage) renderer.render(stage.scene, stage.camera); else renderer.render(scene, camera);
+      if (!idle) idleF = 0;
     } catch (err) {
       if (!loopErrs.has(String(err))) { loopErrs.add(String(err)); console.error('Lỗi trong khung hình (game vẫn chạy tiếp):', err); }
     }

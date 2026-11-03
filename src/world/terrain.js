@@ -133,7 +133,8 @@ export class Terrain {
     const splat = new THREE.CanvasTexture(this.splatCanvas);
     splat.colorSpace = THREE.NoColorSpace;
     splat.flipY = false; // hàng 0 của canvas = z nhỏ nhất, khớp với UV (z+HALF)/WORLD
-    const T = (name) => [rawTex(name, 'diff'), rawTex(name, 'nor')];
+    // phong cách hoạt hình chỉ dùng bộ cỏ: không tải 10 texture còn lại
+    const T = (name) => (Terrain.stylized && name !== 'leafy_grass' ? [null, null] : [rawTex(name, 'diff'), rawTex(name, 'nor')]);
     const sets = { grass: T('leafy_grass'), forest: T('forest_leaves_02'), rock: T('rock_face_03'), path: T('stony_dirt_path'), paved: T('grey_stone_path'), mud: T('brown_mud_leaves_01') };
 
     const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
@@ -168,6 +169,19 @@ void addLayer(vec3 c, vec3 n, float r, float w){ tB += c*w; tN += n*w; tR += r*w
   float slope = 1.0 - clamp(vWNor.y, 0.0, 1.0);
   float big = vnoise(wuv * 0.02) * 0.6 + vnoise(wuv * 0.09) * 0.4;
   tB = vec3(0.0); tN = vec3(0.0); tR = 0.0;
+  float wForest = smoothstep(0.35, 0.75, big) * 0.8 + sp.b * 0.9;
+  float wRock = smoothstep(0.28, 0.5, slope) + smoothstep(30.0, 60.0, vWPos.y) * 0.8;
+  float wShore = 1.0 - smoothstep(uWater + 0.3, uWater + 1.6, vWPos.y);
+  float wPath = smoothstep(0.15, 0.6, sp.r);
+  float wPaved = smoothstep(0.2, 0.7, sp.g);
+  float wGrass = 1.0;
+  // Ghép lớp theo thứ tự ưu tiên
+  float fF = clamp(wForest, 0.0, 1.0);
+  float fS = clamp(wShore, 0.0, 1.0);
+  float fP = clamp(wPath, 0.0, 1.0);
+  float fV = clamp(wPaved, 0.0, 1.0);
+  float fR = clamp(wRock, 0.0, 1.0);
+#ifndef STYLIZED
   vec2 uvA = wuv / 3.2;
   vec3 grass_c = texture2D(d_grass, uvA).rgb; vec3 grass_n = texture2D(n_grass, uvA).xyz*2.0-1.0; float grass_r = 0.92;
   vec3 grass2 = texture2D(d_grass, wuv / 13.0).rgb;
@@ -183,18 +197,6 @@ void addLayer(vec3 c, vec3 n, float r, float w){ tB += c*w; tN += n*w; tR += r*w
   vec3 rock_n = texture2D(n_rock, vWPos.xz/6.0).xyz*2.0-1.0;
   float rock_r = 0.85;
 
-  float wForest = smoothstep(0.35, 0.75, big) * 0.8 + sp.b * 0.9;
-  float wRock = smoothstep(0.28, 0.5, slope) + smoothstep(30.0, 60.0, vWPos.y) * 0.8;
-  float wShore = 1.0 - smoothstep(uWater + 0.3, uWater + 1.6, vWPos.y);
-  float wPath = smoothstep(0.15, 0.6, sp.r);
-  float wPaved = smoothstep(0.2, 0.7, sp.g);
-  float wGrass = 1.0;
-  // Ghép lớp theo thứ tự ưu tiên
-  float fF = clamp(wForest, 0.0, 1.0);
-  float fS = clamp(wShore, 0.0, 1.0);
-  float fP = clamp(wPath, 0.0, 1.0);
-  float fV = clamp(wPaved, 0.0, 1.0);
-  float fR = clamp(wRock, 0.0, 1.0);
   vec3 c = grass_c; vec3 nn = grass_n; float rr = grass_r;
   c = mix(c, forest_c, fF); nn = mix(nn, forest_n, fF); rr = mix(rr, forest_r, fF);
   c = mix(c, mud_c, fS); nn = mix(nn, mud_n, fS); rr = mix(rr, mud_r * 0.6, fS);
@@ -202,9 +204,13 @@ void addLayer(vec3 c, vec3 n, float r, float w){ tB += c*w; tN += n*w; tR += r*w
   c = mix(c, paved_c, fV); nn = mix(nn, paved_n, fV); rr = mix(rr, paved_r, fV);
   c = mix(c, rock_c, fR); nn = mix(nn, rock_n, fR); rr = mix(rr, rock_r, fR);
   tB = c; tN = normalize(nn); tR = rr;
-#ifdef STYLIZED
+#else
   {
-    // phong cách hoạt hình: màu phẳng tươi + vân nhẹ từ texture gốc
+    // phong cách hoạt hình: màu phẳng tươi + vân nhẹ từ texture gốc.
+    // Chỉ lấy 1 mẫu cỏ (màu + pháp tuyến) làm vân: bộ PBR 17 mẫu trước đây chỉ dùng để kẹp độ sáng 0.82–1.06
+    vec2 uvA = wuv / 3.2;
+    tB = texture2D(d_grass, uvA).rgb * mix(0.82, 1.12, big) * vec3(0.78, 1.0, 0.62);
+    tN = normalize(texture2D(n_grass, uvA).xyz*2.0-1.0);
     float lum = dot(tB, vec3(0.299, 0.587, 0.114));
     float detail = clamp(lum * 2.0, 0.82, 1.06);
     vec3 sGrass = mix(vec3(0.33, 0.66, 0.16), vec3(0.55, 0.80, 0.22), smoothstep(0.3, 0.8, big));

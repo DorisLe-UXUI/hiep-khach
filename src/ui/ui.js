@@ -253,7 +253,8 @@ export class UI {
 
   async narrate(lines) {
     const box = $('narr-text');
-    $('narration').style.setProperty('--nbg', `url(/brand/bg_${this.narrBg || 'town'}.jpg)`);
+    // đổi sang đường dẫn tuyệt đối: url() tương đối trong biến CSS bị tính theo thư mục của file CSS (assets/) nên 404 trên GitHub Pages
+    $('narration').style.setProperty('--nbg', `url(${new URL(`/brand/bg_${this.narrBg || 'town'}.jpg`, location.href).href})`);
     $('narration').classList.remove('hidden');
     await this.fade(false);
     for (const l of lines) {
@@ -323,7 +324,7 @@ export class UI {
     el.innerHTML = `<div class="zb-han">${z.han}</div><div class="zb-line"></div><div class="zb-name">${z.name}${lv}</div>`;
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
     // nhớ vùng vừa tới: lần sau mở game, màn tải dùng tranh vùng này
-    try { localStorage.setItem('hk_bg', ZONE_BG[z.id] || 'town'); } catch {}
+    try { localStorage.setItem((import.meta.env.VITE_STORE_PREFIX || '') + 'hk_bg', ZONE_BG[z.id] || 'town'); } catch {}
   }
 
   hideDialog() { $('dialog').classList.add('hidden'); }

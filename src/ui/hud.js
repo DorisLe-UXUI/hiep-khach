@@ -6,6 +6,7 @@ import { icon, uiImg } from './icons.js';
 import { realmOf } from '../game/rpg.js';
 
 const $ = (id) => document.getElementById(id);
+const _proj = new THREE.Vector3(), _tmp = new THREE.Vector3();
 
 const SLOTS = [
   { id: 'atk', key: 'LMB', ic: 'sword' },
@@ -29,6 +30,15 @@ export class HUD {
     this.plates = new Map();
     this.bossLagW = 100;
     $('skills').innerHTML = SLOTS.map((s) => `<div class="slot" id="slot-${s.id}"><span class="key">${s.key}</span>${icon(s.ic)}<div class="cd"></div>${s.id === 'potion' ? '<span class="cnt" id="potion-cnt"></span>' : ''}</div>`).join('');
+    // cache node + trạng thái để chỉ ghi DOM khi có thay đổi
+    this.el = {
+      hp: $('hp'), mp: $('mp'), st: $('st'), hpT: $('hp-t'), mpT: $('mp-t'), vignette: $('vignette'),
+      boss: $('boss'), bossName: $('boss-name'), bossHp: $('boss-hp'), bossLag: $('boss-lag'),
+      marker: $('marker'), markerDist: $('marker-dist'), objDist: $('obj-dist'),
+      objChapter: $('obj-chapter'), objText: $('obj-text'), potionCnt: $('potion-cnt'), slotPotion: $('slot-potion'),
+      plates: $('plates'), tip: $('tip'), bark: $('bark'), compass: $('compass-n'),
+    };
+    this.slots = SLOTS.map((s) => { const el = $('slot-' + s.id); return { s, el, cd: el.querySelector('.cd') }; });
     this.buildMinimap();
     this.buildMenus();
   }
@@ -139,10 +149,18 @@ export class HUD {
     else { $('prompt-text').textContent = text; $('prompt').classList.remove('hidden'); }
   }
 
+  /** Quên các giá trị đã ghi (đổi ngôn ngữ: chữ dữ liệu không dịch ngược được nên phải ghi lại từ đầu). */
+  invalidate() {
+    for (const k of Object.keys(this)) if (k[0] === '_' && (this[k] === null || typeof this[k] !== 'object')) this[k] = undefined;
+    for (const el of this.plates?.values?.() || []) el._html = undefined;
+  }
+
   objective(chapter, text) {
-    $('obj-chapter').innerHTML = chapter;
-    const el = $('obj-text');
-    if (el.textContent !== text) {
+    if (chapter !== this._chapter) { this.el.objChapter.innerHTML = chapter; this._chapter = chapter; }
+    const el = this.el.objText;
+    // so với chuỗi đã ghi (không so DOM): khi đổi ngôn ngữ, MutationObserver dịch lại nên DOM luôn khác → nhấp nháy mỗi khung
+    if (text !== this._objText) {
+      this._objText = text;
       el.textContent = text;
       el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
     }
@@ -164,18 +182,25 @@ export class HUD {
   }
 
   project(v) {
-    const p = v.clone().project(this.game.camera);
+    const p = _proj.copy(v).project(this.game.camera);
     return { x: ((p.x + 1) / 2) * innerWidth, y: ((1 - p.y) / 2) * innerHeight, behind: p.z > 1 };
   }
 
   update(dt) {
-    const g = this.game, p = g.player;
-    $('hp').style.width = (p.hp / p.maxHp) * 100 + '%';
-    $('mp').style.width = (p.mp / p.maxMp) * 100 + '%';
-    $('st').style.width = (p.st / p.maxSt) * 100 + '%';
-    $('hp-t').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
-    $('mp-t').textContent = `${Math.floor(p.mp)} / ${p.maxMp}`;
-    $('vignette').style.opacity = p.hp / p.maxHp < 0.3 ? 0.4 + Math.sin(performance.now() / 220) * 0.2 : Math.max(0, p.hurtFlash || 0);
+    const g = this.game, p = g.player, el = this.el;
+    // chỉ ghi thanh máu/nội lực khi giá trị (làm tròn 0.5%) đổi
+    const hpW = Math.round((p.hp / p.maxHp) * 200) / 2;
+    if (hpW !== this._hpW) { el.hp.style.width = hpW + '%'; this._hpW = hpW; }
+    const mpW = Math.round((p.mp / p.maxMp) * 200) / 2;
+    if (mpW !== this._mpW) { el.mp.style.width = mpW + '%'; this._mpW = mpW; }
+    const stW = Math.round((p.st / p.maxSt) * 200) / 2;
+    if (stW !== this._stW) { el.st.style.width = stW + '%'; this._stW = stW; }
+    const hpT = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+    if (hpT !== this._hpT) { el.hpT.textContent = hpT; this._hpT = hpT; }
+    const mpT = `${Math.floor(p.mp)} / ${p.maxMp}`;
+    if (mpT !== this._mpT) { el.mpT.textContent = mpT; this._mpT = mpT; }
+    const vig = p.hp / p.maxHp < 0.3 ? 0.4 + Math.sin(performance.now() / 220) * 0.2 : Math.max(0, p.hurtFlash || 0);
+    if (vig !== this._vig) { el.vignette.style.opacity = vig; this._vig = vig; }
     if (p.hurtFlash) p.hurtFlash = Math.max(0, p.hurtFlash - dt * 2);
 
     this.badgeT = (this.badgeT || 0) - dt;
@@ -184,24 +209,28 @@ export class HUD {
 
     // kỹ năng + hồi chiêu
     const cds = { dash: [p.cooldowns.dash, 2.5], cast: [p.cooldowns.cast, 0.8], potion: [p.cooldowns.potion || 0, 6] };
-    for (const s of SLOTS) {
-      const el = $('slot-' + s.id);
-      const cd = cds[s.id];
-      el.querySelector('.cd').style.transform = `scaleY(${cd ? Math.min(1, cd[0] / cd[1]) : 0})`;
-      el.classList.toggle('nomp', !!s.mp && p.mp < s.mp);
-      el.classList.toggle('locked', !!s.lock && !g.unlocks[s.lock]);
+    for (const it of this.slots) {
+      const s = it.s, cd = cds[s.id];
+      const sy = cd ? Math.min(1, cd[0] / cd[1]) : 0;
+      if (sy !== it.sy) { it.cd.style.transform = `scaleY(${sy})`; it.sy = sy; }
+      const nomp = !!s.mp && p.mp < s.mp;
+      if (nomp !== it.nomp) { it.el.classList.toggle('nomp', nomp); it.nomp = nomp; }
+      const locked = !!s.lock && !g.unlocks[s.lock];
+      if (locked !== it.locked) { it.el.classList.toggle('locked', locked); it.locked = locked; }
     }
-    $('potion-cnt').textContent = g.potions;
-    $('slot-potion').classList.toggle('locked', g.potions <= 0);
+    if (g.potions !== this._potions) {
+      this._potions = g.potions;
+      el.potionCnt.textContent = g.potions;
+      el.slotPotion.classList.toggle('locked', g.potions <= 0);
+    }
 
     // boss
     const boss = g.enemies.find((e) => e.boss && !e.dead && e.alerted && e.pos.distanceTo(p.pos) < 50);
-    $('boss').classList.toggle('hidden', !boss);
+    if (!!boss !== this._bossShown) { el.boss.classList.toggle('hidden', !boss); this._bossShown = !!boss; }
     if (boss) {
-      const w = (boss.hp / boss.maxHp) * 100;
-      $('boss-name').textContent = boss.name;
-      $('boss-hp').style.width = w + '%';
-      $('boss-lag').style.width = w + '%';
+      if (boss.name !== this._bossName) { el.bossName.textContent = boss.name; this._bossName = boss.name; }
+      const w = Math.round((boss.hp / boss.maxHp) * 200) / 2;
+      if (w !== this._bossW) { el.bossHp.style.width = w + '%'; el.bossLag.style.width = w + '%'; this._bossW = w; }
     }
 
     // thông báo
@@ -211,43 +240,49 @@ export class HUD {
       if (t.t < 0.6) t.el.classList.add('out');
       if (t.t <= 0) { t.el.remove(); this.toasts.splice(i, 1); }
     }
-    if (this.tipT > 0 && (this.tipT -= dt) <= 0) $('tip').classList.add('hidden');
-    if (this.barkT > 0 && (this.barkT -= dt) <= 0) $('bark').classList.add('hidden');
+    if (this.tipT > 0 && (this.tipT -= dt) <= 0) el.tip.classList.add('hidden');
+    if (this.barkT > 0 && (this.barkT -= dt) <= 0) el.bark.classList.add('hidden');
 
     // điểm đánh dấu nhiệm vụ trên màn hình
     const mk = g.markerPos();
-    const mEl = $('marker');
+    const mEl = el.marker;
     if (mk && !g.dialogOpen) {
       const y = g.terrain.heightAt(mk.x, mk.z) + 2.6;
-      const w = new THREE.Vector3(mk.x, y, mk.z);
       const d = Math.hypot(mk.x - p.pos.x, mk.z - p.pos.z);
-      let s = this.project(w);
+      let s = this.project(_tmp.set(mk.x, y, mk.z));
       // giữ dấu chỉ đường trong vùng giữa màn, không đè lên khung nhân vật, menu, minimap, nút kỹ năng
       const mx = Math.min(250, innerWidth * 0.3), top = 175, bot = 170;
       if (s.behind) { s.x = innerWidth - s.x; s.y = innerHeight - bot; }
       s.x = Math.min(innerWidth - mx, Math.max(mx, s.x));
       s.y = Math.min(innerHeight - bot, Math.max(top, s.y));
-      mEl.style.display = 'flex';
+      if (this._markerOn !== true) { mEl.style.display = 'flex'; this._markerOn = true; }
       mEl.style.left = s.x + 'px';
       mEl.style.top = s.y + 'px';
-      $('marker-dist').textContent = Math.round(d) + 'm';
-      $('obj-dist').textContent = `Cách ${Math.round(d)} trượng`;
-      mEl.style.opacity = d < 6 ? 0.25 : 1;
-    } else { mEl.style.display = 'none'; $('obj-dist').textContent = ''; }
+      const dist = Math.round(d) + 'm';
+      if (dist !== this._markerDist) { el.markerDist.textContent = dist; this._markerDist = dist; }
+      const obj = `Cách ${Math.round(d)} trượng`;
+      if (obj !== this._objDist) { el.objDist.textContent = obj; this._objDist = obj; }
+      const op = d < 6 ? 0.25 : 1;
+      if (op !== this._markerOp) { mEl.style.opacity = op; this._markerOp = op; }
+    } else {
+      if (this._markerOn !== false) { mEl.style.display = 'none'; this._markerOn = false; }
+      if (this._objDist !== '') { el.objDist.textContent = ''; this._objDist = ''; }
+    }
 
     // bảng tên: người chơi (danh hiệu), NPC (chức danh), kẻ địch (cấp + máu)
-    const seen = new Set();
+    const seen = (this._seen ||= new Set());
+    seen.clear();
     const ROLES = { guard: 'Gác cổng', keeper: 'Chưởng quỹ', maiden: 'Lâm gia', captive: 'Bị bắt' };
     const tag = (key, pos, h, cls, html, hpK) => {
-      const s2 = this.project(pos.clone().setY(pos.y + h));
+      const s2 = this.project(_tmp.copy(pos).setY(pos.y + h));
       if (s2.behind) return;
       let el = this.plates.get(key);
-      if (!el) { el = document.createElement('div'); el.className = 'plate tag ' + cls; $('plates').appendChild(el); this.plates.set(key, el); }
-      if (el._html !== html) { el.innerHTML = html; el._html = html; }
+      if (!el) { el = document.createElement('div'); el.className = 'plate tag ' + cls; this.el.plates.appendChild(el); this.plates.set(key, el); }
+      if (el._html !== html) { el.innerHTML = html; el._html = html; el._bar = el.querySelector('.tr div'); el._hpK = undefined; }
       seen.add(key);
       el.style.left = s2.x + 'px';
       el.style.top = s2.y + 'px';
-      if (hpK !== undefined) el.querySelector('.tr div').style.width = hpK * 100 + '%';
+      if (hpK !== undefined && el._bar && hpK !== el._hpK) { el._bar.style.width = hpK * 100 + '%'; el._hpK = hpK; }
     };
     if (document.body.classList.contains('mmo') && !g.dialogOpen) {
       const tt = TITLES.find((t) => t.id === g.rpg.title);
@@ -273,7 +308,7 @@ export class HUD {
       const n = this.nums[i];
       n.t += dt;
       if (n.t > 1.0) { n.el.remove(); this.nums.splice(i, 1); continue; }
-      const s = this.project(n.pos.clone().add(new THREE.Vector3(0, n.t * 1.3, 0)));
+      const s = this.project(_tmp.copy(n.pos).setY(n.pos.y + n.t * 1.3));
       if (s.behind) { n.el.style.display = 'none'; continue; }
       n.el.style.display = '';
       n.el.style.left = s.x + n.dx * n.t + 'px';
@@ -328,7 +363,7 @@ export class HUD {
     g.beginPath(); g.moveTo(0, -9); g.lineTo(6, 7); g.lineTo(0, 3); g.lineTo(-6, 7); g.closePath(); g.fill(); g.stroke();
     g.restore();
     // chữ Bắc xoay theo camera
-    const n = $('compass-n');
+    const n = this.el.compass;
     const a = rot + Math.PI; // hướng -z trên bản đồ
     n.style.left = 110 + Math.sin(-a) * 96 + 'px';
     n.style.top = 100 - Math.cos(-a) * 96 - 8 + 'px';

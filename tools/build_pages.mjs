@@ -7,9 +7,25 @@ import crypto from 'node:crypto';
 import sharp from 'sharp';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const OUT = path.join(ROOT, 'dist-pages');
+// --dev: bản xem thử cho thư mục con /dev/ (tiền tố lưu riêng, huy hiệu DEV) → dist-pages-dev/
+const DEV = process.argv.includes('--dev');
+const OUT_NAME = DEV ? 'dist-pages-dev' : 'dist-pages';
+const OUT = path.join(ROOT, OUT_NAME);
+const env = { ...process.env };
+if (DEV) {
+  env.VITE_STORE_PREFIX = 'dev_';
+  env.VITE_DEV_BUILD = '1';
+  env.VITE_DEV_SHA = execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
+}
+// bản chính: cất tạm dist-pages/dev/ (bản dev đã đăng) vì --emptyOutDir sẽ xoá nó
+const DEV_DIR = path.join(OUT, 'dev'), DEV_TMP = path.join(ROOT, '.dev-pages-keep');
+if (!DEV && fs.existsSync(DEV_DIR)) { fs.rmSync(DEV_TMP, { recursive: true, force: true }); fs.renameSync(DEV_DIR, DEV_TMP); }
 // giữ thư mục .git của nhánh gh-pages (Vite --emptyOutDir không xoá .git)
-execSync('npx vite build --base ./ --outDir dist-pages --emptyOutDir --logLevel error', { cwd: ROOT, stdio: 'inherit' });
+try {
+  execSync(`npx vite build --base ./ --outDir ${OUT_NAME} --emptyOutDir --logLevel error`, { cwd: ROOT, stdio: 'inherit', env });
+} finally {
+  if (fs.existsSync(DEV_TMP)) fs.renameSync(DEV_TMP, DEV_DIR);
+}
 const rel = (s) => s.replace(/(["'`(])\/(assets|brand)\//g, '$1./$2/');
 const A = path.join(OUT, 'assets');
 for (const f of fs.readdirSync(A)) {
@@ -21,6 +37,16 @@ fs.writeFileSync(path.join(OUT, 'index.html'), rel(fs.readFileSync(path.join(OUT
 // ảnh chụp gỡ lỗi không cần đưa lên
 for (const f of fs.readdirSync(path.join(A, 'thumbs'))) if (f.startsWith('dbg_')) fs.rmSync(path.join(A, 'thumbs', f));
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
+
+// tệp không được src/ hay index.html tham chiếu: bỏ khỏi bản build (bản gốc trong public/ giữ nguyên)
+const DEAD = [
+  'hdri/misty_pines.hdr', 'hdri/sunset_forest.hdr', // không có trong TIMES của sky.js
+  'monsters/fbx/Dragon.fbx', 'monsters/fbx/Skeleton.fbx', 'monsters/fbx/Slime.fbx', 'monsters/fbx/Snake_angry.fbx',
+  'kit/animals/Zebra.fbx', 'kit/animals/Llama.fbx', 'kit/animals/Horse.fbx', 'kit/animals/Pug.fbx', // nay dùng assets/beasts
+  // GLB nguồn đã bake thành impostor, chỉ còn tên trong vegetation.js
+  'models/jacaranda_tree.glb', 'models/fir_tree_01.glb', 'models/island_tree_02.glb', 'models/tree_small_02.glb', 'models/fir_sapling.glb',
+];
+for (const f of DEAD) fs.rmSync(path.join(A, f), { force: true });
 
 // ───── nén cho web (bản gốc trong public/ giữ nguyên); kết quả lưu đệm theo nội dung tệp ─────
 const CACHE = path.join(ROOT, '.cache-pages');
@@ -56,10 +82,21 @@ for (const f of [...walk(path.join(A, 'models')), ...walk(path.join(A, 'nature')
     execSync(`npx gltf-transform optimize "${file}" "${tmp}" --compress meshopt --texture-compress webp --texture-size 512 --simplify-error ${err}`, { cwd: ROOT, stdio: 'ignore' });
     const out = fs.readFileSync(tmp); fs.rmSync(tmp); return out;
   }]);
+// impostor: atlas 4096 px → 2048, giữ nguyên PNG và tên tệp (meta là kích thước thế giới, không đổi)
+for (const f of walk(path.join(A, 'impostors')).filter((f) => /_(color|normal)\.png$/.test(f)))
+  jobs.push([f, 'imp2048', (b) => sharp(b).resize({ width: 2048, withoutEnlargement: true }).png({ compressionLevel: 9 }).toBuffer()]);
+// nhân vật/sinh vật có khung xương: texture tối đa 1024 + WebP, không giản lược/ghép lưới
+const CHAR_DIRS = ['heroes', 'characters', 'chibi', 'monsters', 'beasts', 'folk'];
+for (const f of CHAR_DIRS.flatMap((d) => walk(path.join(A, d))).filter((f) => f.endsWith('.glb') && !/(^|\/)(anim_|w_)[^/]*\.glb$/.test(f)))
+  jobs.push([f, 'char1024s', (b, file) => {
+    const tmp = path.join(CACHE, 'tmp_' + crypto.createHash('md5').update(file).digest('hex') + '.glb');
+    execSync(`npx gltf-transform optimize "${file}" "${tmp}" --compress meshopt --texture-compress webp --texture-size 1024 --simplify false --join false --weld false --instance false --flatten false --palette false --resample false`, { cwd: ROOT, stdio: 'ignore' });
+    const out = fs.readFileSync(tmp); fs.rmSync(tmp); return out;
+  }]);
 for (const [f] of jobs) before += fs.statSync(f).size;
 let i = 0;
 await Promise.all(Array.from({ length: 6 }, async () => { while (i < jobs.length) { const [f, k, fn] = jobs[i++]; await squeeze(f, k, fn); } }));
 for (const [f] of jobs) after += fs.statSync(f).size;
 console.log(`nén ${jobs.length} tệp: ${(before / 1e6).toFixed(1)} MB → ${(after / 1e6).toFixed(1)} MB`);
 const sz = execSync(`du -sh "${OUT}"`).toString().split('\t')[0];
-console.log('dist-pages', sz);
+console.log(OUT_NAME, sz);

@@ -248,6 +248,9 @@ export class GrassField {
   update(px, pz, time) {
     this.uniforms.uTime.value = time;
     const cx = Math.floor(px / this.tile), cz = Math.floor(pz / this.tile);
+    // cùng ô đất và đã dựng đủ tile thì không dựng lại Set/duyệt tile mỗi frame
+    if (cx === this._chunkCx && cz === this._chunkCz && this._chunkReady) return;
+    this._chunkCx = cx; this._chunkCz = cz;
     const want = new Set();
     for (let dz = -this.radius; dz <= this.radius; dz++) {
       for (let dx = -this.radius; dx <= this.radius; dx++) want.add(`${cx + dx},${cz + dz}`);
@@ -262,6 +265,7 @@ export class GrassField {
       this.tiles.set(k, this.makeTile(tx, tz));
       built++;
     }
+    this._chunkReady = this.tiles.size === want.size;
   }
 }
 

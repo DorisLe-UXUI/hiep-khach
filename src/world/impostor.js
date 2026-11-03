@@ -7,7 +7,14 @@ import * as THREE from 'three';
 const VIEWS = 8;
 
 /** Tải atlas đã bake sẵn (tools/bake.html) từ public/assets/impostors. */
-export async function loadImpostor(name) {
+const impostorCache = new Map();
+export function loadImpostor(name) {
+  // jacaranda_tree được gọi hai lần (rừng + cây trong trấn): giữ một promise dùng chung
+  if (!impostorCache.has(name)) impostorCache.set(name, loadImpostorAtlas(name).catch((e) => { impostorCache.delete(name); throw e; }));
+  return impostorCache.get(name);
+}
+
+async function loadImpostorAtlas(name) {
   const base = `/assets/impostors/${name}`;
   const [meta, color, normal] = await Promise.all([
     fetch(base + '.json').then((r) => r.json()),

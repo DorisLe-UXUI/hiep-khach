@@ -3,22 +3,24 @@ import { HeroStage } from '../world/stage.js';
 
 /**
  * Sân khấu 3D nhỏ trong bảng Hồ sơ: nhân vật thật đứng trên bệ ngọc, thở/đứng nghỉ tự nhiên, xoay chậm, kéo để xoay.
- * Dùng renderer riêng gắn vào ô HTML; tự dọn khi ô bị gỡ khỏi trang.
+ * Dùng renderer riêng gắn vào ô HTML; ô bị gỡ khỏi trang hoặc bảng bị ẩn thì dừng vòng vẽ và huỷ renderer.
  */
-let shared = null; // giữ renderer + sân khấu giữa các lần mở cho nhanh
+let shared = null; // giữ sân khấu + nhân vật giữa các lần mở cho nhanh (renderer tạo lại mỗi lần mở)
 
 export async function mountProfileStage(host, hero, color) {
   const { createHeroCharacter } = await import('../game/game.js');
-  if (!shared) {
+  shared ||= { renderer: null, stage: new HeroStage(), char: null, key: '' };
+  if (!shared.renderer) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    shared = { renderer, stage: new HeroStage(), char: null, key: '' };
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    shared.renderer = renderer;
   }
   const { renderer, stage } = shared;
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const token = (shared.token = {}); // lần mở mới nhất mới được huỷ renderer
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   host.appendChild(renderer.domElement);
   stage.setColor(color);
   stage.circle.material.color.set(color);
@@ -38,6 +40,16 @@ export async function mountProfileStage(host, hero, color) {
   c.play('Yes', { fade: 0, once: true, speed: 0.9, onDone: () => c.play('Idle_Loop', { fade: 0.35 }) });
 
   let angle = 0.35, drag = null, last = performance.now(), alive = true;
+  const sz = new THREE.Vector2();
+  // dừng hẳn: huỷ renderer + trả ngữ cảnh WebGL (giữ sân khấu, mở lại sẽ tạo renderer mới)
+  const stop = () => {
+    alive = false;
+    if (shared.token !== token || shared.renderer !== renderer) return;
+    shared.renderer = null;
+    renderer.domElement.remove();
+    renderer.dispose();
+    renderer.forceContextLoss();
+  };
   const el = renderer.domElement;
   el.style.cssText = 'width:100%;height:100%;display:block;border-radius:inherit;touch-action:none;cursor:grab';
   el.onpointerdown = (e) => { drag = e.clientX; el.setPointerCapture(e.pointerId); };
@@ -46,12 +58,13 @@ export async function mountProfileStage(host, hero, color) {
 
   const loop = () => {
     if (!alive) return;
-    if (!host.isConnected) { alive = false; return; }
+    // ô bị gỡ, bảng bị ẩn (display:none) hoặc đã có lần mở khác thay chỗ
+    if (!host.isConnected || !host.getClientRects().length || shared.token !== token) return stop();
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     const w = host.clientWidth, h = host.clientHeight;
     if (w && h) {
-      const sz = renderer.getSize(new THREE.Vector2());
+      renderer.getSize(sz);
       if (sz.x !== w || sz.y !== h) renderer.setSize(w, h, false);
       const cam = stage.camera;
       cam.aspect = w / h;
@@ -69,5 +82,5 @@ export async function mountProfileStage(host, hero, color) {
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
-  return () => { alive = false; };
+  return stop;
 }
