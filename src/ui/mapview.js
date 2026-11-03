@@ -7,7 +7,43 @@ import { LANG, trData } from '../i18n.js';
 import { trObjective } from '../story/objectives_i18n.js';
 
 const $ = (id) => document.getElementById(id);
-const S = 1024; // độ phân giải bản đồ vẽ sẵn
+const S = 1024; // độ phân giải bản đồ vẽ sẵn (dự phòng)
+// Bản đồ tranh vẽ: toạ độ thế giới → điểm ảnh trên tranh, khớp theo các địa danh (affine + bù sai số kiểu IDW)
+const MAP_IMG = '/assets/ui/world_map.webp', W = 1312, H = 1199;
+const CTRL = [
+  [30, 40, 690, 560], [30, 98, 665, 628], [30, 6, 680, 515], [-56, 52, 505, 632], [-125, 50, 430, 640], [-150, -105, 370, 380],
+  [-168, -118, 352, 400], [-222, -205, 235, 190], [-40, -245, 690, 170], [48, -200, 565, 230], [215, -215, 965, 180], [150, -120, 1065, 350],
+  [132, 150, 985, 690], [-28, 116, 445, 770], [70, 160, 770, 860], [150, 70, 1040, 610], [-78, -18, 560, 360], [-112, 138, 330, 740], [30, 128, 710, 745],
+  [-400, -400, 70, 50], [400, -400, 1240, 50], [-400, 400, 70, 1150], [400, 400, 1240, 1150],
+];
+const AFF = (() => {
+  // bình phương tối thiểu: px = a*x + b*z + c
+  const solve = (k) => {
+    let sxx = 0, sxz = 0, sx = 0, szz = 0, sz = 0, n = 0, bx = 0, bz = 0, b1 = 0;
+    for (const c of CTRL) { const [x, z] = c, v = c[k]; sxx += x * x; sxz += x * z; sx += x; szz += z * z; sz += z; n++; bx += x * v; bz += z * v; b1 += v; }
+    const M = [[sxx, sxz, sx], [sxz, szz, sz], [sx, sz, n]], B = [bx, bz, b1];
+    const det = (m) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    const D = det(M);
+    return [0, 1, 2].map((i) => det(M.map((r, j) => r.map((v, l) => (l === i ? B[j] : v)))) / D);
+  };
+  return [solve(2), solve(3)];
+})();
+const aff = (x, z) => [AFF[0][0] * x + AFF[0][1] * z + AFF[0][2], AFF[1][0] * x + AFF[1][1] * z + AFF[1][2]];
+const RES = CTRL.map(([x, z, px, py]) => { const [ax, ay] = aff(x, z); return [x, z, px - ax, py - ay]; });
+export function worldToMap(x, z) {
+  const [ax, ay] = aff(x, z);
+  let wx = 0, wy = 0, ws = 0;
+  for (const [cx, cz, dx, dy] of RES) { const d2 = (x - cx) ** 2 + (z - cz) ** 2; if (d2 < 1) return [ax + dx, ay + dy]; const w = 1 / (d2 + 400); wx += w * dx; wy += w * dy; ws += w; }
+  return [ax + wx / ws, ay + wy / ws];
+}
+const MAP_K = Math.hypot(AFF[0][0], AFF[1][1]) / Math.SQRT2; // điểm ảnh / mét (xấp xỉ)
+let mapImg = null;
+function loadMapImg() {
+  if (mapImg) return mapImg;
+  mapImg = new Image();
+  mapImg.src = MAP_IMG; // cùng kiểu đường dẫn với ảnh thumbs (bản Pages tự đổi gốc)
+  return mapImg;
+}
 const trObj = (t) => trObjective(t);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -136,11 +172,14 @@ Object.assign(UI.prototype, {
   openMap(g) {
     const box = $('worldmap');
     box.classList.remove('hidden');
-    if (!this.mapBase) this.mapBase = paintBase(g.terrain);
+    const img = loadMapImg();
+    if (!img.complete) { img.onload = () => { if (!box.classList.contains('hidden')) this.openMap(g); }; }
     const cv = $('map-canvas');
-    cv.width = cv.height = S;
-    cv.getContext('2d').drawImage(this.mapBase, 0, 0);
-    const P = (x, z) => [((x + WORLD_SIZE / 2) / WORLD_SIZE) * S, ((z + WORLD_SIZE / 2) / WORLD_SIZE) * S];
+    cv.width = W; cv.height = H;
+    $('map-stage').style.width = W + 'px'; $('map-stage').style.height = H + 'px';
+    if (img.complete && img.naturalWidth) cv.getContext('2d').drawImage(img, 0, 0, W, H);
+    else { if (!this.mapBase) this.mapBase = paintBase(g.terrain); cv.getContext('2d').drawImage(this.mapBase, 0, 0, W, H); }
+    const P = worldToMap;
     const lbl = (x, z, cls, inner, data = '') => { const [px, py] = P(x, z); return `<div class="map-lbl ${cls}" style="left:${px}px;top:${py}px" ${data}>${inner}</div>`; };
 
     // đường chỉ tới mục tiêu (vẽ lên canvas, mỗi lần mở)
@@ -167,7 +206,7 @@ Object.assign(UI.prototype, {
     }).join('');
     html += ZONES.map((z, i) => {
       const lv = z.mobs.map((m) => MONSTERS[m].lv), lvT = `Lv.${Math.min(...lv)}–${Math.max(...lv)}`;
-      const ring = `<div class="ring" style="width:${(z.r * 2 / WORLD_SIZE) * S}px;height:${(z.r * 2 / WORLD_SIZE) * S}px"></div>`;
+      const ring = `<div class="ring" style="width:${z.r * 2 * MAP_K}px;height:${z.r * 2 * MAP_K}px"></div>`;
       if (near(z.x, z.z)) return lbl(z.x, z.z, 'zone ring-only', ring, `data-i="z${i}"`);
       return lbl(z.x, z.z, 'zone', `${ring}<div class="pin">${icon(z.elite ? 'dragon' : 'skull')}</div><div class="vi">${esc(zoneName(z))} · ${lvT}</div>`, `data-i="z${i}"`);
     }).join('');
@@ -200,12 +239,12 @@ Object.assign(UI.prototype, {
 
     // lướt + phóng to
     const wrap = $('map-wrap'), stage = $('map-stage');
-    const fit = Math.min(wrap.clientWidth, wrap.clientHeight) / S;
+    const fit = Math.min(wrap.clientWidth / W, wrap.clientHeight / H);
     const st = this.mapView ??= { z: Math.max(fit, 0.9), x: 0, y: 0 };
     const clampZ = (z) => Math.min(3, Math.max(fit * 0.9, z));
     const apply = () => {
       st.z = clampZ(st.z);
-      const w = S * st.z, h = S * st.z;
+      const w = W * st.z, h = H * st.z;
       st.x = Math.min(Math.max(st.x, wrap.clientWidth - w - 60), 60);
       st.y = Math.min(Math.max(st.y, wrap.clientHeight - h - 60), 60);
       stage.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.z})`;
@@ -243,7 +282,7 @@ Object.assign(UI.prototype, {
     $('map-zin').onclick = () => { const r = wrap.getBoundingClientRect(); zoomAt(1.3, r.left + r.width / 2, r.top + r.height / 2); };
     $('map-zout').onclick = () => { const r = wrap.getBoundingClientRect(); zoomAt(1 / 1.3, r.left + r.width / 2, r.top + r.height / 2); };
     $('map-me').onclick = () => centerOn(p.x, p.z);
-    $('map-all').onclick = () => { st.z = fit; st.x = (wrap.clientWidth - S * fit) / 2; st.y = (wrap.clientHeight - S * fit) / 2; apply(); };
+    $('map-all').onclick = () => { st.z = fit; st.x = (wrap.clientWidth - W * fit) / 2; st.y = (wrap.clientHeight - H * fit) / 2; apply(); };
 
     // bấm địa danh (trên bản đồ hoặc cột bên): thông tin + tự tìm đường
     const info = $('map-info');
