@@ -438,6 +438,7 @@ export class Game {
       this.rpg.load(save.rpg);
       Object.assign(this.player, { attackBonus: save.attackBonus || 0, storyHp: save.storyHp || 0, storyMp: save.storyMp || 0 });
       this.rpg.apply(true);
+      this.rpg.syncWeaponModel();
       this.fashionOwned = save.fashion || [];
     }
     this.sys.load(save?.sys);

@@ -65,7 +65,7 @@ export function makeGear(slot, lv, rarity = rollRarity()) {
     const w = pickNamedWeapon(lv, rarity);
     // thần binh: công +25%, thêm bạo kích, mang hệ khí (màu nhát chém)
     if (w.divine) { stats.atk = Math.round(stats.atk * 1.25); stats.crit = +((stats.crit || 0) + 0.03).toFixed(3); }
-    return { uid: 'g' + uidN++, slot, base: w.name, name: w.name, rarity, lv, stats, enh: 0, han: w.han[0], thumb: w.thumb, ...(w.divine ? { elem: w.elem, han: w.han.slice(-1), divine: true } : {}) };
+    return { uid: 'g' + uidN++, slot, base: w.name, name: w.name, rarity, lv, stats, enh: 0, han: w.han[0], thumb: w.thumb, model: w.model, ...(w.divine ? { elem: w.elem, han: w.han.slice(-1), divine: true } : {}) };
   }
   return { uid: 'g' + uidN++, slot, base, name: base, rarity, lv, stats, enh: 0, han: HAN[slot] };
 }

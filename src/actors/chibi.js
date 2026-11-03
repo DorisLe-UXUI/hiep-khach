@@ -74,8 +74,25 @@ const WEAPONS = {
   wand: [{ file: 'w_wand', hand: 'r' }],
   spellbook: [{ file: 'w_wand', hand: 'r' }, { file: 'w_spellbook_open', hand: 'l' }],
   twinblade: [{ file: 'w_skeleton_blade', hand: 'r' }, { file: 'w_skeleton_blade', hand: 'l' }],
+  // vũ khí tải thêm (poly.pizza, CC0): xem public/assets/weapons/PP_LICENSES.txt
+  pp_katana: [{ path: '/assets/weapons/pp_katana.glb', hand: 'r', len: 1.2, grip: 0.16 }],
+  pp_sword: [{ path: '/assets/weapons/pp_sword.glb', hand: 'r', len: 1.1, grip: 0.15 }],
+  pp_cutlass: [{ path: '/assets/weapons/pp_cutlass.glb', hand: 'r', len: 1.05, grip: 0.15 }],
+  pp_claymore: [{ path: '/assets/weapons/pp_claymore.glb', hand: 'r', len: 1.55, grip: 0.12 }],
+  pp_machete: [{ path: '/assets/weapons/pp_machete.glb', hand: 'r', len: 0.95, grip: 0.18 }],
+  pp_axe: [{ path: '/assets/weapons/pp_axe.glb', hand: 'r', len: 1.0, grip: 0.15 }],
+  pp_hammer: [{ path: '/assets/weapons/pp_hammer.glb', hand: 'r', len: 1.1, grip: 0.15 }],
+  pp_spear: [{ path: '/assets/weapons/pp_spear.glb', hand: 'r', len: 1.9, grip: 0.4 }],
+  pp_trident: [{ path: '/assets/weapons/pp_trident.glb', hand: 'r', len: 1.9, grip: 0.4 }],
+  pp_scythe: [{ path: '/assets/weapons/pp_scythe.glb', hand: 'r', len: 1.8, grip: 0.35 }],
+  pp_staff: [{ path: '/assets/weapons/pp_staff.glb', hand: 'r', len: 1.7, grip: 0.4 }],
+  pp_bow: [{ path: '/assets/weapons/pp_bow.glb', hand: 'l', len: 1.3, grip: 0.5 }],
+  pp_crossbow: [{ path: '/assets/weapons/pp_crossbow.glb', hand: 'l', len: 0.8, grip: 0.5 }],
+  pp_dagger: [{ path: '/assets/weapons/pp_dagger.glb', hand: 'r', len: 0.55, grip: 0.2 }, { path: '/assets/weapons/pp_dagger.glb', hand: 'l', len: 0.55, grip: 0.2 }],
+  pp_knife: [{ path: '/assets/weapons/pp_knife.glb', hand: 'r', len: 0.5, grip: 0.25 }, { path: '/assets/weapons/pp_knife.glb', hand: 'l', len: 0.5, grip: 0.25 }],
+  pp_sickle: [{ path: '/assets/weapons/pp_sickle.glb', hand: 'r', len: 0.6, grip: 0.2 }, { path: '/assets/weapons/pp_sickle.glb', hand: 'l', len: 0.6, grip: 0.2 }],
 };
-const STYLE_OF = { kk_spear: 'spear', kk_halberd: 'spear', kk_bow_a: 'bow', kk_bow_b: 'bow', kk_staff_a: 'staff', kk_staff_b: 'staff', kk_wand: 'staff', kk_dagger_a: 'dual', kk_dagger_b: 'dual', kk_claw: 'dual', bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
+const STYLE_OF = { pp_spear: 'spear', pp_trident: 'spear', pp_scythe: 'spear', pp_claymore: 'spear', pp_staff: 'staff', pp_bow: 'bow', pp_crossbow: 'bow', pp_dagger: 'dual', pp_knife: 'dual', pp_sickle: 'dual', kk_spear: 'spear', kk_halberd: 'spear', kk_bow_a: 'bow', kk_bow_b: 'bow', kk_staff_a: 'staff', kk_staff_b: 'staff', kk_wand: 'staff', kk_dagger_a: 'dual', kk_dagger_b: 'dual', kk_claw: 'dual', bow: 'bow', bow_wood: 'bow', bow_hunt: 'bow', staff: 'staff', wand: 'staff', spellbook: 'staff', skelstaff: 'staff', spear: 'spear', halberd: 'spear', dagger: 'dual', twinblade: 'dual', golden: 'spear', greatsword: 'spear', claymore: 'spear' };
 
 let clipsP = null;
 function loadClips() {
@@ -167,8 +184,9 @@ export class ChibiCharacter {
     this.weaponMounts = [];
     for (const d of defs) {
       let w;
-      if (d.obj) {
-        w = await loadKitOBJ(d.obj);
+      if (d.obj || d.len) {
+        // OBJ hoặc glb tải về (tỉ lệ tuỳ ý): chuẩn hoá theo trục dài nhất, cầm ở vị trí grip
+        w = d.obj ? await loadKitOBJ(d.obj) : (await loadGLTF(d.path)).scene.clone(true);
         const holder = new THREE.Group();
         const box = new THREE.Box3().setFromObject(w), size = box.getSize(new THREE.Vector3());
         const axis = size.x > size.y && size.x > size.z ? 'x' : size.y > size.z ? 'y' : 'z';

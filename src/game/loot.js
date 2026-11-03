@@ -64,14 +64,22 @@ export const ELEMENTS = [
   { id: 'quang', name: 'Thánh Quang', han: '聖光', el: 'Quang', color: 0xfff0c0, hue: 40 },
   { id: 'u', name: 'U Minh', han: '幽冥', el: 'U Minh', color: 0x9a5aff, hue: 270 },
 ];
+// [tên loại, chữ Hán, mẫu cầm tay (chibi WEAPONS), ảnh]
 const DIVINE_KINDS = [
-  ['kiếm', '劍', 'q_sword2'], ['đao', '刀', 'q_claymore'], ['thương', '槍', 'q_spear'], ['cung', '弓', 'q_bowgold'], ['trượng', '杖', 'staff_b'],
-  ['chuỷ', '匕', 'dagger_b'], ['phủ', '斧', 'q_axedouble'], ['chuỳ', '錘', 'hammer_b'], ['kích', '戟', 'halberd'], ['trảo', '爪', 'fist_b'],
+  ['kiếm', '劍', 'pp_katana'], ['đao', '刀', 'pp_cutlass'], ['thương', '槍', 'pp_trident'], ['cung', '弓', 'pp_bow'], ['trượng', '杖', 'pp_staff'],
+  ['chuỷ', '匕', 'pp_knife'], ['phủ', '斧', 'pp_axe'], ['chuỳ', '錘', 'pp_hammer'], ['kích', '戟', 'pp_scythe'], ['trảo', '爪', 'pp_sickle'],
 ];
-ELEMENTS.forEach((e, i) => DIVINE_KINDS.forEach(([kind, kh, base], j) => {
-  const b = NAMED_WEAPONS.find((w) => w.id === base);
-  NAMED_WEAPONS.push({ id: `div_${e.id}_${j}`, name: `${e.name} ${kind}`, han: e.han + kh, tier: 10 + ((i + j) % 10), thumb: b.thumb, elem: e.id, color: e.color, hue: e.hue, divine: true });
+ELEMENTS.forEach((e, i) => DIVINE_KINDS.forEach(([kind, kh, model], j) => {
+  NAMED_WEAPONS.push({ id: `div_${e.id}_${j}`, name: `${e.name} ${kind}`, han: e.han + kh, tier: 10 + ((i + j) % 10), thumb: 'wpn_' + model, model, elem: e.id, color: e.color, hue: e.hue, divine: true });
 }));
+// binh khí thường dùng mẫu mới (bậc 1–9)
+[
+  ['pp_knife', 'Liễu diệp phi đao', '柳葉飛刀', 1], ['pp_machete', 'Khai sơn đao', '開山刀', 2], ['pp_sword', 'Thanh cương kiếm', '青鋼劍', 2],
+  ['pp_axe', 'Tuyên hoa đại phủ', '宣花大斧', 3], ['pp_dagger', 'Song nhận chuỷ', '雙刃匕', 4],
+  ['pp_cutlass', 'Nguyệt nha đao', '月牙刀', 4], ['pp_spear', 'Lượng ngân trường thương', '亮銀長槍', 5], ['pp_sickle', 'Câu liêm song đao', '鉤鐮雙刀', 5],
+  ['pp_katana', 'Hàn quang kiếm', '寒光劍', 6], ['pp_hammer', 'Lôi công chuỳ', '雷公錘', 6], ['pp_staff', 'Thanh mộc trượng', '青木杖', 6],
+  ['pp_trident', 'Tam xoa kích', '三叉戟', 7], ['pp_bow', 'Thần tý cung', '神臂弓', 7], ['pp_scythe', 'Đoạt mệnh liêm', '奪命鐮', 8], ['pp_claymore', 'Trảm long đại kiếm', '斬龍大劍', 9],
+].forEach(([model, name, han, tier]) => NAMED_WEAPONS.push({ id: 'n_' + model, name, han, tier, thumb: 'wpn_' + model, model }));
 export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((e) => [e.id, e]));
 
 /** Chọn binh khí có tên hợp cấp: ưu tiên bậc cao nhất được phép, phẩm cấp càng cao càng nhích lên. */

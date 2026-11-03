@@ -239,6 +239,15 @@ export class RPG {
     this.gear[it.slot] = it;
     this.apply();
     this.g.audio.clang();
+    if (it.slot === 'weapon') this.syncWeaponModel();
+  }
+  /** Vũ khí cầm tay đổi theo binh khí đang mặc (nếu hợp môn phái). */
+  syncWeaponModel() {
+    const m = this.gear.weapon?.model, cls = this.g.profile.hero?.cls, ch = this.g.player?.char;
+    if (!m || !ch?.swapWeapon) return;
+    const FIT = { kiem: /katana|sword|cutlass|claymore|machete|axe|hammer/, thuong: /spear|trident|scythe|claymore|hammer|axe/, cung: /bow|crossbow/, phap: /staff/, dao: /knife|dagger|sickle|staff/ };
+    if (!(FIT[cls] || FIT.kiem).test(m) || ch.weaponKind === m) return;
+    ch.swapWeapon(m);
   }
   unequipGear(slot) {
     if (!this.gear[slot] || this.gearBag.length >= 60) return;
