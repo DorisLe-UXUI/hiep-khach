@@ -4,7 +4,7 @@ import { LOOKS } from './game.js';
  * Giang hồ trực tuyến: kênh thế giới, Luận Kiếm Đài (đấu với bản chụp nhân vật của người chơi khác), chợ giao dịch.
  * Máy chủ: server/worker.js (Cloudflare). Chưa cấu hình địa chỉ thì mọi tính năng báo "máy chủ chưa mở".
  */
-export const ONLINE_URL = ''; // điền sau khi đăng máy chủ (npm run deploy:online)
+export const ONLINE_URL = 'https://hiep-khach-online.vankhanh-le.workers.dev';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const CLS_FOE = { kiem: ['mguard', 'sword'], thuong: ['boss', 'saber'], cung: ['bandit2', 'machete'], phap: ['situ', 'staff'], dao: ['hanxue', 'dagger'] };
 
