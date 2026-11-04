@@ -1,5 +1,5 @@
 /**
- * Cốt truyện Thiên Thê (Hồi IV): 10 chặng × 10 tầng. Mỗi tầng một lời dẫn riêng; tầng thứ 10 của mỗi chặng là cửa ải lớn có thoại riêng.
+ * Cốt truyện Thiên Thê (Hồi V): 10 chặng × 10 tầng. Mỗi tầng một lời dẫn riêng; tầng thứ 10 của mỗi chặng là cửa ải lớn có thoại riêng.
  * Mỗi câu: [tiếng Việt, English, 中文].
  */
 export const ARCS = [
@@ -170,7 +170,7 @@ export const LADDER_STATIC = [
   ['Tầng này, ta sẽ qua.', 'This floor, I will pass.', '這一層，我會過去。'],
   ['Cửa ải lớn... Sư phụ, xin người phù hộ.', 'A great gate... Master, watch over me.', '大關……師父，請保佑我。'],
   ['Đêm qua trên Kiếm Mộ hiện ra một bậc thang ánh sáng xuyên mây. Người ta gọi là Thiên Thê. Nghe nói sư bá năm xưa đã leo tới tầng thứ một trăm...', 'Last night a ladder of light appeared above the Sword Tomb, piercing the clouds. They call it the Heavenly Ladder. They say my uncle once climbed to the hundredth floor...', '昨夜劍冢之上出現一道穿雲的光之天梯，人稱天梯。聽說師伯當年登上了第一百層……'],
-  ['Bước lên Thiên Thê (Hồi IV · 100 tầng, tới cấp 1999)', 'Climb the Heavenly Ladder (Act IV · 100 floors, up to level 1999)', '登上天梯（第四幕 · 百層，至1999級）'],
+  ['Bước lên Thiên Thê (Hồi V · 100 tầng, tới cấp 1999)', 'Climb the Heavenly Ladder (Act V · 100 floors, up to level 1999)', '登上天梯（第五幕 · 百層，至1999級）'],
   ['Khi nào công tử muốn leo, cứ nói với tiểu nữ.', 'Whenever you wish to climb, just tell me.', '公子何時想登，告訴小女子便是。'],
   ['Để sau.', 'Later.', '以後再說。'],
 ];

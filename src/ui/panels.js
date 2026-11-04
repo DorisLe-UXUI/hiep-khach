@@ -62,8 +62,11 @@ Object.assign(UI.prototype, {
         <h4 class="sub-h">Bảng lệnh <button class="ghost sm" id="bty-ref">Làm mới · ${20 + g.rpg.level * 3} lượng</button></h4><div class="tasks">${bs.offers.map((b) => card(b, false)).join('')}</div>`;
     } else if (tab === 'lore') {
       const got = g.lore.got;
-      html = `<p class="muted">Thanh Phong kiếm phổ tàn trang: <b>${got.length}/12</b>. Trang phát sáng trắng, rải khắp bản đồ.</p>
-        <div class="lore-list">${LORE.map((L, i) => got.includes(i) ? `<div class="lore-p"><b>${i + 1}. ${L.title}</b><p>${L.text}</p></div>` : `<div class="lore-p locked"><b>${i + 1}. ???</b><p class="muted">Chưa tìm thấy.</p></div>`).join('')}</div>`;
+      const page = (L, i, n) => got.includes(i) ? `<div class="lore-p"><b>${n}. ${L.title}</b><p>${L.text}</p></div>` : `<div class="lore-p locked"><b>${n}. ???</b><p class="muted">Chưa tìm thấy.</p></div>`;
+      const base = LORE.map((L, i) => [L, i]).filter(([L]) => !L.req), extra = LORE.map((L, i) => [L, i]).filter(([L, i]) => L.req && g.lore.open(i));
+      html = `<p class="muted">Thanh Phong kiếm phổ tàn trang: <b>${g.lore.countBase()}/12</b>. Trang phát sáng trắng, rải khắp bản đồ.</p>
+        <div class="lore-list">${base.map(([L, i], k) => page(L, i, k + 1)).join('')}</div>
+        ${extra.length ? `<h4 class="sub-h">Vô Diện thủ ký (${extra.filter(([, i]) => got.includes(i)).length}/${extra.length})</h4><div class="lore-list">${extra.map(([L, i], k) => page(L, i, k + 1)).join('')}</div>` : ''}`;
     } else {
       html = `<div class="tasks">${ACHIEVEMENTS.map((a) => { const v = Math.min(a.goal, sy.statValue(a.stat)), ok = sy.s.achDone.includes(a.id); return `<div class="task ${ok ? 'ok' : ''}">${icon(ok ? 'check' : 'star')}<div><b>${a.name}</b> <small>${a.desc} (${v}/${a.goal})</small><div class="tbar"><div style="width:${(v / a.goal) * 100}%"></div></div></div><div class="rws">${rewardIcons(a.reward)}</div></div>`; }).join('')}</div>`;
     }
