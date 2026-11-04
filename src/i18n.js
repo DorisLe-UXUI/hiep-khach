@@ -2,10 +2,11 @@ import { VOICE_LINES } from './story/voice.js';
 import { ZH_LINES } from './story/zh.js';
 import { NAMES as EN_NAMES, LINES as EN_LINES } from './i18n_en.js';
 import { ACT3 } from './story/act3_i18n.js';
+import { ACT4_I18N } from './story/act4_i18n.js';
 import { ARCS, LADDER_STATIC } from './story/ladder_story.js';
 
 // thoại thêm (Hồi III, Thiên Thê): câu tiếng Việt → [en, zh]; '#' = số trong câu
-const EXTRA = { ...ACT3 };
+const EXTRA = { ...ACT3, ...ACT4_I18N };
 for (const [vi, en, zh] of LADDER_STATIC) EXTRA[vi] = [en, zh];
 for (const a of ARCS) {
   for (const [vi, en, zh] of [...a.lines, ...a.gate]) EXTRA[vi] = [en, zh];

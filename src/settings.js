@@ -111,8 +111,18 @@ export function logout() { try { localStorage.removeItem(CURRENT); } catch { /* 
 
 const saveKey = (profile) => STORE_PREFIX + 'hkgh_save_v1:' + (profile?.account || profile?.name || '_');
 
+/** Hồi IV (5 chương) được chèn trước Thiên Thê: dời chỉ số chương của bản lưu cũ cho đúng chương. */
+export function migrateSave(s) {
+  if (s && !s.storyV) {
+    if ((s.chapter ?? 0) >= 15) s.chapter += 5;
+    if ((s.unlocked ?? 0) >= 15) s.unlocked += 5;
+    s.storyV = 2;
+  }
+  return s;
+}
+
 export function loadSave(profile) {
-  try { return JSON.parse(localStorage.getItem(saveKey(profile)) || 'null'); } catch { return null; }
+  try { return migrateSave(JSON.parse(localStorage.getItem(saveKey(profile)) || 'null')); } catch { return null; }
 }
 
 export function writeSave(profile, data) {

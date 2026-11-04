@@ -1,6 +1,7 @@
 import { PLACES } from '../world/layout.js';
 import { ZONES } from '../game/bestiary.js';
 import { ARCS } from './ladder_story.js';
+import { ACT4, ACT4_SPEAKERS } from './act4.js';
 
 /**
  * CỐT TRUYỆN: "Thanh Phong Kiếm Ký"
@@ -34,6 +35,7 @@ export const SPEAKERS = {
   situ: { name: 'Tư Đồ Phong', han: '司徒鋒', look: 'situ' },
   wumian: { name: 'Vô Diện', han: '無面', look: 'wumian' },
   ttkeeper: { name: 'Thủ hộ Thiên Thê', han: '守關', look: 'wumian' },
+  ...ACT4_SPEAKERS,
 };
 
 // vùng đất Hồi II (trùng khu săn quái trong bestiary.js)
@@ -1091,10 +1093,10 @@ export const CHAPTERS = [
         talk: {
           maiden: (g) => [
             g.flags.tookSeat ? ['maiden', 'Minh chủ bận rộn, còn nhớ đường về hồ Bích Thủy sao?'] : ['maiden', 'Lần này, thật sự hết chuyện rồi chứ, công tử? ...Tiểu nữ không tin đâu.'],
-            ['maiden', 'Đêm qua trên Kiếm Mộ hiện ra một bậc thang ánh sáng xuyên mây. Người ta gọi là Thiên Thê. Nghe nói sư bá năm xưa đã leo tới tầng thứ một trăm...'],
+            ['maiden', '(giọng chợt nhỏ lại) Công tử nghe chưa? Mấy đêm nay, chưởng môn các phái lần lượt chết. Trên mặt ai cũng phủ một chiếc mặt nạ trắng...'],
             { choice: [
-              { text: 'Bước lên Thiên Thê (Hồi IV · 100 tầng, tới cấp 1999)', then: (g) => { g.finishChapter(); } },
-              { text: 'Để sau.', then: () => [['maiden', 'Khi nào công tử muốn leo, cứ nói với tiểu nữ.']] },
+              { text: 'Đi tìm hiểu chuyện mặt nạ trắng (bắt đầu Hồi IV · Vô Diện Lâu)', then: (g) => { g.finishChapter(); } },
+              { text: 'Để sau.', then: () => [['maiden', 'Vâng. Nhưng công tử cẩn thận, người ta bắt đầu nhắc tên công tử rồi.']] },
             ] },
           ],
         },
@@ -1103,7 +1105,9 @@ export const CHAPTERS = [
   },
 ];
 
-// ═════════════════════════════ HỒI IV · THIÊN THÊ (100 tầng, cấp 20 → 1990) ═════════════════════════════
+CHAPTERS.push(...ACT4);
+
+// ═════════════════════════════ HỒI V · THIÊN THÊ (100 tầng, cấp 20 → 1990) ═════════════════════════════
 const HAN_D = '〇一二三四五六七八九';
 const hanNum = (n) => { if (n < 10) return HAN_D[n]; if (n === 100) return '百'; const t = Math.floor(n / 10), u = n % 10; return (t > 1 ? HAN_D[t] : '') + '十' + (u ? HAN_D[u] : ''); };
 const LADDER_PLACES = [

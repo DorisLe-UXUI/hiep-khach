@@ -353,6 +353,8 @@ export const CHIBI_LOOKS = {
   situ: { model: 'mage', tint: '#e8dcc0', tintK: 0.6, scale: 1.12, meshy: 'old_master', meshyTint: '#f4e8c8' },
   wumian: { model: 'rogue_hooded', tint: '#20242c', tintK: 0.85, meshy: 'black_robes', meshyTint: '#3a4050' },
   mguard: { model: 'knight', tint: '#c8b070', tintK: 0.5, meshy: 'red_armor_warrior', meshyTint: '#e0c878' },
+  thienhai: { model: 'rogue_hooded', tint: '#3e6a72', tintK: 0.7, scale: 1.05, meshy: 'swordsman_blue', meshyTint: '#c8d4dc' },
+  tieuthat: { model: 'rogue_hooded', tint: '#d8dce4', tintK: 0.7, scale: 0.8, meshy: 'hooded_ninja', meshyTint: '#e4e8f0' },
   skeleton: { model: 'skeleton_warrior', skeleton: true },
   skeletonMinion: { model: 'skeleton_minion', skeleton: true },
   skeletonRogue: { model: 'skeleton_rogue', skeleton: true },

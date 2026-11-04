@@ -11,6 +11,7 @@ import { Audio } from './audio.js';
 import { RPG, ITEMS } from './rpg.js';
 import { CLASSES, heroLook, heroWeapon } from './classes.js';
 import { CHAPTERS, SPEAKERS, AMBIENT } from '../story/chapters.js';
+import { ensureRuins } from '../story/act4.js';
 import { HUD } from '../ui/hud.js';
 import { renderPortrait } from '../ui/portraits.js';
 import { PLACES } from '../world/layout.js';
@@ -77,6 +78,9 @@ export const LOOKS = {
   situ: { outfit: 'male_ranger', base: 'male', hair: ['hair_long', 'hair_beard'], brows: 'eyebrows_regular', outfitColor: '#e8dcc0', hairColor: '#8a8478', hideHood: true },
   wumian: { outfit: 'male_ranger', base: 'male', hair: [], brows: 'eyebrows_regular', outfitColor: '#20242c', hairColor: '#0e0b09' },
   mguard: { outfit: 'male_ranger', base: 'male', hair: ['hair_simpleparted'], brows: 'eyebrows_regular', outfitColor: '#c8b070', hairColor: '#1a1410' },
+  // Hồi IV
+  thienhai: { outfit: 'male_ranger', base: 'male', hair: ['hair_long'], brows: 'eyebrows_regular', outfitColor: '#3e6a72', hairColor: '#9a968c', hideHood: true },
+  tieuthat: { outfit: 'male_ranger', base: 'male', hair: [], brows: 'eyebrows_regular', outfitColor: '#d8dce4', hairColor: '#1a1410' },
 };
 
 const ENEMY_TYPES = {
@@ -98,6 +102,9 @@ const ENEMY_TYPES = {
   wumian: { look: 'wumian', name: 'Vô Diện', hp: 4200, dmg: 34, exp: 3500, gold: 1500, weapon: 'sword', speed: 6.8 },
   mguard: { look: 'mguard', name: 'Võ Lâm Minh vệ', hp: 1100, dmg: 28, exp: 700, gold: 240, weapon: 'saber', speed: 5.8 },
   thief: { look: 'assassin', name: 'Hắc y nhân', hp: 950, dmg: 27, exp: 650, gold: 220, weapon: 'sword', speed: 6.2 },
+  // Hồi IV
+  vodien: { look: 'wumian', name: 'Vô Diện sát thủ', hp: 1200, dmg: 30, exp: 800, gold: 260, weapon: 'sword', speed: 6.6 },
+  thienhai: { look: 'thienhai', name: 'Vô Diện Lâu chủ', hp: 9000, dmg: 46, exp: 9000, gold: 4000, weapon: 'sword', scale: 1.08, speed: 7 },
   situ: { look: 'situ', name: 'Võ Lâm Minh chủ · Tư Đồ Phong', hp: 6000, dmg: 40, exp: 6000, gold: 3000, weapon: 'golden', scale: 1.15, caster: true, speed: 6.6 },
 };
 
@@ -464,7 +471,7 @@ export class Game {
 
   save() {
     writeSave(this.profile, {
-      chapter: this.chapterIdx, unlocked: Math.max(this.unlockedChapter, this.chapterIdx), flags: this.flags, unlocks: this.unlocks,
+      storyV: 2, chapter: this.chapterIdx, unlocked: Math.max(this.unlockedChapter, this.chapterIdx), flags: this.flags, unlocks: this.unlocks,
       rpg: this.rpg.toJSON(), attackBonus: this.player.attackBonus, storyHp: this.player.storyHp, storyMp: this.player.storyMp,
       sys: this.sys.toJSON(), fashion: this.fashionOwned,
     });
@@ -498,10 +505,11 @@ export class Game {
       if (n.home) n.placeAt(n.home[0], n.home[1], n.homeYaw);
     }
     // Uyển Nhi vắng mặt ở trấn khi ở Kiếm Mộ hoặc đang đồng hành Hồi II
-    const away = ['c5', 'c6', 'c7', 'c8', 'c10'].includes(ch.id);
+    const away = ['c5', 'c6', 'c7', 'c8', 'c10', 'c13', 'c15'].includes(ch.id);
     this.npcById.maiden.hidden = away;
     this.npcById.maiden.root.visible = !away;
     this.chestOpened = this.chapterIdx > 2;
+    if (this.unlockedChapter >= 16) ensureRuins(this); // tàn tích Tiêu gia thôn (Hồi IV)
     this.freedCages.clear();
     for (const c of this.spots.cages) c.userData.bars.visible = true;
     const sp = ch.spawn;
