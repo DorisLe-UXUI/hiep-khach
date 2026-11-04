@@ -17,6 +17,7 @@ export const STORY_NPCS = [
   { id: 'tieuho', look: 'tieuho', name: 'Lưu Tiểu Hổ', han: '劉小虎', x: P.inn.x + 8, z: P.inn.z - 1, yaw: -0.4, show: (g) => g.unlockedChapter >= 6 },
   { id: 'fisher', look: 'boss', name: 'Ngư phủ Đồ Bá', han: '漁夫屠霸', x: P.pavilion.x + 10, z: P.pavilion.z + 13, yaw: -2.2, show: (g) => g.unlockedChapter >= 6 && !!g.flags.sparedDoba },
   { id: 'hanxue_npc', look: 'hanxue', name: 'Hàn Tuyết', han: '寒雪', speaker: 'hanxue', x: ICE.x + 4, z: ICE.z + 50, yaw: Math.PI, show: (g) => g.unlockedChapter >= 8 && !!g.flags.sparedHanxue && g.chapter?.id !== 'c6' },
+  { id: 'tieuthat_npc', look: 'tieuthat', name: 'Tiểu Thất', han: '小七', speaker: 'tieuthat', x: P.inn.x - 8, z: P.inn.z + 9, yaw: 0.5, show: (g) => g.unlockedChapter >= 19 && !!g.flags.sparedQi },
   { id: 'honglian_npc', look: 'honglian', name: 'Hồng Liên', han: '紅蓮', speaker: 'honglian', x: P.gate.x - 6, z: P.gate.z - 4, yaw: 0.6, show: (g) => g.unlockedChapter >= 9 && !!(g.flags.sparedHonglian || g.flags.jailedHonglian) && !['c7', 'c8'].includes(g.chapter?.id) },
 ];
 export const STORY_SPEAKERS = {
@@ -245,6 +246,121 @@ export const SIDE_QUESTS = [
     reward: (g) => { g.player.storyMp += 40; g.player.storyHp += 40; g.rpg.apply(true); g.toast('Kỳ duyên hoàn thành · Huyết Ảnh tâm pháp (dưỡng khí) · Khí huyết +40 · Nội lực +40', 4); },
   },
 
+  // ───── 7. Tiểu Thất: cái tên đầu tiên (Hồi IV) ─────
+  {
+    id: 'tieuthat',
+    name: 'Cái tên đầu tiên',
+    han: '第一個名字',
+    giver: 'tieuthat_npc',
+    unlock: (g) => g.unlockedChapter >= 19 && !!g.flags.sparedQi,
+    summary: 'Tiểu Thất đêm nào cũng giật mình tỉnh giấc, tay sờ lên mặt tìm chiếc mặt nạ. Nó muốn biết trước khi thành "số bảy", mình là ai.',
+    offer: () => [
+      ['tieuthat', '(ngồi co ro sau bếp, ôm thanh kiếm gỗ) Sư phụ... đêm qua con lại mơ. Trong mơ con không có mặt. Con soi xuống nước, chỉ thấy một tờ giấy trắng.'],
+      ['tieuthat', 'Lâu chủ có một quyển sổ. Đứa nào được nhặt về, ông ấy đều ghi lại: nhặt ở đâu, ngày nào, trên người có gì. Con chưa từng dám đọc trang của mình.'],
+      ['tieuthat', 'Quyển sổ vẫn ở trong hang sau Kiếm Mộ. Nhưng Tam Diện với mấy đứa lớn không chịu xuống núi. Chúng nói Lâu chưa tan, chỉ là Lâu chủ đã phản bội.'],
+    ],
+    steps: [
+      {
+        objective: (g, q) => `Đẩy lui những kẻ còn đeo mặt nạ trong hang Kiếm Mộ (${q.kills('sq_tieuthat')}/4)`,
+        marker: (g, q) => q.nearestOf('sq_tieuthat') || { x: P.tomb.x, z: P.tomb.z },
+        enter: (g, q) => q.spawnN('sq_tieuthat', 4, (i) => g.spawn(i === 3 ? 'wumian' : 'vodien', P.tomb.x - 6 + i * 4, P.tomb.z + 6 - (i % 2) * 6, { group: 'sq_tieuthat', aggro: 30, lv: Math.max(40, g.rpg.level), boss: i === 3, name: i === 3 ? 'Tam Diện' : 'Vô Diện tàn dư' })),
+        done: (g, q) => q.kills('sq_tieuthat') >= 4,
+      },
+      {
+        objective: () => 'Tìm quyển sổ của Lâu chủ trên bàn đá trong hang',
+        marker: () => ({ x: P.tomb.x, z: P.tomb.z - 3 }),
+        done: (g) => near(g, P.tomb.x, P.tomb.z - 3, 4),
+      },
+      {
+        objective: () => 'Mang quyển sổ về cho Tiểu Thất ở khách điếm',
+        marker: npcAt('tieuthat_npc'),
+        talk: {
+          tieuthat_npc: (g, q) => [
+            ['hero', '(Ba mươi hai trang, nét chữ của Lâm Thiên Hải. Trang thứ bảy viết:)'],
+            ['hero', '"Số bảy. Nhặt ở bờ hồ Bích Thủy, mùa nước lũ. Chừng bốn tuổi. Ôm chặt một chiếc yếm đỏ, thêu một chữ: 安. Không nói, không khóc. Ta đặt nó vào lâu vì nó không có ai."'],
+            ['hero', '"Ta đã không hỏi nó tên gì. Ta sợ nếu biết tên, ta sẽ không dạy nó cầm kiếm được."'],
+            ['tieuthat', '(nhìn chữ 安 rất lâu) ...An. Mẹ con gọi con là An. Con nhớ rồi. Có tiếng gọi như thế, trước khi nước tràn vào nhà.'],
+            ['tieuthat', 'Sư phụ đặt cho con tên Tiêu Thất. Giờ con lại có thêm một tên nữa. Con... nên giữ cái nào?'],
+            { choice: [
+              { text: '"Giữ cả hai. Tiêu là nhà ngươi bây giờ. An là nhà ngươi trước kia."', then: () => { g.flag('qiNamedAn'); g.karma(1); return [
+                ['tieuthat', 'Tiêu An Thất... dài quá. Nhưng con thích.'],
+                ['tieuthat', '(lấy chiếc mặt nạ trắng cuối cùng trong bọc ra, đặt lên bàn) Cái này con không cần nữa. Sư phụ giữ giùm con. Để sau này con nhớ mình đã từng không có mặt.'],
+              ]; } },
+              { text: '"Cái tên là của ngươi. Ngươi tự chọn."', then: () => { g.flag('qiChoseName'); return [
+                ['tieuthat', '(nghĩ rất lâu) ...Con chọn An. Vì đó là thứ duy nhất mẹ để lại. Còn họ Tiêu là thứ sư phụ cho con. Con không trả lại đâu.'],
+              ]; } },
+            ] },
+            ['keeper', '(từ trong bếp) Tiểu An! Ra ăn cơm! Tiểu Hổ ăn hết phần đùi gà của con rồi kìa!'],
+            ['tieuthat', '(lần đầu tiên, nó cười to tới mức suýt ngã) Tiểu Hổ! Ngươi đứng lại đó!'],
+            { run: () => q.advance() },
+          ],
+        },
+      },
+    ],
+    reward: (g) => { g.rpg.points += 2; g.player.storyHp += 60; g.rpg.apply(true); g.rpg.addGold?.(500); g.toast('Kỳ duyên hoàn thành · Điểm võ học +2 · Khí huyết +60 · 500 lượng', 4); },
+  },
+
+  // ───── 8. Lưu Đại Phúc: nén hương không tên (Hồi IV) ─────
+  {
+    id: 'incense',
+    name: 'Nén hương không tên',
+    han: '無名之香',
+    giver: 'keeper',
+    unlock: (g) => g.unlockedChapter >= 19,
+    summary: 'Ba năm nhận vàng của Tư Đồ Phong, Lưu Đại Phúc chưa tiêu một đồng. Ông muốn trả số vàng ấy về đúng chỗ của nó.',
+    offer: (g) => [
+      ['keeper', '(lau đi lau lại một cái chén đã sạch) Đại hiệp, lão còn một món nợ chưa trả.'],
+      ['keeper', 'Ba năm làm tai mắt cho Minh chủ, mỗi tháng người của Minh mang tới một túi vàng. Lão không dám tiêu, chôn hết trong hầm rượu. Ba mươi sáu túi.'],
+      ['keeper', 'Lão muốn mang số vàng ấy lên Đồi Gió, dựng lại vài nóc nhà cho Tiêu gia thôn. Nhưng mấy đêm nay có tiếng đào đất dưới hầm. Lão đoán... Minh vệ tàn dư cũng nhớ ra chỗ ấy.'],
+    ],
+    steps: [
+      {
+        objective: (g, q) => `Diệt Minh vệ tàn dư đang đào hầm rượu (${q.kills('sq_incense')}/4)`,
+        marker: (g, q) => q.nearestOf('sq_incense') || { x: P.inn.x - 10, z: P.inn.z - 10 },
+        enter: (g, q) => q.spawnN('sq_incense', 4, (i) => g.spawn('mguard', P.inn.x - 14 + i * 4, P.inn.z - 12, { group: 'sq_incense', aggro: 22, lv: Math.max(40, g.rpg.level), name: 'Minh vệ tàn dư' })),
+        done: (g, q) => q.kills('sq_incense') >= 4,
+      },
+      {
+        objective: () => 'Khiêng rương vàng lên Đồi Gió, trao cho lão bà giữ mộ',
+        marker: () => ({ x: 150, z: 56 }),
+        done: (g) => near(g, 150, 56, 6),
+      },
+      {
+        objective: () => 'Nghe lão bà giữ mộ nói',
+        marker: () => ({ x: 150, z: 56 }),
+        // thoại chạy khi đứng trước hàng bia (không dùng enter: tải lại game ở nơi khác sẽ bật thoại sai chỗ)
+        done: (g, q) => { if (!g.dialogOpen && !g._incTalk && near(g, 150, 56, 7)) { g._incTalk = true; g.dialog([
+          ['oldwoman', '(nhìn rương vàng, không mở) Vàng của Minh chủ. Lão bà nhận ra mùi trầm hương.'],
+          ['oldwoman', 'Hai mươi năm trước, cũng có người mang vàng tới. Người áo trắng cưỡi ngựa ấy. Nói là "tiền an táng". Lão ném xuống giếng.'],
+          ['oldwoman', 'Nhưng người mang rương này tới... là ai?'],
+          ['hero', 'Một chưởng quỹ. Ông ấy giữ nó ba năm, không tiêu một đồng.'],
+          ['oldwoman', '(im lặng, rồi gật đầu) Vậy là vàng sạch rồi. Vàng không bẩn. Người cầm nó mới bẩn hay sạch.'],
+          ['oldwoman', 'Bảo ông ta: mùa xuân, ba nóc nhà đầu tiên sẽ dựng lại. Lão bà sẽ trồng một cây tùng trước cổng.'],
+          { run: () => { g._incTalk = false; q.advance(); } },
+        ]); } return false; },
+      },
+      {
+        objective: () => 'Về khách điếm báo cho Lưu chưởng quỹ',
+        marker: npcAt('keeper'),
+        talk: {
+          keeper: (g, q) => [
+            ['keeper', '(nghe xong, ông đi ra sau bếp, cầm tấm bài vị không tên xuống)'],
+            ['keeper', g.flags.killedThienhai ? 'Ba năm lão thắp hương cho một người chưa chết. Giờ người ấy chết thật rồi. Lão... khắc tên được rồi.' : 'Ba năm lão thắp hương cho một người còn sống. Đêm nay, lão có thể đốt nó đi.'],
+            { choice: [
+              { text: g.flags.killedThienhai ? 'Cùng ông khắc tên lên bài vị: "Lâm Thiên Hải"' : 'Đốt tấm bài vị không tên', then: () => { g.flag('incenseDone'); g.karma(1); return [
+                ['keeper', g.flags.killedThienhai ? '(nét khắc run run, nhưng lần này ông không xin lỗi nữa) Lâm đại hiệp, Đại Phúc nợ người một lá thư. Kiếp sau, Đại Phúc tự tay mang lên núi.' : '(ngọn lửa nhỏ liếm qua mặt gỗ) Lâm đại hiệp, Đại Phúc không thắp hương cho người nữa. Lần tới gặp, Đại Phúc mời người một vò Nữ Nhi Hồng.'],
+                ['keeper', '(quay sang Tiêu Vân, lần đầu tiên tay không run) Đại hiệp. Cảm ơn người đã để lão già này được làm người tốt muộn một lần.'],
+              ]; } },
+              { text: '"Ông giữ lại đi. Để nhớ."', then: () => [['keeper', '...Phải. Có những thứ nên nhớ. Lão sẽ treo nó cạnh quầy, ai hỏi thì lão kể.']] },
+            ] },
+            { run: () => q.advance() },
+          ],
+        },
+      },
+    ],
+    reward: (g) => { g.player.attackBonus += 4; g.player.storyMp += 50; g.rpg.apply(true); g.rpg.add('hotpot', 3); g.toast('Kỳ duyên hoàn thành · Công +4 · Nội lực +50 · Lẩu thập cẩm ×3', 4); },
+  },
+
   // ───── 6. Kiếm phổ tàn trang ─────
   {
     id: 'pages',
@@ -259,9 +375,9 @@ export const SIDE_QUESTS = [
     ],
     steps: [
       {
-        objective: (g) => `Tìm kiếm phổ tàn trang khắp bản đồ (${g.lore?.count() || 0}/12) · trang phát sáng trắng`,
+        objective: (g) => `Tìm kiếm phổ tàn trang khắp bản đồ (${g.lore?.countBase() || 0}/12) · trang phát sáng trắng`,
         marker: (g) => g.lore?.nearest() || null,
-        done: (g) => (g.lore?.count() || 0) >= 12,
+        done: (g) => (g.lore?.countBase() || 0) >= 12,
       },
       {
         objective: () => 'Mang đủ 12 trang về cho Lưu chưởng quỹ',

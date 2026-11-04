@@ -19,12 +19,21 @@ export const LORE = [
   { at: [150, -90], title: 'Đóa sen trong bùn', text: 'Năm đói kém, Mộ Dung Huyết nhặt một bé gái trong đống xác ở biên trấn. Hắn đặt tên nàng là Hồng Liên. Đó là lần duy nhất người ta thấy hắn khóc.' },
   { at: [-40, -200], title: 'Người chưởng quỹ', text: 'Lưu Đại Phúc chưa từng cầm kiếm. Ba năm làm tai mắt cho kẻ ác, đêm nào ông cũng thắp hương xin lỗi Lâm đại hiệp. Ông không biết rằng người chết không cần lời xin lỗi, người sống mới cần.' },
   { at: [200, -160], title: 'Trang cuối', text: 'Trang cuối kiếm phổ không có chiêu thức. Chỉ có nét chữ run run của sư tổ lúc lâm chung: "Kiếm tại nhân tâm. Tâm chính, kiếm chính. Ta dạy được kiếm, không dạy được tâm. Ba đứa, ta xin lỗi."' },
+  // Hồi IV: "Vô Diện thủ ký", mấy trang Lâm Thiên Hải viết trong ba năm ẩn mặt (hiện sau Chương Thập Tam)
+  { req: 16, at: [P.inn.x - 12, P.inn.z - 9], title: 'Vô Diện thủ ký · Hầm rượu', text: 'Ngày thứ nhất: sư huynh sẽ tới. Ngày thứ ba: đường Bạch Vân sơn xa, sư huynh sẽ tới. Ngày thứ năm: ta khắc vạch lên tường để đếm. Ngày thứ bảy: ta không khắc nữa.' },
+  { req: 16, at: [162, 84], title: 'Vô Diện thủ ký · Thanh kiếm gỗ', text: 'Tay phải ta không cầm nổi thép nữa, chưởng độc ăn vào gân. Ta gọt một thanh kiếm gỗ. Thanh Phong Phất Liễu dùng kiếm gỗ vẫn giết được người. Sư phụ, người nói đúng: kiếm không ở trong tay.' },
+  { req: 16, at: [-92, 122], title: 'Vô Diện thủ ký · Đứa trẻ thứ nhất', text: 'Đứa đầu tiên ta nhặt ở bờ hồ, mặt bỏng giống ta. Nó sợ nhìn nước. Ta làm cho nó một chiếc mặt nạ, rồi làm cho mình một chiếc. Đêm ấy nó ngủ được. Ta thì không.' },
+  { req: 16, at: [P.tomb.x - 16, P.tomb.z + 12], title: 'Vô Diện thủ ký · Chén trà thứ hai', text: 'Ngày nào ta cũng pha hai chén. Uyển Nhi thích trà hoa nhài, sư huynh thích trà đặc không đường. Ta không biết vì sao ta pha chén của sư huynh, mà không dám pha chén của con gái mình.' },
 ];
 
 export class Lore {
   constructor(g) { this.g = g; this.items = []; this.t = 0; }
   get got() { const s = this.g.sys.s; s.lore ??= []; return s.lore; }
   count() { return this.got.length; }
+  /** số trang của 12 trang kiếm phổ gốc (Kỳ duyên tàn trang chỉ tính 12 trang này) */
+  countBase() { return this.got.filter((i) => !LORE[i]?.req).length; }
+  /** trang mở theo tiến độ truyện (req = chỉ số chương đã mở) */
+  open(i) { return (LORE[i].req || 0) <= (this.g.unlockedChapter || 0); }
 
   async build() {
     const g = this.g;
@@ -52,7 +61,7 @@ export class Lore {
       const y = g.terrain.heightAt(x, z) + 1.1;
       grp.position.set(x, y, z);
       grp.userData = { i, base: y };
-      grp.visible = !this.got.includes(i);
+      grp.visible = !this.got.includes(i) && this.open(i);
       g.scene.add(grp);
       this.items.push(grp);
     });
@@ -73,7 +82,11 @@ export class Lore {
     const g = this.g, p = g.player.pos;
     this.t += dt;
     for (const it of this.items) {
-      if (!it.visible) continue;
+      if (!it.visible) {
+        // trang Hồi IV hiện ra khi truyện tới nơi
+        if (LORE[it.userData.i].req && !this.got.includes(it.userData.i) && this.open(it.userData.i)) it.visible = true;
+        continue;
+      }
       it.rotation.y += dt * 1.2;
       it.position.y = it.userData.base + Math.sin(this.t * 2 + it.userData.i) * 0.15;
       if (Math.random() < 0.08) g.fx?.sparkle?.(it.position, 0xfff0c0);
@@ -87,9 +100,17 @@ export class Lore {
     if (!this.got.includes(i)) this.got.push(i);
     g.audio?.chime?.();
     g.fx?.burst?.(it.position.clone(), 0xfff0c0, 30);
+    if (L.req) {
+      const n = this.got.filter((k) => LORE[k]?.req).length, total = LORE.filter((x) => x.req).length;
+      g.dialog([
+        ['Vô Diện thủ ký', `(${L.title.split(' · ')[1]}) ${L.text}`],
+        { run: () => { g.toast(`<span class="han">手記</span> Vô Diện thủ ký <b>${n}/${total}</b>`, 2.5); if (n === total) { g.player.storyHp += 50; g.player.storyMp += 50; g.rpg.points += 1; g.rpg.apply(true); g.toast('Đã đọc trọn Vô Diện thủ ký · Khí huyết +50 · Nội lực +50 · Điểm võ học +1', 4); } g.save(); } },
+      ]);
+      return;
+    }
     g.dialog([
       ['Kiếm phổ tàn trang', `(Trang ${i + 1}/12 · ${L.title}) ${L.text}`],
-      { run: () => { g.toast(`<span class="han">殘頁</span> Kiếm phổ tàn trang <b>${this.count()}/12</b>`, 2.5); if (this.count() === 6) { g.rpg.points += 1; g.toast('Đã gom 6 trang · Điểm võ học +1', 3); } g.save(); } },
+      { run: () => { g.toast(`<span class="han">殘頁</span> Kiếm phổ tàn trang <b>${this.countBase()}/12</b>`, 2.5); if (this.countBase() === 6) { g.rpg.points += 1; g.toast('Đã gom 6 trang · Điểm võ học +1', 3); } g.save(); } },
     ]);
   }
 }
