@@ -1,4 +1,5 @@
 import { LOOKS } from './game.js';
+import { STORE_PREFIX } from '../settings.js';
 
 /**
  * Giang hồ trực tuyến: kênh thế giới, Luận Kiếm Đài (đấu với bản chụp nhân vật của người chơi khác), chợ giao dịch.
@@ -17,10 +18,13 @@ export class Online {
     this.ok = null;
     this.users = 0;
     let id = null;
-    try { id = localStorage.getItem('hk_pid'); if (!id) { id = crypto.randomUUID(); localStorage.setItem('hk_pid', id); } } catch { id = crypto.randomUUID(); }
+    // bản dev dùng khoá riêng (cùng tên miền với bản chính trên GitHub Pages): không dùng chung mã người chơi
+    const key = STORE_PREFIX + 'hk_pid';
+    try { id = localStorage.getItem(key); if (!id) { id = crypto.randomUUID(); localStorage.setItem(key, id); } } catch { id = crypto.randomUUID(); }
     this.pid = id;
   }
-  get base() { try { return localStorage.getItem('hk_online') || ONLINE_URL; } catch { return ONLINE_URL; } }
+  // đổi máy chủ qua localStorage chỉ cho bản dev (bản chính: trang khác cùng tên miền không chuyển hướng được mã người chơi)
+  get base() { try { return (import.meta.env.VITE_DEV_BUILD && localStorage.getItem('hk_online')) || ONLINE_URL; } catch { return ONLINE_URL; } }
 
   async call(path, body) {
     if (!this.base) throw Object.assign(new Error('offline'), { code: 'offline' });
@@ -46,7 +50,7 @@ export class Online {
     this.pollT = 6;
     this.call('/state?since=' + this.since).then((d) => {
       this.ok = true;
-      this.users = d.online;
+      this.users = +d.online | 0;
       for (const m of d.chat) {
         this.since = Math.max(this.since, m.n);
         if (this.firstDone) this.g.mhud?.log('world', m.extra === 'arena' ? `<b class="cy">${esc(m.text)}</b>` : `<b>${esc(m.name)}</b>: ${esc(m.text)}`);
@@ -87,7 +91,7 @@ export class Online {
     if (!f.e.dead) { f.e.dead = true; g.scene.remove(f.e.root); }
     try {
       const r = await this.call('/arena/result', { opp: f.o.oid ?? f.o.pid, win }); // oid: máy chủ mới không gửi pid người khác
-      g.toast(`${win ? '<b>THẮNG</b>' : '<b>THUA</b>'} · Điểm luận kiếm ${r.delta >= 0 ? '+' : ''}${r.delta} → <b>${r.rating}</b>`, 4);
+      g.toast(`${win ? '<b>THẮNG</b>' : '<b>THUA</b>'} · Điểm luận kiếm ${r.delta >= 0 ? '+' : ''}${+r.delta | 0} → <b>${+r.rating | 0}</b>`, 4);
     } catch (e) { g.toast(e.code === 'slow' ? 'Đấu quá nhanh, kết quả không được tính' : 'Không gửi được kết quả', 2); }
     if (win) { g.rpg.addGold(100 + f.o.level * 10); g.vfx.banner('勝', 'Luận kiếm thắng lợi', '#ffd86a'); g.audio.skill('ult', 0.6); }
     else if (g.player.dead) setTimeout(() => g.player.revive(g.player.pos.x, g.player.pos.z, g.player.yaw), 1500);

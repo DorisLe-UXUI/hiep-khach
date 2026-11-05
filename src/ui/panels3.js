@@ -169,6 +169,9 @@ Object.assign(UI.prototype, {
       if (tab === 'arena') {
         await on.call('/arena/submit', on.snapshot());
         const d = await on.call('/arena/opponents');
+        // số từ máy chủ: ép kiểu trước khi đưa vào HTML
+        const nums = (o) => ({ ...o, level: +o.level | 0, power: +o.power | 0, rating: +o.rating | 0, wins: +o.wins | 0, losses: +o.losses | 0 });
+        d.me = d.me == null ? null : +d.me | 0; d.list = (d.list || []).map(nums); d.top = (d.top || []).map(nums);
         html += `<p class="muted">Đấu với <b>bản sao nhân vật</b> của người chơi khác (máy điều khiển, theo đúng chỉ số của họ). Thắng: +bạc, +điểm. Bản sao của ngươi cũng được người khác khiêu chiến.</p>
           <div class="ol-me">Điểm luận kiếm: <b>${d.me ?? 1000}</b> · Đang trực tuyến: <b>${on.users}</b></div>
           <div class="ol-cols"><div><h4 class="sub-h">Đối thủ ngang tài</h4>${d.list.length ? d.list.map((o, i) => `<div class="ol-row"><span class="ol-cls">${CLSN[o.cls] || ''}</span><div><b>${esc(o.name)}</b> <small>Lv.${o.level} · ${esc(o.snap.title)}${o.snap.faction ? ' · ' + (o.snap.faction === 'chinh' ? 'Chính' : 'Tà') : ''}</small><br><small>Lực chiến ${o.power.toLocaleString('vi-VN')} · Điểm ${o.rating} · ${o.wins}T/${o.losses}B</small></div><button class="primary sm" data-duel="${i}">Khiêu chiến</button></div>`).join('') : '<p class="muted">Chưa có ai. Mời bằng hữu cùng chơi!</p>'}</div>
@@ -179,7 +182,7 @@ Object.assign(UI.prototype, {
         const d = await on.call('/market');
         // món của người chơi khác: chỉ giữ đúng định dạng trang bị (trước đây lv/chỉ số không được thoát => chạy được script)
         d.list = (d.list || []).map((o) => ({ ...o, lid: +o.lid | 0, price: +o.price | 0, item: cleanItem(o.item) })).filter((o) => o.item);
-        if (d.owed) { const c = await on.call('/market/claim'); r.addGold(c.gold); g.toast(`Bán được ${c.sold.map((x) => `<b>${esc(x.name)}</b>`).join(', ')} · nhận <b>${c.gold}</b> lượng (đã trừ 5% thuế chợ)`, 5); }
+        if (d.owed) { const c = await on.call('/market/claim'); c.gold = +c.gold | 0; c.sold = Array.isArray(c.sold) ? c.sold : []; r.addGold(c.gold); g.toast(`Bán được ${c.sold.map((x) => `<b>${esc(x.name)}</b>`).join(', ')} · nhận <b>${c.gold}</b> lượng (đã trừ 5% thuế chợ)`, 5); }
         const bag = r.gearBag || [];
         html += `<p class="muted">Rao bán trang bị cho người chơi khác, hoặc mua đồ họ bán. Thuế chợ 5%. Tối đa 10 món đang rao. ${icon('coins')} Ngươi có <b>${r.gold}</b> lượng.</p>
           <div class="ol-cols"><div><h4 class="sub-h">Đang bán trên chợ</h4>${d.list.length ? d.list.map((o) => `<div class="ol-row"><span class="ol-cls r${o.item.rarity || 0}">${esc(o.item.han || '')}</span><div><b style="color:${RARITY[o.item.rarity || 0]?.color}">${esc(o.item.name)}</b> <small>Lv.${o.item.lv || '?'}${o.item.elem ? ' · thần binh' : ''}</small><br><small>${Object.entries(o.item.stats || {}).map(([k, v]) => `${STAT_NAME[k] || k} ${fmtStat(k, v)}`).join(' · ')} · người bán ${esc(o.name)}</small></div>${o.mine ? `<button class="ghost sm" data-cancel="${o.lid}">Gỡ</button>` : `<button class="primary sm" data-buy="${o.lid}" data-price="${o.price}" ${r.gold < o.price ? 'disabled' : ''}>${o.price} lượng</button>`}</div>`).join('') : '<p class="muted">Chợ đang vắng.</p>'}</div>
