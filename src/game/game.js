@@ -146,6 +146,9 @@ async function makeChar(look, weapon) {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// khung hình kế tiếp; tab ẩn thì requestAnimationFrame dừng nên có hạn 50 ms để không treo việc sinh quái
+const nextFrame = () => new Promise((r) => { const t = setTimeout(r, 50); requestAnimationFrame(() => { clearTimeout(t); r(); }); });
+const TEX_KEYS = ['map', 'normalMap', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'alphaMap', 'gradientMap'];
 
 /** NPC dịch vụ trong trấn (game nhập vai): mỗi người mở một màn. */
 const SERVICE_NPCS = [
@@ -379,9 +382,10 @@ export class Game {
     this.ui.female = h.gender === 'female';
     const cls = CLASSES[h.cls] || CLASSES.kiem;
     const ch = await createHeroCharacter(h);
+    ch.model.traverse((o) => { if (o.isMesh && o.material) o.material = o.material.clone(); });
+    await this.warm(ch.root); // trước khi gỡ nhân vật cũ: không có khung hình nào thiếu nhân vật
     const old = this.player;
     if (old) this.scene.remove(old.char.root);
-    ch.model.traverse((o) => { if (o.isMesh && o.material) o.material = o.material.clone(); });
     this.player = new Player(this, ch, cls);
     this.player.clsId = h.cls;
     this.scene.add(ch.root);
@@ -489,6 +493,7 @@ export class Game {
     // dọn kẻ địch cũ
     this.spawner.clear();
     this.dropStoryAllies();
+    this.spawnGen = (this.spawnGen || 0) + 1;
     for (const e of this.enemies) this.scene.remove(e.root);
     this.enemies = [];
     this.clearLoot();
@@ -517,6 +522,7 @@ export class Game {
     this.status.clearBad();
     this.camRig.yaw = sp.yaw + Math.PI;
     this.camRig.snap(this.player.pos);
+    await this.settle(); // màn hình đang đen: chuẩn bị sẵn vùng mới
     this.save();
     const narration = typeof ch.narration === 'function' ? ch.narration(this) : ch.narration;
     if (narration) {
@@ -651,6 +657,8 @@ export class Game {
   }
 
   async spawn(type, x, z, opts = {}) {
+    // thế hệ lúc bắt đầu (trước cả lúc tải mô hình): đổi chương / vào hoạt động mới trong lúc chờ thì không thả ra nữa
+    const gen = this.spawnGen, agen = this.actGen;
     const t = ENEMY_TYPES[type];
     const ch = await makeChar(opts.look || LOOKS[t.look], opts.weapon || t.weapon);
     if (opts.scale || t.scale) ch.root.scale.setScalar(opts.scale || t.scale);
@@ -663,9 +671,102 @@ export class Game {
       exp: sl ? Math.round(sl.exp * (opts.boss ? 8 : 1.5)) : t.exp, gold: sl ? Math.round(sl.gold * (opts.boss ? 6 : 1.2)) : t.gold, group: opts.group, tag: type,
     });
     e.placeAt(x, z, Math.random() * 6.28);
+    await this.warm(ch.root);
+    // đổi chương: bỏ mọi con đang chờ; vào hoạt động mới: chỉ bỏ quái của hoạt động cũ (nhóm 'act…')
+    if (gen !== this.spawnGen || (agen !== this.actGen && opts.group?.startsWith('act'))) return e;
     this.scene.add(ch.root);
     this.enemies.push(e);
     return e;
+  }
+
+  /**
+   * Chuẩn bị một mô hình trước khi cho vào cảnh: tải texture lên GPU (mỗi texture mới nhường một khung hình) và dịch
+   * shader song song. Trước đây việc này dồn vào khung hình đầu tiên mô hình xuất hiện => khựng khi đợt quái mới ra.
+   */
+  async warm(obj) {
+    const r = this.renderer;
+    try {
+      const seen = new Set();
+      obj.traverse((o) => {
+        if (o.material) for (const m of [].concat(o.material)) for (const k of TEX_KEYS) if (m[k]?.isTexture) seen.add(m[k]);
+      });
+      for (const t of seen) {
+        if (r.properties.get(t).__version === t.version) continue;
+        r.initTexture(t);
+        await nextFrame();
+      }
+      await (this.sky?.camera ? this.sky.compileVariants(obj) : r.compileAsync(obj, this.camera, this.scene));
+    } catch { /* không chặn việc sinh quái */ }
+  }
+
+  /**
+   * Tải dần lên GPU mọi texture đang có trong cảnh (mỗi khung hình một cái) lúc người chơi còn ở màn hình chính.
+   * three chỉ tải texture khi vật thể lần đầu lọt vào khung hình, nên quay máy hội thoại / dịch chuyển sang vùng mới
+   * từng gây khựng vì phải tải nhiều texture cùng lúc.
+   */
+  async warmSceneTextures() {
+    const r = this.renderer, seen = new Set();
+    this.scene.traverse((o) => {
+      if (o.material) for (const m of [].concat(o.material)) for (const k of TEX_KEYS) if (m[k]?.isTexture) seen.add(m[k]);
+    });
+    for (const t of seen) {
+      try {
+        if (!t.image || r.properties.get(t).__version === t.version) continue;
+        r.initTexture(t);
+      } catch { /* bỏ qua texture lỗi */ }
+      await nextFrame();
+    }
+  }
+
+  /**
+   * Gọi lúc màn hình đang đen (đổi chương, vào phó bản): dịch shader + tải texture + vẽ thử một lần cảnh tại chỗ mới
+   * (kèm các mô hình extra đặt trước ống kính), để mọi chi phí "lần vẽ đầu" rơi vào lúc không ai nhìn thấy.
+   */
+  async settle(extra = []) {
+    const r = this.renderer, cam = this.camera, p = this.player.pos;
+    // máy chiếu bóng mặt trời đi theo người chơi chỉ trong vòng lặp game: dời trước tới chỗ mới, để lần vẽ thử
+    // cũng tạo luôn shader vẽ bóng cho mô hình ở đây (compile() của three không làm phần bóng)
+    this.updateSun(p);
+    cam.position.copy(this.camRig.pos);
+    cam.lookAt(p.x, p.y + 1.6, p.z);
+    cam.updateMatrixWorld();
+    const tmp = new THREE.Group();
+    extra.forEach((o, i) => { o.position.set((i % 5 - 2) * 1.2, -1, -4 - Math.floor(i / 5) * 2); tmp.add(o); });
+    tmp.position.set(0, 0, 0).applyMatrix4(cam.matrixWorld);
+    tmp.quaternion.copy(cam.quaternion);
+    this.scene.add(tmp);
+    try {
+      if (this.sky?.camera) { await this.sky.compileVariants(this.scene); this.sky.renderBothStates(cam); }
+      else { await r.compileAsync(this.scene, cam); r.render(this.scene, cam); }
+    } catch { /* chỉ là làm nóng */ } finally {
+      this.scene.remove(tmp);
+    }
+  }
+
+  /** Dựng sẵn một mẫu cho mỗi loại quái của hoạt động (tải mô hình vào bộ nhớ đệm, để settle() vẽ thử). */
+  async sampleEnemies(waves) {
+    const seen = new Set(), out = [];
+    for (const wave of waves) for (const [type, , extra] of wave) {
+      const t = ENEMY_TYPES[type];
+      if (!t) continue;
+      const look = extra?.look || LOOKS[t.look], weapon = extra?.weapon || t.weapon;
+      const key = type + '|' + (extra?.look ? JSON.stringify(extra.look) : '') + '|' + weapon;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // một mẫu cho mỗi loại, giữ lại dùng cho lần sau (không tạo mới mỗi lần vào phó bản => không rò bộ nhớ)
+      this._samples ||= new Map();
+      let root = this._samples.get(key);
+      if (!root) {
+        try {
+          const ch = await makeChar(look, weapon);
+          ch.model.traverse((o) => { if (o.isMesh && o.material) o.material = o.material.clone(); });
+          root = ch.root;
+          this._samples.set(key, root);
+        } catch { continue; }
+      }
+      out.push(root);
+    }
+    return out;
   }
 
   // ─────────────────── hội thoại ───────────────────
@@ -985,10 +1086,13 @@ export class Game {
   async beginActivity(act, place) {
     await this.ui.fade(true);
     this.companions.dismount();
+    this.actGen = (this.actGen || 0) + 1;
     for (const e of this.enemies) if (e.group?.startsWith('act')) this.scene.remove(e.root);
     this.enemies = this.enemies.filter((e) => !e.group?.startsWith('act'));
     this.player.revive(place.x, place.z, Math.PI);
     this.camRig.snap(this.player.pos);
+    // màn hình đang đen: dựng sẵn từng loại quái sắp ra + vẽ thử, để đợt quái xuất hiện không khựng
+    await this.settle(await this.sampleEnemies(act.waves));
     this.activity = { ...act, wave: 0, group: 'act' + Date.now(), left: 0 };
     this.audio.music(/chiến trường/i.test(act.title) ? 'battle' : act.waves.flat().some((w) => w[2]?.boss) ? 'boss' : 'dungeon');
     await this.ui.fade(false);
@@ -1111,6 +1215,7 @@ export class Game {
 
   /** Sinh một con quái theo bách quái phổ. */
   async spawnMonster(id, x, z, opts = {}) {
+    const gen = this.spawnGen;
     const m = MONSTERS[id];
     const st = monsterStats(m, opts.lv);
     const ch = m.meshy ? await MeshyCharacter.create(m.meshy, null, { scale: (m.h * (opts.scale || 1)) / 1.75 }) : await MonsterCharacter.create({ file: m.file, height: m.h * (opts.scale || 1), tint: m.tint });
@@ -1134,6 +1239,9 @@ export class Game {
       e.radius *= 1.3;
     }
     e.placeAt(x, z, Math.random() * 6.28);
+    await this.warm(ch.root); // quái ngoài hoang dã: dịch sẵn shader (cả biến thể đêm) + tải texture trước khi hiện
+    // đã đổi chương trong lúc tải/chuẩn bị: quái vùng trả null (bộ sinh quái tự xử lý), nơi khác nhận lại e nhưng không thả ra
+    if (gen !== this.spawnGen) return opts.zone ? null : e;
     this.scene.add(ch.root);
     this.enemies.push(e);
     return e;
