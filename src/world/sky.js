@@ -37,8 +37,8 @@ function cloudTexture() {
 }
 
 export class Sky {
-  constructor({ renderer, scene, sun, sunDir, hemi, water, lights }) {
-    Object.assign(this, { renderer, scene, sun, sunDir, hemi, water });
+  constructor({ renderer, scene, camera, sun, sunDir, hemi, water, lights }) {
+    Object.assign(this, { renderer, scene, camera, sun, sunDir, hemi, water });
     this.pmrem = new THREE.PMREMGenerator(renderer);
     this.cache = new Map();
     this.lanternSpots = lights || [];
@@ -121,6 +121,8 @@ export class Sky {
   async set(timeName) {
     const t = TIMES[timeName] || TIMES.morning;
     this.current = timeName;
+    await this.prepareLanterns(!!t.lanterns);
+    if (this.current !== timeName) return; // đã đổi giờ khác trong lúc chờ
     if (Sky.stylized) return this.setToon(timeName, t);
     const e = await this.env(t.hdr);
     const s = this.scene;
@@ -145,6 +147,34 @@ export class Sky {
     this.setLanterns(!!t.lanterns);
   }
 
+  /**
+   * Ánh sáng môi trường của vòm trời hoạt hình, mỗi khung giờ chỉ tạo một lần. three tạo rồi huỷ vật liệu nền trong
+   * mỗi lần PMREMGenerator.fromScene => shader bị xoá và phải dịch lại ở MỌI lần đổi giờ / đổi chương (khựng rõ).
+   * Gọi khi uniform vòm trời đã đặt theo timeName.
+   */
+  toonEnv(timeName) {
+    this.envCache ||= new Map();
+    let rt = this.envCache.get(timeName);
+    if (!rt) { rt = this.pmrem.fromScene(this.envScene, 0.02); this.envCache.set(timeName, rt); }
+    return rt;
+  }
+
+  /** Tạo sẵn ánh sáng môi trường cho mọi khung giờ (gọi lúc màn hình chờ). */
+  async prebuildToonEnvs(nextFrame, stop = () => false) {
+    if (!Sky.stylized || !this.domeU) return;
+    const u = this.domeU, keys = ['top', 'horizon', 'ground', 'sunCol', 'sunDir'];
+    for (const name of Object.keys(TIMES)) {
+      if (this.envCache?.has(name)) continue;
+      await nextFrame();
+      if (stop()) return; // đã vào game: phần còn lại tạo lúc chuyển cảnh (màn đen) hoặc khi tới giờ đó
+      const keep = keys.map((k) => u[k].value.clone());
+      const [top, hor, gnd, sun] = TOON[name] || TOON.morning;
+      u.top.value.set(top); u.horizon.value.set(hor); u.ground.value.set(gnd); u.sunCol.value.set(sun);
+      u.sunDir.value.set(...TIMES[name].sun).normalize();
+      try { this.toonEnv(name); } finally { keys.forEach((k, i) => u[k].value.copy(keep[i])); }
+    }
+  }
+
   setToon(timeName, t) {
     this.buildToonSky();
     const [top, hor, gnd, sun] = TOON[timeName] || TOON.morning;
@@ -154,9 +184,7 @@ export class Sky {
     u.sunDir.value.copy(this.sunDir);
     const s = this.scene;
     s.background = null;
-    this.envRT?.dispose();
-    this.envRT = this.pmrem.fromScene(this.envScene, 0.02);
-    s.environment = this.envRT.texture;
+    s.environment = this.toonEnv(timeName).texture;
     s.environmentIntensity = timeName === 'night' ? 0.45 : 0.7;
     s.fog.color.set(hor);
     s.fog.density = t.density * 0.45;
@@ -177,6 +205,65 @@ export class Sky {
     }
     this.setLanterns(!!t.lanterns);
   }
+
+  /**
+   * Dịch shader cho obj ở cả trạng thái đèn hiện tại lẫn trạng thái kia (bật/tắt đèn lồng), rồi chờ đúng những shader
+   * đã ghi lại cho tới khi xong. Đổi số đèn điểm => mọi vật liệu có chiếu sáng cần shader khác; nếu để tới lúc đổi mới
+   * dịch thì khựng cả khung hình. Đèn chỉ bật tạm trong lời gọi compile đồng bộ; lần compile cuối luôn ở trạng thái
+   * hiện tại để vật liệu không chiếu sáng (MeshBasic, Sprite...) trở về đúng shader đang dùng.
+   */
+  compileAndWait(obj, other = true) {
+    const r = this.renderer, cam = this.camera, props = r.properties, progs = new Set();
+    const grab = (mats) => mats?.forEach((m) => { const pr = props.get(m).currentProgram; if (pr) progs.add(pr); });
+    // compile() bỏ qua vật thể đang ẩn (NPC chỉ hiện ban đêm, nhân vật cốt truyện...): hiện tạm chúng trong lời gọi
+    // đồng bộ rồi ẩn lại ngay, để lúc chúng xuất hiện không phải dịch shader nữa. Không đụng tới đèn.
+    const hidden = [];
+    obj.traverse((o) => { if (!o.visible && !o.isLight) hidden.push(o); });
+    const compile = () => {
+      hidden.forEach((o) => (o.visible = true));
+      try { return r.compile(obj, cam, this.scene); } finally { hidden.forEach((o) => (o.visible = false)); }
+    };
+    if (other && this.lanternSpots.length) {
+      const was = this.pool.map((l) => l.visible);
+      this.pool.forEach((l) => (l.visible = !this.lanterns));
+      try { grab(compile()); } finally { this.pool.forEach((l, i) => (l.visible = was[i])); }
+    }
+    grab(compile());
+    // có KHR_parallel_shader_compile: chờ dịch nền xong; không có thì isReady() luôn true (không chờ được)
+    return new Promise((res) => {
+      const t0 = performance.now();
+      const check = () => {
+        // isReady() === null: chương trình đã bị xoá / mất ngữ cảnh => coi như xong, không chờ hết 8 s
+        for (const pr of progs) if (pr.isReady() === false && performance.now() - t0 < 8000) return void setTimeout(check, 10);
+        res();
+      };
+      check();
+    });
+  }
+
+  /**
+   * Vẽ thử cảnh ở trạng thái đèn còn lại rồi ở trạng thái hiện tại. Chỉ gọi khi khung vẽ đang bị che (màn hình chờ,
+   * màn đen chuyển cảnh): trình duyệt không dịch shader song song thì shader chỉ hoàn tất ở lần vẽ đầu, nên lần trời
+   * tối đầu tiên giữa lúc chơi từng khựng rất lâu. Vẽ thử ở đây trả giá đó lúc không ai nhìn thấy.
+   */
+  renderBothStates(camera = this.camera) {
+    const r = this.renderer;
+    if (this.lanternSpots.length) {
+      const was = this.pool.map((l) => l.visible);
+      this.pool.forEach((l) => (l.visible = !this.lanterns));
+      try { r.render(this.scene, camera); } finally { this.pool.forEach((l, i) => (l.visible = was[i])); }
+    }
+    r.render(this.scene, camera);
+  }
+
+  /** Trước khi bật/tắt đèn lồng: dịch sẵn shader của cả cảnh cho trạng thái mới. */
+  async prepareLanterns(on) {
+    if (on === this.lanterns || !this.camera || !this.lanternSpots.length) return;
+    try { await this.compileAndWait(this.scene); } catch { /* chỉ là làm nóng */ }
+  }
+
+  /** Mô hình sắp vào cảnh: dịch cho cả ngày lẫn đêm. */
+  compileVariants(obj) { return this.compileAndWait(obj); }
 
   setLanterns(on) {
     this.lanterns = on;

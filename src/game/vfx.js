@@ -120,6 +120,49 @@ export class VFX {
     return m;
   }
 
+  /** Vật liệu sprite cộng màu từ kho (trước đây tạo mới + dispose mỗi lần trúng đòn: three xoá shader, lần sau dịch lại => khựng). */
+  spriteMat(map, color, opacity = 1) {
+    const k = 's' + map.uuid;
+    if (!this.mats.has(k)) this.mats.set(k, []);
+    const pool = this.mats.get(k);
+    const m = pool.pop() || new THREE.SpriteMaterial({ map, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false });
+    m.color.set(color);
+    m.opacity = opacity;
+    m.rotation = 0;
+    m.userData.pool = pool;
+    return m;
+  }
+
+  /**
+   * Dịch sẵn mọi biến thể shader + tải sẵn texture của hiệu ứng lúc vào game, để lần đầu tung chiêu không khựng.
+   * Vật liệu tạo ra được trả về kho nên chương trình shader luôn còn sống.
+   */
+  async prewarm(renderer, camera, extra = [], compile = null) {
+    const tmp = new THREE.Group();
+    for (const o of extra) { o.scale.multiplyScalar(0.01); tmp.add(o); }
+    const texs = [runeTexture(), arcTexture(), starTexture(), glowTexture()];
+    const plane = this.geo('prewarm', () => new THREE.PlaneGeometry(0.01, 0.01));
+    const made = [];
+    for (const map of [null, ...texs]) for (const normal of [false, true]) { const m = this.mat(map, 0xffffff, 0, normal); made.push(m); tmp.add(new THREE.Mesh(plane, m)); }
+    for (const map of [starTexture(), glowTexture()]) { const m = this.spriteMat(map, 0xffffff, 0); made.push(m); const sp = new THREE.Sprite(m); sp.scale.setScalar(0.01); tmp.add(sp); }
+    // đặt trước ống kính (để lần vẽ thử dưới đây thực sự vẽ chúng)
+    camera.updateMatrixWorld();
+    tmp.position.set(0, 0, -2).applyMatrix4(camera.matrixWorld);
+    this.scene.add(tmp);
+    try {
+      for (const t of texs) renderer.initTexture(t);
+      // compile (nếu có) dịch cả biến thể đêm có đèn lồng
+      await (compile ? compile(tmp) : renderer.compileAsync(this.scene, camera));
+      // vẽ thử một lần lúc còn màn hình chờ: trình duyệt chỉ hoàn tất shader ở lần vẽ đầu (không có dịch song song
+      // thì lần vẽ đầu chặn luồng chính) => trả giá ở đây thay vì lúc tung chiêu
+      renderer.render(this.scene, camera);
+    } finally {
+      this.scene.remove(tmp);
+      for (const m of made) m.userData.pool.push(m);
+      for (const o of extra) o.userData.release?.();
+    }
+  }
+
   geo(key, make) {
     if (!this.geos.has(key)) this.geos.set(key, make());
     return this.geos.get(key);
@@ -216,12 +259,11 @@ export class VFX {
   impact(pos, pal = PALETTES.kiem, size = 1.6) {
     const tex = starTexture();
     [0, 1].forEach((j) => {
-      const mat = new THREE.SpriteMaterial({ map: tex, color: pick(pal, j), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false });
+      const mat = this.spriteMat(tex, pick(pal, j));
       const sp = new THREE.Sprite(mat);
       sp.position.copy(pos);
       const s0 = size * (j ? 1.6 : 1), rot = Math.random() * 6;
       this.add(sp, 0.28 + j * 0.08, (o, k) => { o.scale.setScalar(s0 * (0.4 + (1 - k) * 0.9)); mat.opacity = k; mat.rotation = rot + (1 - k) * (j ? -1 : 1); });
-      sp.userData.onEnd = () => mat.dispose();
     });
     if (this.fx) for (let i = 0; i < (this.lite ? 8 : 18); i++) {
       _a.set(Math.random() - 0.5, Math.random() - 0.2, Math.random() - 0.5).normalize().multiplyScalar(4 + Math.random() * 6);
@@ -285,7 +327,7 @@ export class VFX {
     const geo = this.geo('sky' + kind, () => kind === 'talisman' ? new THREE.PlaneGeometry(0.7, 1.2) : new THREE.ConeGeometry(w, len, 4).rotateX(Math.PI));
     const col = pick(pal, Math.random() * 4 | 0);
     const m = new THREE.Mesh(geo, this.mat(null, col, 1, true));
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }));
+    const glow = new THREE.Sprite(this.spriteMat(glowTexture(), col));
     glow.scale.set(1.4, len * 1.3, 1);
     const g = new THREE.Group(); g.add(m, glow);
     const fall = 0.3, h0 = 15;
@@ -305,7 +347,6 @@ export class VFX {
       const fade = f >= 1 ? k / (0.35 / (fall + 0.35)) : 1;
       m.material.opacity = Math.min(1, fade); glow.material.opacity = Math.min(1, fade) * 0.8;
     });
-    g.userData.onEnd = () => glow.material.dispose();
   }
 
   /** Mưa đòn từ trời quanh một điểm trong khoảng dur giây. */

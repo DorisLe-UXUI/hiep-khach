@@ -8,3 +8,4 @@ dist-pages
 .cache-pages/
 dist-pages-dev
 .dev-pages-keep
+dist-msi-*

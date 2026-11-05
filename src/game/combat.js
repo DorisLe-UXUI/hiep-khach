@@ -122,6 +122,18 @@ export class Combat {
     return m;
   }
 
+  /** Mẫu quả cầu + mũi tên để dịch sẵn shader lúc vào game (vật liệu nằm trong kho orbMats nên không bị xoá). */
+  prewarmMeshes() {
+    const { mat, glow } = this.orbMat(0xbfe6ff);
+    const orb = new THREE.Mesh(this.orbGeo, mat);
+    orb.add(new THREE.Sprite(glow));
+    if (!this.arrowGeo) {
+      this.arrowGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.9, 5).rotateX(Math.PI / 2);
+      this.arrowMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2b, emissive: 0x3a2a10 });
+    }
+    return [orb, new THREE.Mesh(this.arrowGeo, this.arrowMat)];
+  }
+
   /** Bắn n mũi tên toả hình quạt. */
   fireArrows(owner, from, dir, n, dmg, palette = null) {
     if (!this.arrowGeo) {

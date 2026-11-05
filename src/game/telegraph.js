@@ -9,8 +9,23 @@ const discGeo = new THREE.CircleGeometry(1, 64);
 ringGeo.rotateX(-Math.PI / 2);
 discGeo.rotateX(-Math.PI / 2);
 
+// kho vật liệu dùng lại: tạo + dispose mỗi lần cảnh báo làm three xoá shader khi vật liệu cuối bị huỷ => lần sau dịch lại, khựng giữa trận boss
+const matPool = [];
+const takeMat = (color, opacity) => {
+  const m = matPool.pop() || new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+  m.color.set(color); m.opacity = opacity;
+  return m;
+};
+
 export class Telegraphs {
   constructor(g) { this.g = g; this.list = []; }
+
+  /** Dịch sẵn shader của vòng cảnh báo (gọi lúc vào game, cùng VFX.prewarm). */
+  prewarmMeshes() {
+    const m = new THREE.Mesh(discGeo, takeMat(0xff3020, 0));
+    m.userData.release = () => matPool.push(m.material);
+    return [m];
+  }
 
   /** { x, z, r, inner, delay, dmg, owner, color, onBoom } */
   add(o) {
@@ -18,7 +33,7 @@ export class Telegraphs {
     const grp = new THREE.Group();
     const mats = [];
     const mk = (geo, op) => {
-      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+      const m = new THREE.Mesh(geo, takeMat(color, op));
       m.renderOrder = 5; mats.push(m.material); grp.add(m); return m;
     };
     const edge = mk(ringGeo, 0.9), base = mk(discGeo, 0.16), fill = mk(discGeo, 0.32);
@@ -36,9 +51,9 @@ export class Telegraphs {
     this.list.push({ ...o, t: 0, grp, fill, base, mats, ownGeo });
   }
 
-  /** Giải phóng material tự tạo + geometry riêng; KHÔNG đụng ringGeo/discGeo dùng chung. */
+  /** Trả vật liệu về kho + giải phóng geometry riêng; KHÔNG đụng ringGeo/discGeo dùng chung. */
   dispose(t) {
-    for (const m of t.mats) m.dispose();
+    for (const m of t.mats) matPool.push(m);
     t.mats = null;
     t.ownGeo?.dispose();
     t.ownGeo = null;

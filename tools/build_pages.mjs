@@ -9,17 +9,20 @@ import sharp from 'sharp';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 // --dev: bản xem thử cho thư mục con /dev/ (tiền tố lưu riêng, huy hiệu DEV) → dist-pages-dev/
 const DEV = process.argv.includes('--dev');
-const OUT_NAME = DEV ? 'dist-pages-dev' : 'dist-pages';
+// --out <thư mục>: bản cho máy chủ riêng (MSI), không đụng dist-pages/ (worktree gh-pages) hay dist-pages-dev/
+const oi = process.argv.indexOf('--out');
+const OUT_NAME = oi > 0 ? process.argv[oi + 1] : DEV ? 'dist-pages-dev' : 'dist-pages';
+if (!/^[\w.-]+$/.test(OUT_NAME || '') || OUT_NAME.startsWith('.')) throw new Error(`--out: tên thư mục không hợp lệ: ${OUT_NAME}`);
 const OUT = path.join(ROOT, OUT_NAME);
 const env = { ...process.env };
 if (DEV) {
   env.VITE_STORE_PREFIX = 'dev_';
   env.VITE_DEV_BUILD = '1';
-  env.VITE_DEV_SHA = execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
+  env.VITE_DEV_SHA = process.env.VITE_DEV_SHA || execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
 }
 // bản chính: cất tạm dist-pages/dev/ (bản dev đã đăng) vì --emptyOutDir sẽ xoá nó
 const DEV_DIR = path.join(OUT, 'dev'), DEV_TMP = path.join(ROOT, '.dev-pages-keep');
-if (!DEV && fs.existsSync(DEV_DIR)) { fs.rmSync(DEV_TMP, { recursive: true, force: true }); fs.renameSync(DEV_DIR, DEV_TMP); }
+if (OUT_NAME === 'dist-pages' && fs.existsSync(DEV_DIR)) { fs.rmSync(DEV_TMP, { recursive: true, force: true }); fs.renameSync(DEV_DIR, DEV_TMP); }
 // giữ thư mục .git của nhánh gh-pages (Vite --emptyOutDir không xoá .git)
 try {
   execSync(`npx vite build --base ./ --outDir ${OUT_NAME} --emptyOutDir --logLevel error`, { cwd: ROOT, stdio: 'inherit', env });
@@ -36,7 +39,7 @@ for (const f of fs.readdirSync(A)) {
 fs.writeFileSync(path.join(OUT, 'index.html'), rel(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8')));
 // ảnh chụp gỡ lỗi không cần đưa lên
 for (const f of fs.readdirSync(path.join(A, 'thumbs'))) if (f.startsWith('dbg_')) fs.rmSync(path.join(A, 'thumbs', f));
-fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
+if (OUT_NAME.startsWith('dist-pages')) fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 
 // tệp không được src/ hay index.html tham chiếu: bỏ khỏi bản build (bản gốc trong public/ giữ nguyên)
 const DEAD = [
