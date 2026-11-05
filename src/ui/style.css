@@ -239,7 +239,7 @@ input[type=range] { width: 180px; accent-color: var(--gold); }
 .plate .tr { height: 4px; margin-top: 2px; background: rgba(0,0,0,.6); border: 1px solid rgba(0,0,0,.8); }
 .plate .tr div { height: 100%; background: #c8392f; }
 
-#dmg-layer .dmg { position: absolute; font: 700 20px var(--title); color: #ffe0a0; text-shadow: 0 2px 4px #000, 0 0 8px rgba(0,0,0,.8); transform: translate(-50%, -50%); white-space: nowrap; }
+#dmg-layer .dmg { position: absolute; left: 0; top: 0; will-change: transform, opacity; font: 700 20px var(--title); color: #ffe0a0; text-shadow: 0 2px 4px #000, 0 0 8px rgba(0,0,0,.8); transform: translate(-50%, -50%); white-space: nowrap; }
 .dmg.player { color: #ff6f61 !important; }
 .dmg.crit { font-size: 30px !important; color: #fff1a8 !important; }
 .dmg.heal { color: #8fe0a8 !important; }

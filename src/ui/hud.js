@@ -182,11 +182,14 @@ export class HUD {
 
   damage(pos, n, kind = '') {
     if (!this.game.settings.dmgNumbers && kind !== 'heal') return;
-    const d = document.createElement('div');
+    // tối đa 40 số cùng lúc (tuyệt kỹ mưa đòn trúng hàng chục lần): tái dùng số cũ nhất; phần tử DOM lấy từ kho
+    const old = this.nums.length >= 40 ? this.nums.shift() : null;
+    const d = old?.el || this.numPool?.pop() || document.createElement('div');
     d.className = 'dmg ' + kind;
     d.textContent = kind === 'heal' ? '+' + n : n;
-    $('dmg-layer').appendChild(d);
-    this.nums.push({ el: d, pos: pos.clone(), t: 0, dx: (Math.random() - 0.5) * 40 });
+    d.style.opacity = ''; d.style.display = ''; // phần tử tái dùng có thể đang bị ẩn (số cũ ở sau lưng máy quay)
+    if (!d.parentNode) $('dmg-layer').appendChild(d);
+    this.nums.push({ el: d, pos: pos.clone(), t: 0, dx: (Math.random() - 0.5) * 40, hidden: false });
   }
 
   flashSlot(id) {
@@ -326,13 +329,13 @@ export class HUD {
     for (let i = this.nums.length - 1; i >= 0; i--) {
       const n = this.nums[i];
       n.t += dt;
-      if (n.t > 1.0) { n.el.remove(); this.nums.splice(i, 1); continue; }
+      if (n.t > 1.0) { n.el.remove(); (this.numPool ||= []).push(n.el); this.nums.splice(i, 1); continue; }
       const s = this.project(_tmp.copy(n.pos).setY(n.pos.y + n.t * 1.3));
-      if (s.behind) { n.el.style.display = 'none'; continue; }
-      n.el.style.display = '';
-      n.el.style.left = s.x + n.dx * n.t + 'px';
-      n.el.style.top = s.y + 'px';
-      n.el.style.opacity = String(1 - Math.max(0, n.t - 0.6) / 0.4);
+      if (s.behind !== n.hidden) { n.hidden = s.behind; n.el.style.display = s.behind ? 'none' : ''; }
+      if (s.behind) continue;
+      // transform thay cho left/top: chỉ ghép lớp trên GPU, không tính lại bố cục trang mỗi khung hình
+      n.el.style.transform = `translate3d(${(s.x + n.dx * n.t).toFixed(1)}px,${s.y.toFixed(1)}px,0) translate(-50%,-50%)`;
+      if (n.t > 0.6) n.el.style.opacity = String(1 - (n.t - 0.6) / 0.4);
     }
     this.miniT = (this.miniT || 0) - dt;
     if (this.miniT <= 0) { this.miniT = 0.1; this.drawMinimap(); }

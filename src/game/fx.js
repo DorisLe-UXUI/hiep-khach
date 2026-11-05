@@ -152,23 +152,32 @@ export class FX {
     }
     const g = this.points.geometry;
     g.setDrawRange(0, len);
-    g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = g.attributes.size.needsUpdate = g.attributes.alpha.needsUpdate = true;
+    // chỉ đẩy lên GPU phần đang dùng (trước đây cả 2000 hạt mỗi khung hình, kể cả khi không có hạt nào)
+    if (len) {
+      const at = g.attributes;
+      for (const [a, w] of [[at.position, 3], [at.color, 3], [at.size, 1], [at.alpha, 1]]) { a.clearUpdateRanges(); a.addUpdateRange(0, len * w); a.needsUpdate = true; }
+    }
 
     // vệt kiếm: ghi lại vị trí chuôi/mũi kiếm mỗi frame
+    // vệt kiếm: luôn ghi vị trí (đòn chém bật vệt ở khung trúng, cần cả quãng vung trước đó) nhưng không cấp phát;
+    // chỉ đẩy lên GPU khi đang hiện hoặc vừa tắt
+    const was = this.trailActive > 0;
+    this.trailActive = Math.max(0, this.trailActive - dt);
     const c = this.trailOwner;
     if (c?.weaponTip) {
-      const tip = c.weaponTip.getWorldPosition(new THREE.Vector3());
+      // dùng lại cặp vector cũ nhất thay vì cấp phát
+      const h = this.trailHist.length >= this.trailN ? this.trailHist.pop() : [new THREE.Vector3(), new THREE.Vector3()];
+      c.weaponTip.getWorldPosition(h[1]);
       // nhân vật Meshy chỉ có mũi kiếm: lấy chuôi = bàn tay (hoặc lùi từ mũi về phía thân)
-      const base = (c.weaponBase || c.handBone || c.root).getWorldPosition(new THREE.Vector3());
-      this.trailHist.unshift([base, tip]);
-      if (this.trailHist.length > this.trailN) this.trailHist.pop();
+      (c.weaponBase || c.handBone || c.root).getWorldPosition(h[0]);
+      this.trailHist.unshift(h);
     }
-    this.trailActive = Math.max(0, this.trailActive - dt);
+    if (!was && !this.trailActive) return;
+    const tp = this.trailPos;
     for (let i = 0; i < this.trailN; i++) {
       const h = this.trailHist[Math.min(i, this.trailHist.length - 1)];
-      if (!h) break;
-      this.trailPos.set([h[0].x, h[0].y, h[0].z, h[1].x, h[1].y, h[1].z], i * 6);
-      const a = this.trailActive > 0 ? (1 - i / this.trailN) * Math.min(1, this.trailActive * 5) : 0;
+      const a = h && this.trailActive > 0 ? (1 - i / this.trailN) * Math.min(1, this.trailActive * 5) : 0;
+      if (h) { const o = i * 6; tp[o] = h[0].x; tp[o + 1] = h[0].y; tp[o + 2] = h[0].z; tp[o + 3] = h[1].x; tp[o + 4] = h[1].y; tp[o + 5] = h[1].z; }
       this.trailAlpha[i * 2] = 0;
       this.trailAlpha[i * 2 + 1] = a;
     }

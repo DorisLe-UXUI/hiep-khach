@@ -117,8 +117,10 @@ async function boot() {
   scene.add(veg.group);
 
   step('Vén mây, gọi gió...', 72);
-  const sky = new Sky({ renderer, scene, sun, sunDir, hemi, water, lights: props.lights });
+  const sky = new Sky({ renderer, scene, camera, sun, sunDir, hemi, water, lights: props.lights });
   await sky.set('morning');
+  // ánh sáng môi trường cho mọi khung giờ, tạo ngay lúc màn hình chờ: đổi giờ khi đang chơi không phải dịch gì nữa
+  await sky.prebuildToonEnvs(() => Promise.resolve()).catch(() => {});
 
   const input = new Input(canvas);
   const profile = currentProfile() || { name: 'Tiêu Vân', hero: defaultHero() };
@@ -127,6 +129,8 @@ async function boot() {
   await game.init((m) => step(m, Math.min(94, pct + 3)));
 
   step('Mài kiếm...', 96);
+  // dịch sẵn shader + tải texture của hiệu ứng chiêu, quả cầu, mũi tên, vòng cảnh báo: lần đầu dùng không khựng
+  await game.vfx.prewarm(renderer, camera, [...game.combat.prewarmMeshes(), ...game.telegraphs.prewarmMeshes()], (o) => sky.compileAndWait(o)).catch(() => {});
   await renderer.compileAsync(scene, camera);
   // dịch sẵn biến thể shader có đèn lồng (đêm) để lúc chuyển giờ không bị khựng
   if (sky.lanternSpots.length && !sky.lanterns) {
@@ -134,7 +138,10 @@ async function boot() {
     await renderer.compileAsync(scene, camera).catch(() => {});
     sky.setLanterns(sky.lanterns);
   }
+  // vẽ thử cả hai trạng thái đèn khi còn màn hình chờ (hoàn tất shader ngay, không đợi tới lần trời tối đầu tiên)
+  try { sky.renderBothStates(camera); } catch { /* chỉ là làm nóng */ }
   step('Sẵn sàng.', 100);
+  game.warmSceneTextures(); // chạy nền trong lúc ở màn hình chính
 
   // khớp khung vẽ với cửa sổ; bỏ qua lúc cửa sổ tạm có cỡ 0 (bị ẩn) và tự sửa ở khung hình sau
   const size = new THREE.Vector2();
