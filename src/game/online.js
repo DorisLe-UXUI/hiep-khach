@@ -59,7 +59,11 @@ export class Online {
 
   /** Đấu với bản chụp của người chơi khác ngay tại chỗ. */
   async duel(o) {
-    const g = this.g, p = g.player, s = o.snap;
+    // dữ liệu của người chơi khác: bỏ ký tự HTML (tên này đi vào bảng tên, thông báo...) và ép kiểu số
+    const txt = (v, n) => String(v ?? '').replace(/[<>&"'`\\]/g, '').slice(0, n), num = (v) => (Number.isFinite(+v) ? +v : 0);
+    o = { ...o, name: txt(o.name, 16), cls: txt(o.cls, 10), level: num(o.level) | 0 };
+    const s = { ...o.snap, title: txt(o.snap?.title, 20), hp: num(o.snap?.hp), atk: num(o.snap?.atk), crit: num(o.snap?.crit) };
+    const g = this.g, p = g.player;
     if (this.fight) return;
     const [look, weapon] = CLS_FOE[o.cls] || CLS_FOE.kiem;
     const a = p.yaw, x = p.pos.x + Math.sin(a) * 7, z = p.pos.z + Math.cos(a) * 7;
@@ -82,7 +86,7 @@ export class Online {
     const g = this.g;
     if (!f.e.dead) { f.e.dead = true; g.scene.remove(f.e.root); }
     try {
-      const r = await this.call('/arena/result', { opp: f.o.pid, win });
+      const r = await this.call('/arena/result', { opp: f.o.oid ?? f.o.pid, win }); // oid: máy chủ mới không gửi pid người khác
       g.toast(`${win ? '<b>THẮNG</b>' : '<b>THUA</b>'} · Điểm luận kiếm ${r.delta >= 0 ? '+' : ''}${r.delta} → <b>${r.rating}</b>`, 4);
     } catch (e) { g.toast(e.code === 'slow' ? 'Đấu quá nhanh, kết quả không được tính' : 'Không gửi được kết quả', 2); }
     if (win) { g.rpg.addGold(100 + f.o.level * 10); g.vfx.banner('勝', 'Luận kiếm thắng lợi', '#ffd86a'); g.audio.skill('ult', 0.6); }

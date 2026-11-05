@@ -70,6 +70,34 @@ export function makeGear(slot, lv, rarity = rollRarity()) {
   return { uid: 'g' + uidN++, slot, base, name: base, rarity, lv, stats, enh: 0, han: HAN[slot] };
 }
 
+const STAT_KEYS = ['atk', 'hp', 'mp', 'def', 'crit', 'spd'];
+const SAFE_TEXT = (v, n) => String(v ?? '').replace(/[<>&"'`\\]/g, '').slice(0, n);
+const SAFE_PATH = /^(?!.*\.\.)(?!.*\/\/)[\w:./-]{1,100}$/;
+const int = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.trunc(Number(v)) || 0));
+/**
+ * Làm sạch một món trang bị đến từ ngoài (chợ trực tuyến, bản lưu cũ): chỉ giữ đúng các trường và định dạng của món
+ * do game tạo ra. Món từ người chơi khác từng có thể mang HTML/script (vd. trong lv, han) chạy trên máy người xem.
+ * Trả về null nếu không phải món trang bị hợp lệ.
+ */
+export function cleanItem(raw) {
+  if (!raw || typeof raw !== 'object' || !SLOTS.some((s) => s.id === raw.slot)) return null;
+  const stats = {};
+  for (const k of Object.keys(raw.stats || {})) { if (!STAT_KEYS.includes(k)) continue; const v = Number(raw.stats[k]); if (Number.isFinite(v) && v > 0) stats[k] = k === 'def' || k === 'crit' || k === 'spd' ? +Math.min(v, 10).toFixed(4) : Math.min(Math.round(v), 1e7); }
+  const it = {
+    uid: /^[\w-]{1,40}$/.test(raw.uid || '') ? raw.uid : 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    slot: raw.slot, base: SAFE_TEXT(raw.base || raw.name, 40), name: SAFE_TEXT(raw.name, 40),
+    rarity: int(raw.rarity, 0, RARITY.length - 1), lv: int(raw.lv, 1, 999), stats, enh: int(raw.enh, 0, 99),
+    han: SAFE_TEXT(raw.han, 4) || HAN[raw.slot],
+  };
+  if (typeof raw.thumb === 'string' && SAFE_PATH.test(raw.thumb)) it.thumb = raw.thumb;
+  if (typeof raw.model === 'string' && SAFE_PATH.test(raw.model)) it.model = raw.model;
+  if (typeof raw.elem === 'string' && /^\w{1,16}$/.test(raw.elem)) it.elem = raw.elem;
+  if (raw.divine === true) it.divine = true;
+  if (raw.locked === true) it.locked = true;
+  if (Array.isArray(raw.gems)) it.gems = raw.gems.filter((g) => typeof g === 'string' && parseGem(g) && GEM_ITEMS[g]).slice(0, 6);
+  return it;
+}
+
 export function gearScore(it) {
   if (!it) return 0;
   const s = it.stats;
