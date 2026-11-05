@@ -167,7 +167,8 @@ Object.assign(UI.prototype, {
     let html = tabs;
     try {
       if (tab === 'arena') {
-        await on.call('/arena/submit', on.snapshot());
+        // gửi bản chụp nhân vật; bị giới hạn tần suất (vừa gửi xong) thì vẫn mở bảng như thường
+        await on.call('/arena/submit', on.snapshot()).catch((e) => { if (e.code !== 'slow') throw e; });
         const d = await on.call('/arena/opponents');
         // số từ máy chủ: ép kiểu trước khi đưa vào HTML
         const nums = (o) => ({ ...o, level: +o.level | 0, power: +o.power | 0, rating: +o.rating | 0, wins: +o.wins | 0, losses: +o.losses | 0 });

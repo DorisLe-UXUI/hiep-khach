@@ -58,7 +58,8 @@ export class World {
       CREATE TABLE IF NOT EXISTS arena (pid TEXT PRIMARY KEY, name TEXT, cls TEXT, level INTEGER, power INTEGER, rating INTEGER, wins INTEGER, losses INTEGER, snap TEXT, t INTEGER);
       CREATE TABLE IF NOT EXISTS market (lid INTEGER PRIMARY KEY AUTOINCREMENT, pid TEXT, name TEXT, item TEXT, price INTEGER, t INTEGER);
       CREATE TABLE IF NOT EXISTS wallet (pid TEXT PRIMARY KEY, gold INTEGER, sold TEXT);
-      CREATE TABLE IF NOT EXISTS rate (pid TEXT, k TEXT, t INTEGER, PRIMARY KEY (pid, k));`);
+      CREATE TABLE IF NOT EXISTS rate (pid TEXT, k TEXT, t INTEGER, PRIMARY KEY (pid, k));
+      CREATE TABLE IF NOT EXISTS ipr (ip TEXT, k TEXT, w INTEGER, n INTEGER, PRIMARY KEY (ip, k));`);
     // cột mã công khai cho bảng Luận Kiếm (dữ liệu cũ được điền ở yêu cầu đầu tiên)
     if (!this.sql.exec('PRAGMA table_info(arena)').toArray().some((c) => c.name === 'oid')) {
       // một lần, cùng lúc thêm cột: làm sạch dữ liệu do máy chủ cũ lưu nguyên (món chợ, tên trong danh sách đã bán,
@@ -88,8 +89,17 @@ export class World {
     this.sql.exec('INSERT OR REPLACE INTO rate (pid,k,t) VALUES (?,?,?)', pid, k, now);
     return false;
   }
-  /** Giới hạn theo địa chỉ IP (mã người chơi tự đặt được nên giới hạn theo mã không chặn được kẻ phá).
-   *  Rộng tay: nhà mạng di động ở Việt Nam để nhiều người chung một IP. */
+  /** Giới hạn theo địa chỉ IP (mã người chơi tự đặt được nên giới hạn theo mã không chặn được kẻ phá): tối đa n lần
+   *  mỗi phút. Đếm theo phút chứ không giãn cách, vì nhà mạng di động ở Việt Nam để nhiều người chung một IP. */
+  ipLimit(ip, k, n) {
+    if (!ip) return false;
+    const now = Date.now(), w = Math.floor(now / 60000), r = this.sql.exec('SELECT w,n FROM ipr WHERE ip=? AND k=?', ip, k).toArray()[0];
+    const used = r && r.w === w ? r.n : 0;
+    if (used >= n) return true;
+    this.sql.exec('INSERT OR REPLACE INTO ipr (ip,k,w,n) VALUES (?,?,?,?)', ip, k, w, used + 1);
+    return false;
+  }
+  /** Giãn cách theo IP cho một việc cụ thể (vd. cùng một IP dìm điểm cùng một người). */
   slowIp(ip, k, ms) { return !!ip && this.slow('ip:' + ip, k, ms); }
   fillOids() {
     // một lần cho mọi yêu cầu cùng lúc
@@ -102,6 +112,7 @@ export class World {
     if (now - (this.pruned || 0) < 3600000) return;
     this.pruned = now;
     this.sql.exec('DELETE FROM rate WHERE t < ?', now - 86400000);
+    this.sql.exec('DELETE FROM ipr WHERE w < ?', Math.floor(now / 60000) - 2);
     this.sql.exec('DELETE FROM arena WHERE t < ? AND wins + losses = 0', now - 60 * 86400000); // chưa từng đấu
   }
   async fetch(req) {
@@ -126,14 +137,14 @@ export class World {
       if (p === '/chat') {
         const text = clip(body.text, 140).trim();
         if (!text) return json({ error: 'empty' }, 400);
-        if (this.slow(pid, 'chat', 2000) || this.slowIp(ip, 'chat', 700)) return json({ error: 'slow' }, 429);
+        if (this.slow(pid, 'chat', 2000) || this.ipLimit(ip, 'chat', 60)) return json({ error: 'slow' }, 429);
         // extra chỉ do máy chủ đặt (vd. 'arena' cho tin Luận Kiếm): người chơi không giả được tin hệ thống
         this.sql.exec('INSERT INTO chat (t,pid,name,text,extra) VALUES (?,?,?,?,?)', now, pid, clip(body.name, 16), text, '');
         this.sql.exec('DELETE FROM chat WHERE n <= (SELECT MAX(n) FROM chat) - 200');
         return json({ ok: true });
       }
       if (p === '/arena/submit') {
-        if (this.slowIp(ip, 'submit', 2000)) return json({ error: 'slow' }, 429);
+        if (this.ipLimit(ip, 'submit', 60)) return json({ error: 'slow' }, 429);
         const oid = await oidOf(pid); // tính trước khi đọc/ghi: không có await giữa đọc điểm cũ và ghi lại
         const s = body.snap && typeof body.snap === 'object' ? body.snap : {};
         const snap = JSON.stringify({ hp: +s.hp | 0, atk: +s.atk | 0, def: Math.min(0.7, +s.def || 0), crit: Math.min(0.8, +s.crit || 0), adv: +s.adv | 0, faction: clip(s.faction, 8), title: clip(s.title, 20), weapon: clip(s.weapon, 30) });
@@ -144,7 +155,7 @@ export class World {
         return json({ ok: true, rating: old?.rating ?? 1000 });
       }
       if (p === '/arena/opponents') {
-        if (this.slowIp(ip, 'opp', 500)) return json({ error: 'slow' }, 429);
+        if (this.ipLimit(ip, 'opp', 120)) return json({ error: 'slow' }, 429);
         await this.fillOids();
         const me = this.sql.exec('SELECT rating FROM arena WHERE pid=?', pid).toArray()[0];
         const r = me?.rating ?? 1000;
@@ -155,7 +166,7 @@ export class World {
       }
       if (p === '/arena/result') {
         if (this.slow(pid, 'duel', 15000)) return json({ error: 'slow' }, 429);
-        if (this.slowIp(ip, 'duel', 5000)) return json({ error: 'slow' }, 429);
+        if (this.ipLimit(ip, 'duel', 30)) return json({ error: 'slow' }, 429);
         await this.fillOids();
         const opp = String(body.opp ?? '');
         const a = this.sql.exec('SELECT rating,name,t FROM arena WHERE pid=?', pid).toArray()[0];
@@ -180,7 +191,7 @@ export class World {
         if (!clean) return json({ error: 'item' }, 400);
         const item = JSON.stringify(clean), price = Math.max(1, Math.min(9999999, +body.price | 0));
         if (item.length > 800) return json({ error: 'big' }, 400);
-        if (this.slow(pid, 'list', 3000) || this.slowIp(ip, 'list', 1000)) return json({ error: 'slow' }, 429);
+        if (this.slow(pid, 'list', 3000) || this.ipLimit(ip, 'list', 30)) return json({ error: 'slow' }, 429);
         if (this.sql.exec('SELECT COUNT(*) c FROM market WHERE pid=?', pid).toArray()[0].c >= 10) return json({ error: 'limit' }, 400);
         this.sql.exec('INSERT INTO market (pid,name,item,price,t) VALUES (?,?,?,?,?)', pid, clip(body.name, 16), item, price, now);
         return json({ ok: true });
