@@ -215,12 +215,20 @@ export class Sky {
   compileAndWait(obj, other = true) {
     const r = this.renderer, cam = this.camera, props = r.properties, progs = new Set();
     const grab = (mats) => mats?.forEach((m) => { const pr = props.get(m).currentProgram; if (pr) progs.add(pr); });
+    // compile() bỏ qua vật thể đang ẩn (NPC chỉ hiện ban đêm, nhân vật cốt truyện...): hiện tạm chúng trong lời gọi
+    // đồng bộ rồi ẩn lại ngay, để lúc chúng xuất hiện không phải dịch shader nữa. Không đụng tới đèn.
+    const hidden = [];
+    obj.traverse((o) => { if (!o.visible && !o.isLight) hidden.push(o); });
+    const compile = () => {
+      hidden.forEach((o) => (o.visible = true));
+      try { return r.compile(obj, cam, this.scene); } finally { hidden.forEach((o) => (o.visible = false)); }
+    };
     if (other && this.lanternSpots.length) {
       const was = this.pool.map((l) => l.visible);
       this.pool.forEach((l) => (l.visible = !this.lanterns));
-      try { grab(r.compile(obj, cam, this.scene)); } finally { this.pool.forEach((l, i) => (l.visible = was[i])); }
+      try { grab(compile()); } finally { this.pool.forEach((l, i) => (l.visible = was[i])); }
     }
-    grab(r.compile(obj, cam, this.scene));
+    grab(compile());
     // có KHR_parallel_shader_compile: chờ dịch nền xong; không có thì isReady() luôn true (không chờ được)
     return new Promise((res) => {
       const t0 = performance.now();
