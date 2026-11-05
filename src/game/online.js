@@ -24,7 +24,7 @@ export class Online {
     this.pid = id;
   }
   // đổi máy chủ qua localStorage chỉ cho bản dev (bản chính: trang khác cùng tên miền không chuyển hướng được mã người chơi)
-  get base() { try { return (import.meta.env.VITE_DEV_BUILD && localStorage.getItem('hk_online')) || ONLINE_URL; } catch { return ONLINE_URL; } }
+  get base() { try { return ((import.meta.env.DEV || import.meta.env.VITE_DEV_BUILD) && localStorage.getItem('hk_online')) || ONLINE_URL; } catch { return ONLINE_URL; } }
 
   async call(path, body) {
     if (!this.base) throw Object.assign(new Error('offline'), { code: 'offline' });

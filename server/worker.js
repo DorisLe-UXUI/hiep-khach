@@ -17,6 +17,14 @@ export default {
 };
 
 const clip = (s, n) => String(s ?? '').replace(/[<>]/g, '').slice(0, n);
+/** IPv6: một người thường có cả khối /64 => gộp theo /64 để giới hạn theo IP có tác dụng. */
+const ipKey = (ip) => {
+  if (!ip || !ip.includes(':')) return ip || '';
+  let [head, tail = ''] = ip.toLowerCase().split('::');
+  const h = head ? head.split(':') : [], t = tail ? tail.split(':') : [];
+  const full = ip.includes('::') ? [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t] : h;
+  return full.slice(0, 4).map((x) => (parseInt(x, 16) || 0).toString(16)).join(':') + '::/64';
+};
 const okId = (s) => typeof s === 'string' && /^[a-z0-9-]{8,40}$/i.test(s);
 // Mã người chơi (pid) là bí mật duy nhất chứng minh "đây là tôi" (nhận bạc bán chợ, gỡ món, bảng Luận Kiếm), nên không
 // bao giờ gửi pid của người khác ra ngoài. Người khác chỉ thấy mã công khai oid = băm một chiều của pid.
@@ -53,7 +61,6 @@ export class World {
       CREATE TABLE IF NOT EXISTS rate (pid TEXT, k TEXT, t INTEGER, PRIMARY KEY (pid, k));`);
     // cột mã công khai cho bảng Luận Kiếm (dữ liệu cũ được điền ở yêu cầu đầu tiên)
     if (!this.sql.exec('PRAGMA table_info(arena)').toArray().some((c) => c.name === 'oid')) {
-      this.sql.exec('ALTER TABLE arena ADD COLUMN oid TEXT');
       // một lần, cùng lúc thêm cột: làm sạch dữ liệu do máy chủ cũ lưu nguyên (món chợ, tên trong danh sách đã bán,
       // tin nhắn tự gắn cờ hệ thống) để không còn gửi lại nội dung độc cho người chơi dùng bản game cũ
       for (const r of this.sql.exec('SELECT lid,item FROM market').toArray()) {
@@ -67,6 +74,8 @@ export class World {
         this.sql.exec('UPDATE wallet SET sold=? WHERE pid=?', JSON.stringify(sold), w.pid);
       }
       this.sql.exec("UPDATE chat SET extra='' WHERE pid<>'system'");
+      // thêm cột SAU CÙNG: nếu bị ngắt giữa chừng thì lần khởi động sau dọn lại (dọn lại nhiều lần vẫn an toàn)
+      this.sql.exec('ALTER TABLE arena ADD COLUMN oid TEXT');
     }
     this.sql.exec(`CREATE INDEX IF NOT EXISTS arena_oid ON arena (oid);
       CREATE INDEX IF NOT EXISTS arena_rating ON arena (rating);`);
@@ -88,12 +97,12 @@ export class World {
       for (const r of this.sql.exec('SELECT pid FROM arena WHERE oid IS NULL').toArray()) this.sql.exec('UPDATE arena SET oid=? WHERE pid=?', await oidOf(r.pid), r.pid);
     })().catch((e) => { this.oidsP = null; throw e; }));
   }
-  /** Dọn dữ liệu cũ (tối đa mỗi giờ một lần): bản ghi giới hạn tần suất > 1 ngày, người Luận Kiếm vắng > 60 ngày. */
+  /** Dọn dữ liệu cũ (tối đa mỗi giờ một lần): bản ghi giới hạn tần suất > 1 ngày, người Luận Kiếm chưa từng đấu và vắng > 60 ngày. */
   prune(now) {
     if (now - (this.pruned || 0) < 3600000) return;
     this.pruned = now;
     this.sql.exec('DELETE FROM rate WHERE t < ?', now - 86400000);
-    this.sql.exec('DELETE FROM arena WHERE t < ?', now - 60 * 86400000);
+    this.sql.exec('DELETE FROM arena WHERE t < ? AND wins + losses = 0', now - 60 * 86400000); // chưa từng đấu
   }
   async fetch(req) {
     const url = new URL(req.url), p = url.pathname;
@@ -101,7 +110,7 @@ export class World {
     if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
     const pid = body.pid || url.searchParams.get('pid');
     // IP thật: Cloudflare luôn ghi đè CF-Connecting-IP (máy chủ riêng nhận qua đường hầm Cloudflare nên cũng có)
-    const ip = req.headers.get('cf-connecting-ip') || '';
+    const ip = ipKey(req.headers.get('cf-connecting-ip') || '');
     const now = Date.now();
     // đếm người đang online: giới hạn kích thước (mã tự đặt được => không để bảng phình vô hạn)
     if (pid && okId(pid) && (this.online.has(pid) || this.online.size < 5000)) this.online.set(pid, now);
@@ -141,16 +150,16 @@ export class World {
         const r = me?.rating ?? 1000;
         const list = this.sql.exec('SELECT oid,name,cls,level,power,rating,wins,losses,snap FROM arena WHERE pid<>? ORDER BY ABS(rating-?) LIMIT 8', pid, r).toArray();
         const top = this.sql.exec('SELECT name,cls,level,power,rating,wins,losses FROM arena ORDER BY rating DESC LIMIT 20').toArray();
-        return json({ me: me ? r : null, list: list.map((o) => ({ ...o, snap: JSON.parse(o.snap) })), top });
+        // 'pid' = mã công khai: bản game cũ đọc o.pid để gửi kết quả đấu (không phải mã người chơi thật)
+        return json({ me: me ? r : null, list: list.map((o) => ({ ...o, pid: o.oid, snap: JSON.parse(o.snap) })), top });
       }
       if (p === '/arena/result') {
         if (this.slow(pid, 'duel', 15000)) return json({ error: 'slow' }, 429);
         if (this.slowIp(ip, 'duel', 5000)) return json({ error: 'slow' }, 429);
         await this.fillOids();
         const opp = String(body.opp ?? '');
-        // bản game cũ còn gửi mã người chơi của đối thủ (thời gian chuyển tiếp)
         const a = this.sql.exec('SELECT rating,name,t FROM arena WHERE pid=?', pid).toArray()[0];
-        const b = this.sql.exec('SELECT pid,rating,name FROM arena WHERE oid=?', opp).toArray()[0] || (okId(opp) ? this.sql.exec('SELECT pid,rating,name FROM arena WHERE pid=?', opp).toArray()[0] : null);
+        const b = this.sql.exec('SELECT pid,rating,name FROM arena WHERE oid=?', opp).toArray()[0];
         if (!a || !b || b.pid === pid) return json({ error: 'none' }, 404);
         // cùng một IP chỉ làm một người tụt điểm mỗi 10 phút (chặn tạo mã mới liên tục để dìm điểm người khác)
         const hurt = !this.slowIp(ip, 'hit:' + b.pid, 600000);
