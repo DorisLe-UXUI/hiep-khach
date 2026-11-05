@@ -45,7 +45,7 @@ export const SKILLS = {
   guard: { name: 'Hộ thể thần công', han: '護體神功', icon: 'shield', max: 5, desc: (l) => `Giảm thêm ${l * 4}% sát thương nhận vào.` },
 };
 
-import { makeGear, RARITY, gearScore, GEM_ITEMS, parseGem, gemValue, gemId, socketsOf, GEM_MAX } from './gear.js';
+import { makeGear, RARITY, gearScore, GEM_ITEMS, parseGem, gemValue, gemId, socketsOf, GEM_MAX, cleanItem } from './gear.js';
 import { TITLES } from './titles.js';
 
 export class RPG {
@@ -332,8 +332,10 @@ export class RPG {
     Object.assign(this, { level: d.level, exp: d.exp, gold: d.gold, points: d.points, bag: { ...d.bag }, equip: { ...d.equip }, skills: { ...this.skills, ...d.skills } });
     this.owned = new Set(d.owned);
     this.enh = { ...(d.enh || {}) };
-    this.gear = { ...(d.gear || {}) };
-    this.gearBag = [...(d.gearBag || [])];
+    // làm sạch trang bị trong bản lưu (món mua ở chợ trực tuyến trước đây có thể mang HTML/script); món hợp lệ giữ nguyên
+    this.gear = {};
+    for (const [slot, it] of Object.entries(d.gear || {})) { const c = cleanItem(it); if (c && c.slot === slot) this.gear[slot] = c; }
+    this.gearBag = (d.gearBag || []).map(cleanItem).filter(Boolean);
     this.title = d.title || 'newbie';
     this.zhenqi = d.zhenqi || 0;
     this.meridians = d.meridians || null;

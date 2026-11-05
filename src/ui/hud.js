@@ -4,6 +4,7 @@ import { WORLD_SIZE, PLACES } from '../world/layout.js';
 import { ZONES } from '../game/bestiary.js';
 import { icon, uiImg } from './icons.js';
 import { realmOf } from '../game/rpg.js';
+const escName = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const $ = (id) => document.getElementById(id);
 const _proj = new THREE.Vector3(), _tmp = new THREE.Vector3();
@@ -321,7 +322,7 @@ export class HUD {
       if (d > 32) continue;
       const lv = e.lv || Math.max(1, Math.round(e.exp / 12));
       const h = e.monster ? e.monster.h + 0.45 : 2.25;
-      tag(e, e.pos, h, 'foe' + (e.monster?.elite || e.elite ? ' elite' : ''), `<div class="nm"><span class="lvl">Lv.${lv}</span>${e.name}${e.monster?.elite || e.elite ? ' <span class="elite-tag">Tinh anh</span>' : ''}</div><div class="tr"><div></div></div>`, e.hp / e.maxHp);
+      tag(e, e.pos, h, 'foe' + (e.monster?.elite || e.elite ? ' elite' : ''), `<div class="nm"><span class="lvl">Lv.${lv}</span>${escName(e.name)}${e.monster?.elite || e.elite ? ' <span class="elite-tag">Tinh anh</span>' : ''}</div><div class="tr"><div></div></div>`, e.hp / e.maxHp);
     }
     for (const [k, el] of this.plates) if (!seen.has(k)) { el.remove(); this.plates.delete(k); }
 
