@@ -124,7 +124,7 @@ test('/healthz: lâu không có việc nào chạy xong thì mới ping thật',
   await h.close();
 });
 
-test('prune lỗi thì yêu cầu sau dọn lại (không bỏ dọn một giờ)', async () => {
+test('prune lỗi thì thử lại sau 60 giây (không bỏ dọn một giờ, không dồn hàng đợi)', async () => {
   const h = await start();
   await h.q('CREATE TABLE IF NOT EXISTS rate (pid TEXT, k TEXT, t BIGINT, PRIMARY KEY (pid, k))');
   await h.q("INSERT INTO rate (pid,k,t) VALUES ('cũ','chat',1)");
@@ -136,8 +136,14 @@ test('prune lỗi thì yêu cầu sau dọn lại (không bỏ dọn một giờ
     await h.world.pruning;
   });
   assert.ok(lines.some((l) => l.includes('online: prune') && l.includes('prune hỏng')), JSON.stringify(lines));
-  assert.equal(h.world.pruned, 0);
+  // lỗi: hẹn thử lại sau 60 giây, yêu cầu ngay sau không dọn lại
+  const left = h.world.pruned + 3600000 - Date.now();
+  assert.ok(left > 50000 && left <= 60000, String(left));
   assert.equal((await h.q('SELECT COUNT(*) c FROM rate WHERE pid=$1', 'cũ'))[0].c, 1);
+  assert.equal((await h.get(`/market?pid=${A}`)).s, 200);
+  await h.world.pruning;
+  assert.equal(calls, 1, 'chưa tới hạn thử lại');
+  h.world.pruned -= 60000; // giả lập đã qua 60 giây
   assert.equal((await h.get(`/market?pid=${A}`)).s, 200);
   await h.world.pruning;
   assert.equal(calls, 2);

@@ -129,7 +129,8 @@ export class World {
   maybePrune(now = Date.now()) {
     if (this.pruning || now - this.pruned < 3600000) return;
     this.pruning = this.tx(() => this.prune(Date.now()))
-      .then(() => { this.pruned = now; }, (e) => { if (!e?.busy) logErr('online: prune', e); })
+      // lỗi: thử lại sau 60 giây (không phải ngay yêu cầu sau), để lỗi lặp lại không chiếm hàng đợi liên tục
+      .then(() => { this.pruned = now; }, (e) => { this.pruned = now - 3600000 + 60000; if (!e?.busy) logErr('online: prune', e); })
       .finally(() => { this.pruning = null; });
   }
   /** Giới hạn tần suất > 1 ngày, người Luận Kiếm chưa từng đấu và vắng > 60 ngày. */
