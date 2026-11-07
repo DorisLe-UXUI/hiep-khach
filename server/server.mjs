@@ -11,7 +11,7 @@ import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { World, ipKey, okId } from './world.mjs';
+import { World, ipPrefix, okId } from './world.mjs';
 
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' };
 const JSON_HEAD = { 'content-type': 'application/json; charset=utf-8', ...CORS };
@@ -19,8 +19,11 @@ const JSON_HEAD = { 'content-type': 'application/json; charset=utf-8', ...CORS }
 export const DEFAULTS = {
   maxBody: 64 * 1024, // thân yêu cầu HTTP
   wsMaxMsg: 4096, // một khung WS
-  wsPerIp: 20, // số kết nối mỗi IP (IPv6 gộp /64)
+  wsPerIp: 64, // số kết nối mỗi IPv4 (NAT nhà mạng: nhiều người chung một IP)
+  wsPer64: 20, // số kết nối mỗi khối IPv6 /64 (một thuê bao)
+  wsPer48: 60, // số kết nối mỗi khối IPv6 /48 (đổi địa chỉ trong /48 không vượt được giới hạn)
   wsMax: 3000, // tổng số kết nối
+  wsMaxBuf: 64 * 1024, // dữ liệu chờ gửi tối đa của một socket; quá thì ngắt (máy khách không đọc)
   wsRate: 20, // số khung tối đa trong mỗi cửa sổ
   wsRateWindow: 10000,
   helloMs: 10000, // phải chào trong thời gian này
@@ -39,7 +42,7 @@ export function openDb(dbPath) {
 const realIp = (req) => {
   const h = req.headers['cf-connecting-ip'];
   const ip = (typeof h === 'string' && h.trim()) || req.socket.remoteAddress || '';
-  return ip.startsWith('::ffff:') ? ip.slice(7) : ip;
+  return /^::ffff:\d+\.\d+\.\d+\.\d+$/i.test(ip) ? ip.slice(7) : ip; // IPv4 viết dạng IPv6
 };
 
 /** Kiểm tra Origin khi nâng cấp WS: có danh sách thì phải khớp đúng; không có thì chỉ nhận cùng máy (Origin khớp Host). */
@@ -54,12 +57,18 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
   const o = { ...DEFAULTS, ...opt };
   db ??= openDb(dbPath);
   const byPid = new Map(); // pid -> Set<ws> (để báo đã bán)
-  const perIp = new Map(); // ipKey -> số kết nối
+  const perIp = new Map(); // IPv4 hoặc tiền tố IPv6 (/64, /48) -> số kết nối
   let total = 0; // tổng số kết nối (kể cả đang nâng cấp)
-  const sendAll = (msg) => { const s = JSON.stringify(msg); for (const ws of wss.clients) if (ws.hk?.pid && ws.readyState === 1) ws.send(s); };
+  // mọi lần gửi đều qua đây: máy khách chậm/không đọc làm dữ liệu dồn lại thì ngắt thay vì đệm mãi
+  const put = (ws, s) => {
+    if (ws.readyState !== 1) return;
+    if (ws.bufferedAmount > o.wsMaxBuf) return ws.terminate();
+    ws.send(s);
+  };
+  const sendAll = (msg) => { const s = JSON.stringify(msg); for (const ws of wss.clients) if (ws.hk?.pid) put(ws, s); };
   const world = new World(db, {
     onChat: (m) => sendAll({ t: 'chat', m }),
-    onSold: (pid) => { for (const ws of byPid.get(pid) || []) if (ws.readyState === 1) ws.send('{"t":"sold"}'); },
+    onSold: (pid) => { for (const ws of byPid.get(pid) || []) put(ws, '{"t":"sold"}'); },
   });
   const wss = new WebSocketServer({ noServer: true, maxPayload: o.wsMaxMsg, perMessageDeflate: false, clientTracking: true });
 
@@ -108,20 +117,26 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
     const path = (req.url || '').split('?')[0];
     if (path !== '/ws') return reject(socket, 404, 'Not Found');
     if (!originOk(req, allowedOrigins)) return reject(socket, 403, 'Forbidden');
-    const ip = ipKey(realIp(req));
+    const raw = realIp(req);
+    // IPv4: theo đúng IP; IPv6: theo cả /64 và /48
+    const caps = raw.includes(':') ? [[ipPrefix(raw, 64), o.wsPer64], [ipPrefix(raw, 48), o.wsPer48]] : [[raw, o.wsPerIp]];
     if (total >= o.wsMax) return reject(socket, 503, 'Service Unavailable');
-    if ((perIp.get(ip) || 0) >= o.wsPerIp) return reject(socket, 429, 'Too Many Requests');
-    total++; perIp.set(ip, (perIp.get(ip) || 0) + 1); // giữ chỗ ngay để nhiều yêu cầu cùng lúc không vượt giới hạn
+    if (caps.some(([k, max]) => (perIp.get(k) || 0) >= max)) return reject(socket, 429, 'Too Many Requests');
+    total++; for (const [k] of caps) perIp.set(k, (perIp.get(k) || 0) + 1); // giữ chỗ ngay để nhiều yêu cầu cùng lúc không vượt giới hạn
     let counted = true;
-    const release = () => { if (!counted) return; counted = false; total--; const n = (perIp.get(ip) || 1) - 1; if (n > 0) perIp.set(ip, n); else perIp.delete(ip); };
+    const release = () => {
+      if (!counted) return; counted = false; total--;
+      for (const [k] of caps) { const n = (perIp.get(k) || 1) - 1; if (n > 0) perIp.set(k, n); else perIp.delete(k); }
+    };
     socket.once('close', release);
-    wss.handleUpgrade(req, socket, head, (ws) => { ws.once('close', release); onConn(ws, ip, realIp(req)); });
+    wss.handleUpgrade(req, socket, head, (ws) => { ws.once('close', release); onConn(ws, raw); });
   });
 
-  function onConn(ws, ip, rawIp) {
+  function onConn(ws, rawIp) {
     const hk = (ws.hk = { pid: null, alive: true, n: 0, w: Date.now() });
     const helloT = setTimeout(() => { if (!hk.pid) ws.close(4001, 'hello'); }, o.helloMs);
-    const out = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
+    const out = (m) => put(ws, JSON.stringify(m));
+    // sống = có đáp ping của giao thức; tin nhắn đến không tính (gửi được mà không đọc thì vẫn là chết)
     ws.on('pong', () => { hk.alive = true; });
     ws.on('error', () => {});
     ws.on('close', () => {
@@ -137,7 +152,6 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
       if (isBinary) return ws.close(1003, 'binary');
       let m; try { m = JSON.parse(data.toString('utf8')); } catch { return ws.close(1007, 'json'); }
       if (!m || typeof m !== 'object' || Array.isArray(m)) return ws.close(1007, 'json');
-      hk.alive = true;
       if (!hk.pid) {
         if (m.t !== 'hello' || !okId(m.pid)) return ws.close(4001, 'hello');
         hk.pid = m.pid;
