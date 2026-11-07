@@ -87,7 +87,9 @@ function applyKeys(keys) {
 function fromOldSite() {
   try {
     const ref = new URL(document.referrer);
-    return ref.origin === OLD_ORIGIN && ref.pathname.startsWith('/hiep-khach/');
+    // Safari/iOS (và Firefox khi khác trang) chỉ gửi gốc trang ('/') dù trang cũ xin gửi đủ đường dẫn: nhận '/'
+    // hoặc đúng thư mục /hiep-khach/; một thư mục khác trên cùng tên miền (dự án GitHub Pages khác) thì từ chối
+    return ref.origin === OLD_ORIGIN && (ref.pathname === '/' || ref.pathname.startsWith('/hiep-khach/'));
   } catch {
     return false;
   }
@@ -131,22 +133,23 @@ function mergeProfiles(deviceRaw, fileRaw) {
   const merged = [];
   const index = new Map();
   const keyOf = (p) => String(p?.account ?? p?.name ?? '');
-  for (const p of profileList(deviceRaw)) {
+  // hồ sơ trong tệp đứng trước (saveProfile chỉ giữ 8 hồ sơ đầu: không để hồ sơ vừa nhập bị cắt mất), rồi tới hồ sơ
+  // chỉ có trên máy; trùng tài khoản thì lấy bản trong tệp
+  for (const p of [...profileList(fileRaw), ...profileList(deviceRaw)]) {
     const k = keyOf(p);
     if (index.has(k)) continue;
     index.set(k, merged.length);
     merged.push(p);
   }
-  for (const p of profileList(fileRaw)) {
-    const k = keyOf(p);
-    if (index.has(k)) merged[index.get(k)] = p;
-    else { index.set(k, merged.length); merged.push(p); }
-  }
   return merged;
 }
 
 /** Nhập tệp JSON tải từ trang cũ (nút "Nhập bản lưu" ở màn đăng nhập). */
-export async function importSaveFile(file, { force = false, confirmPid = null } = {}) {
+/**
+ * confirmPid(): tệp có mã người chơi mà máy chưa có (cảnh báo tệp do người khác gửi); huỷ = không nhập.
+ * choosePid(): máy đã có mã người chơi khác mã trong tệp; true = dùng mã trong tệp, mặc định giữ mã của máy.
+ */
+export async function importSaveFile(file, { force = false, confirmPid = null, choosePid = null } = {}) {
   try {
     if (!file || typeof file.text !== 'function') return { ok: false, error: 'Không đọc được tệp bản lưu.' };
     if (file.size > MAX_TOTAL_BYTES * 2) return { ok: false, error: 'Tệp bản lưu quá lớn.' };
@@ -157,15 +160,20 @@ export async function importSaveFile(file, { force = false, confirmPid = null } 
     if (!force && hadProfiles) return { ok: false, error: 'Máy này đã có hồ sơ. Cần xác nhận trước khi ghi đè.' };
     const data = filterPayload(payload, STORE_PREFIX);
     if (!data || !Object.keys(data.keys).length) return { ok: false, error: 'Bản lưu không có dữ liệu phù hợp.' };
-    // tệp có mã người chơi mà máy chưa có hồ sơ: cảnh báo có thể là tệp người khác gửi
-    if (!hadProfiles && data.keys[PID_KEY] && typeof confirmPid === 'function') {
-      let yes = false;
-      try { yes = await confirmPid(); } catch { yes = false; }
-      if (!yes) return { ok: false, cancelled: true };
+    const ask = async (fn) => { if (typeof fn !== 'function') return false; try { return !!(await fn()); } catch { return false; } };
+    const filePid = data.keys[PID_KEY];
+    let devicePid = null;
+    try { devicePid = localStorage.getItem(PID_KEY); } catch { /* coi như chưa có */ }
+    if (filePid && filePid !== devicePid) {
+      if (!hadProfiles || !devicePid) {
+        // máy chưa có mã: dùng mã trong tệp, nhưng cảnh báo tệp do người khác gửi có thể chiếm bạc chợ
+        if (!(await ask(confirmPid))) return { ok: false, cancelled: true };
+      } else if (!(await ask(choosePid))) {
+        // máy đã có mã khác: mặc định giữ mã của máy (tệp lạ không thay được mã người chơi)
+        delete data.keys[PID_KEY];
+      }
     }
     if (force && hadProfiles) {
-      // ghi đè máy đã có hồ sơ: giữ mã người chơi của máy, không lấy mã trong tệp của người khác
-      delete data.keys[PID_KEY];
       // giữ hồ sơ chỉ có trên máy, cập nhật hồ sơ trùng tài khoản bằng bản trong tệp
       if (data.keys[PROFILES_KEY] !== undefined) {
         data.keys[PROFILES_KEY] = JSON.stringify(mergeProfiles(localStorage.getItem(PROFILES_KEY), data.keys[PROFILES_KEY]));

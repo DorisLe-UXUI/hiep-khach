@@ -77,6 +77,7 @@ Object.assign(UI.prototype, {
           const r = await importSaveFile(f, {
             force: hadProfiles,
             confirmPid: () => window.confirm('Chỉ nhập tệp bản lưu do chính bạn tải về từ trang cũ. Tệp do người khác gửi có thể chiếm bạc bán chợ của bạn. Tiếp tục?'),
+            choosePid: () => window.confirm('Tệp có mã người chơi khác máy này (mã giữ bạc bán chợ, món đang rao và điểm Luận Kiếm ở trang cũ).\n\nOK: dùng mã trong tệp, chỉ khi chính bạn tải tệp từ trang cũ.\nHuỷ: giữ mã của máy này.'),
           });
           if (!r.ok) {
             if (!r.cancelled) err(r.error);

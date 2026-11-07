@@ -280,9 +280,14 @@ test('mảnh lỗi hoặc sai nguồn: báo thất bại nhưng vẫn xoá mản
   assert.deepEqual(globalThis.__replaced, [null, '', '/game?x=1']);
 });
 
-test('chỉ nhận referrer từ đúng thư mục /hiep-khach/ của trang cũ', async () => {
+test('referrer chỉ có gốc trang (Safari/iOS) vẫn nhận; thư mục khác cùng tên miền thì từ chối', async () => {
   const encoded = (await encodePayload(pack({ hk_bg: 'lake' }))).encoded;
-  for (const referrer of ['https://dorisle-uxui.github.io/', 'https://dorisle-uxui.github.io/other-repo/']) {
+  {
+    const { storage } = installDom({ hash: '#hkmove=' + encoded, referrer: 'https://dorisle-uxui.github.io/' });
+    assert.deepEqual(await move.importMovedSave(), { status: 'imported' });
+    assert.equal(storage.dump().hk_bg, 'lake');
+  }
+  for (const referrer of ['https://dorisle-uxui.github.io/other-repo/', 'https://dorisle-uxui.github.io/hiep-khach-fake']) {
     const { storage } = installDom({ hash: '#hkmove=' + encoded, referrer });
     assert.deepEqual(await move.importMovedSave(), { status: 'failed' });
     assert.equal(storage.dump().hk_bg, undefined);
@@ -311,10 +316,13 @@ test('nhập tệp khi máy đã có hồ sơ: giữ hk_pid của máy và gộp
     'hkgh_save_v1:new': '{}',
     hkgh_settings_v1: '{}',
   });
-  const r = await move.importSaveFile({ size: 1000, text: async () => JSON.stringify(payload) }, { force: true });
+  let asked = 0;
+  const r = await move.importSaveFile({ size: 1000, text: async () => JSON.stringify(payload) }, { force: true, choosePid: () => { asked++; return false; } });
   assert.equal(r.ok, true);
+  assert.equal(asked, 1, 'hỏi giữ mã nào');
   const dump = storage.dump();
   assert.equal(dump.hk_pid, oldPid);
+  assert.deepEqual(JSON.parse(dump.hkgh_profiles_v1).map((p) => p.account), ['same', 'new', 'old-only'], 'hồ sơ trong tệp đứng trước');
   assert.equal(dump.hkgh_current_v1, 'new');
   assert.equal(dump['hkgh_save_v1:new'], '{}');
   const merged = JSON.parse(dump.hkgh_profiles_v1);
@@ -343,17 +351,30 @@ test('tệp có hk_pid khi máy chưa có hồ sơ: chỉ nhập sau khi xác nh
   assert.equal(storage.dump().hk_pid, pid);
 });
 
-test('máy đã có hồ sơ thì không hỏi lại về hk_pid trong tệp', async () => {
+test('máy có hồ sơ nhưng chưa có mã: hỏi như máy mới, huỷ thì không nhập', async () => {
   const { storage } = installDom({ entries: { hkgh_profiles_v1: '[{"account":"old"}]' } });
-  const payload = pack({ hk_pid: '44444444-4444-4444-4444-444444444444' });
-  let asked = false;
+  const payload = pack({ hk_pid: '44444444-4444-4444-4444-444444444444', hkgh_settings_v1: '{}' });
+  let asked = 0;
   const r = await move.importSaveFile(
     { size: 1000, text: async () => JSON.stringify(payload) },
-    { force: true, confirmPid: () => { asked = true; return false; } },
+    { force: true, confirmPid: () => { asked++; return false; } },
   );
-  assert.equal(r.ok, true);
-  assert.equal(asked, false);
+  assert.equal(r.cancelled, true);
+  assert.equal(asked, 1);
   assert.equal(storage.dump().hk_pid, undefined);
+  assert.equal(storage.dump().hkgh_settings_v1, undefined);
+});
+
+test('máy có mã khác: chọn dùng mã trong tệp thì thay; không có hàm hỏi thì giữ mã của máy', async () => {
+  const devicePid = '55555555-5555-5555-5555-555555555555', filePid = '66666666-6666-6666-6666-666666666666';
+  const entries = { hkgh_profiles_v1: '[{"account":"old"}]', hk_pid: devicePid };
+  const file = { size: 1000, text: async () => JSON.stringify(pack({ hk_pid: filePid })) };
+  let { storage } = installDom({ entries });
+  assert.equal((await move.importSaveFile(file, { force: true, choosePid: () => true })).ok, true);
+  assert.equal(storage.dump().hk_pid, filePid);
+  ({ storage } = installDom({ entries }));
+  assert.equal((await move.importSaveFile(file, { force: true })).ok, true);
+  assert.equal(storage.dump().hk_pid, devicePid);
 });
 
 test('không ghi đè khi chưa xác nhận', async () => {
