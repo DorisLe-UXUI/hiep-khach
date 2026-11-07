@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { listProfiles, register, signIn, guest, saveProfile } from '../settings.js';
+import { importSaveFile, hasProfiles, queueMovedNotice } from '../move.js';
 import { CLASSES, LOOK_OPTIONS, defaultHero, WEAPON_SKINS, heroWeapon } from '../game/classes.js';
 import { CHIBI_MODELS, FOLK } from '../actors/chibi.js';
 import { MESHY_MODELS } from '../actors/meshy.js';
@@ -64,6 +65,29 @@ Object.assign(UI.prototype, {
       $('login-go').onclick = go;
       $('login-pass').onkeydown = $('login-pass2').onkeydown = (e) => { if (e.key === 'Enter') go(); };
       $('login-guest').onclick = () => done(guest());
+      const importBtn = $('login-import'), importFile = $('login-import-file');
+      if (importBtn && importFile) {
+        importBtn.onclick = () => importFile.click();
+        importFile.onchange = async () => {
+          const f = importFile.files?.[0];
+          importFile.value = '';
+          if (!f) return;
+          const hadProfiles = hasProfiles();
+          if (hadProfiles && !window.confirm('Máy này đã có hồ sơ. Nhập bản lưu sẽ ghi đè lên dữ liệu hiện có. Tiếp tục?')) return;
+          const r = await importSaveFile(f, {
+            force: hadProfiles,
+            confirmPid: () => window.confirm('Chỉ nhập tệp bản lưu do chính bạn tải về từ trang cũ. Tệp do người khác gửi có thể chiếm bạc bán chợ của bạn. Tiếp tục?'),
+            choosePid: () => window.confirm('Tệp có mã người chơi khác máy này (mã giữ bạc bán chợ, món đang rao và điểm Luận Kiếm ở trang cũ).\n\nOK: dùng mã trong tệp, chỉ khi chính bạn tải tệp từ trang cũ.\nHuỷ: giữ mã của máy này.'),
+          });
+          if (!r.ok) {
+            if (!r.cancelled) err(r.error);
+            return;
+          }
+          queueMovedNotice();
+          err('Đã nhập bản lưu. Đang tải lại...');
+          setTimeout(() => location.reload(), 700);
+        };
+      }
       setTimeout(() => $('login-acc').focus(), 300);
     });
   },

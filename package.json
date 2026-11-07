@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "node --test test/*.test.mjs",
     "assets": "python3 -I tools/fetch_polyhaven.py",
     "build:pages": "node tools/build_pages.mjs",
     "build:pages:dev": "node tools/build_pages.mjs --dev",
