@@ -1,5 +1,7 @@
-// Bản đầy đủ cho GitHub Pages (chạy ở thư mục con /<repo>/): đường dẫn tương đối, giữ nguyên file .glb.
-// Chạy: node tools/build_pages.mjs → dist-pages/
+// Bản đầy đủ của game (đường dẫn tương đối, nén ảnh, tối ưu .glb) cho máy chủ riêng (MSI). Máy chủ riêng gọi:
+//   node tools/build_pages.mjs --out dist-msi-prod        (bản chính)   ·   --dev --out dist-msi-dev   (bản dev)
+// Thử ở máy: npm run build:msi / npm run build:msi:dev. Game đã chuyển khỏi GitHub Pages: nhánh gh-pages giờ chỉ là trang
+// chuyển hướng (kèm bản lưu) sang tên miền mới, nên công cụ này từ chối ghi vào dist-pages* (worktree gh-pages).
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -7,12 +9,17 @@ import crypto from 'node:crypto';
 import sharp from 'sharp';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-// --dev: bản xem thử cho thư mục con /dev/ (tiền tố lưu riêng, huy hiệu DEV) → dist-pages-dev/
+// --dev: bản dev (tiền tố lưu riêng dev_, huy hiệu DEV)
 const DEV = process.argv.includes('--dev');
-// --out <thư mục>: bản cho máy chủ riêng (MSI), không đụng dist-pages/ (worktree gh-pages) hay dist-pages-dev/
+// --out <thư mục>: thư mục kết quả (mặc định dist-msi-prod / dist-msi-dev)
 const oi = process.argv.indexOf('--out');
-const OUT_NAME = oi > 0 ? process.argv[oi + 1] : DEV ? 'dist-pages-dev' : 'dist-pages';
+const OUT_NAME = oi > 0 ? process.argv[oi + 1] : DEV ? 'dist-msi-dev' : 'dist-msi-prod';
 if (!/^[\w.-]+$/.test(OUT_NAME || '') || OUT_NAME.startsWith('.')) throw new Error(`--out: tên thư mục không hợp lệ: ${OUT_NAME}`);
+if (OUT_NAME.startsWith('dist-pages')) {
+  console.error('build_pages: game đã chuyển sang máy chủ riêng; dist-pages* là trang chuyển hướng trên GitHub Pages, không được ghi đè.');
+  console.error('Đẩy lên nhánh dev / main của repo: máy chủ riêng tự triển khai (dev-hiepkhach / hiepkhach.sentrystrategy.com).');
+  process.exit(1);
+}
 const OUT = path.join(ROOT, OUT_NAME);
 const env = { ...process.env };
 if (DEV) {
@@ -20,15 +27,7 @@ if (DEV) {
   env.VITE_DEV_BUILD = '1';
   env.VITE_DEV_SHA = process.env.VITE_DEV_SHA || execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
 }
-// bản chính: cất tạm dist-pages/dev/ (bản dev đã đăng) vì --emptyOutDir sẽ xoá nó
-const DEV_DIR = path.join(OUT, 'dev'), DEV_TMP = path.join(ROOT, '.dev-pages-keep');
-if (OUT_NAME === 'dist-pages' && fs.existsSync(DEV_DIR)) { fs.rmSync(DEV_TMP, { recursive: true, force: true }); fs.renameSync(DEV_DIR, DEV_TMP); }
-// giữ thư mục .git của nhánh gh-pages (Vite --emptyOutDir không xoá .git)
-try {
-  execSync(`npx vite build --base ./ --outDir ${OUT_NAME} --emptyOutDir --logLevel error`, { cwd: ROOT, stdio: 'inherit', env });
-} finally {
-  if (fs.existsSync(DEV_TMP)) fs.renameSync(DEV_TMP, DEV_DIR);
-}
+execSync(`npx vite build --base ./ --outDir ${OUT_NAME} --emptyOutDir --logLevel error`, { cwd: ROOT, stdio: 'inherit', env });
 const rel = (s) => s.replace(/(["'`(])\/(assets|brand)\//g, '$1./$2/');
 const A = path.join(OUT, 'assets');
 for (const f of fs.readdirSync(A)) {
@@ -39,7 +38,6 @@ for (const f of fs.readdirSync(A)) {
 fs.writeFileSync(path.join(OUT, 'index.html'), rel(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8')));
 // ảnh chụp gỡ lỗi không cần đưa lên
 for (const f of fs.readdirSync(path.join(A, 'thumbs'))) if (f.startsWith('dbg_')) fs.rmSync(path.join(A, 'thumbs', f));
-if (OUT_NAME.startsWith('dist-pages')) fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 
 // tệp không được src/ hay index.html tham chiếu: bỏ khỏi bản build (bản gốc trong public/ giữ nguyên)
 const DEAD = [
