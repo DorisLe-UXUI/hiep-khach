@@ -9,10 +9,8 @@
     "preview": "vite preview",
     "test": "node --test test/*.test.mjs",
     "assets": "python3 -I tools/fetch_polyhaven.py",
-    "build:pages": "node tools/build_pages.mjs",
-    "build:pages:dev": "node tools/build_pages.mjs --dev",
-    "deploy:dev": "bash tools/deploy_dev.sh",
-    "deploy:online": "cd server && npx -y wrangler deploy"
+    "build:msi": "node tools/build_pages.mjs --out dist-msi-prod",
+    "build:msi:dev": "node tools/build_pages.mjs --dev --out dist-msi-dev"
   },
   "dependencies": {
     "three": "^0.180.0"

@@ -4,14 +4,14 @@ import { WsRetry } from './ws_retry.js';
 
 /**
  * Giang hồ trực tuyến: kênh thế giới, Luận Kiếm Đài (đấu với bản chụp nhân vật của người chơi khác), chợ giao dịch.
- * Máy chủ: server/server.mjs (máy chủ riêng, cùng tên miền) hoặc server/worker.js (Cloudflare, bản cũ).
+ * Máy chủ: server/server.mjs (máy chủ riêng, cùng tên miền, đường dẫn /online).
  * Chưa cấu hình địa chỉ thì mọi tính năng báo "máy chủ chưa mở".
  * Máy chủ riêng (base là đường dẫn tương đối như '/online'): kênh thời gian thực WebSocket base + '/ws'
  * (tin thế giới, số người online, báo món chợ đã bán); socket đóng thì quay về hỏi định kỳ /state mỗi 6 giây
  * (lần đầu sau 1–6 giây ngẫu nhiên).
  */
 // VITE_ONLINE_URL: bản trên máy chủ riêng dùng '/online' (cùng tên miền với game)
-export const ONLINE_URL = import.meta.env.VITE_ONLINE_URL || 'https://hiep-khach-online.vankhanh-le.workers.dev';
+export const ONLINE_URL = import.meta.env.VITE_ONLINE_URL || '/online';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // kết nối lại: xem ws_retry.js; ẩn trang quá 60 giây thì tạm ngắt
 const HIDDEN_PAUSE = 60000;
