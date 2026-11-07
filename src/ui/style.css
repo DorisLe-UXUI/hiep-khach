@@ -354,6 +354,7 @@ input[type=range] { width: 180px; accent-color: var(--gold); }
 .remember input { accent-color: var(--gold); }
 #login-err { min-height: 18px; margin-bottom: 8px; font-size: 13px; color: var(--cinnabar-hi); }
 .login-alt { display: flex; gap: 8px; margin-top: 12px; }
+#login-import { width: 100%; margin-top: 8px; }
 .alt { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px; font-size: 13px; background: rgba(255,255,255,.04); border: 1px solid var(--edge-soft); border-radius: 3px; }
 .alt .ico { width: 16px; height: 16px; color: var(--gold); }
 .alt:not(:disabled):hover { border-color: var(--gold); }
