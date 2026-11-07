@@ -10,15 +10,29 @@ if (!target || prefix === undefined || !outfile) {
   console.error('Dùng: node tools/move/make_redirect.mjs <target> <prefix> <outfile>');
   process.exit(1);
 }
-try { new URL(target); } catch {
+let url;
+try { url = new URL(target); } catch {
   console.error('Địa chỉ đích không hợp lệ:', target);
   process.exit(1);
 }
+if (url.protocol !== 'https:') {
+  console.error('Địa chỉ đích phải dùng https:', target);
+  process.exit(1);
+}
+if (!/^(dev_)?$/.test(prefix)) {
+  console.error('Tiền tố không hợp lệ (chỉ nhận "" hoặc "dev_"):', prefix);
+  process.exit(1);
+}
+
+// Chuỗi JS an toàn: JSON.stringify + thoát < > & để không phá thẻ <script>.
+const jsString = (s) => JSON.stringify(String(s)).replace(
+  /[<>&]/g,
+  (c) => ({ '<': '\\u003c', '>': '\\u003e', '&': '\\u0026' })[c],
+);
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const html = fs.readFileSync(path.join(here, 'redirect.html'), 'utf8')
-  .replaceAll('__TARGET__', () => JSON.stringify(target))
-  .replaceAll('__PREFIX__', () => JSON.stringify(prefix));
+  .replace(/__TARGET__|__PREFIX__/g, (m) => jsString(m === '__TARGET__' ? target : prefix));
 
 fs.mkdirSync(path.dirname(path.resolve(outfile)), { recursive: true });
 fs.writeFileSync(outfile, html);

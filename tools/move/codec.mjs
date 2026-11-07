@@ -2,18 +2,36 @@
 // Dùng chung cho src/move.js (nhập) và tools/move/move.test.mjs; trang redirect.html chép lại
 // phần mã hoá bằng script nội tuyến để chạy độc lập, không cần bước build.
 
-export const KEY_RE = /^(dev_)?(hkgh_[A-Za-z0-9_]+|hk_bg|hk_pid)$/;
-// bản lưu theo hồ sơ có dạng hkgh_save_v1:<tài khoản>; tài khoản có thể có dấu cách / chữ có dấu
-export const SAVE_KEY_RE = /^(dev_)?hkgh_save_v1:[^\u0000-\u001f]{1,64}$/;
 export const PID_RE = /^[a-z0-9-]{8,40}$/i;
 export const MAX_ENCODED_BYTES = 1.5 * 1024 * 1024;
+export const MAX_ENCODED_CHARS = 64000;
 export const MAX_TOTAL_BYTES = 5 * 1024 * 1024;
 
 const utf8 = new TextEncoder();
+const escapeRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const patternCache = new Map();
+
+/** Regex khoá dựng theo tiền tố của bản build ('' hoặc 'dev_'), không hard-code. */
+export function keyPatterns(prefix = '') {
+  let p = patternCache.get(prefix);
+  if (!p) {
+    const pre = escapeRe(prefix);
+    p = {
+      KEY_RE: new RegExp('^' + pre + '(hkgh_[A-Za-z0-9_]+|hk_bg|hk_pid)$'),
+      // bản lưu theo hồ sơ có dạng hkgh_save_v1:<tài khoản>; tài khoản có thể có dấu cách / chữ có dấu
+      SAVE_KEY_RE: new RegExp('^' + pre + 'hkgh_save_v1:[^\\u0000-\\u001f]{1,64}$'),
+    };
+    patternCache.set(prefix, p);
+  }
+  return p;
+}
+
+export const { KEY_RE, SAVE_KEY_RE } = keyPatterns('');
 
 export function keyAllowed(key, prefix = '') {
   if (typeof key !== 'string') return false;
-  if (!KEY_RE.test(key) && !SAVE_KEY_RE.test(key)) return false;
+  const { KEY_RE: baseRe, SAVE_KEY_RE: saveRe } = keyPatterns(prefix);
+  if (!baseRe.test(key) && !saveRe.test(key)) return false;
   return prefix ? key.startsWith(prefix) : !key.startsWith('dev_');
 }
 
@@ -77,7 +95,23 @@ async function deflateRaw(bytes) {
 async function inflateRaw(bytes) {
   if (typeof DecompressionStream === 'undefined') throw new Error('no DecompressionStream');
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > MAX_TOTAL_BYTES) {
+      try { await reader.cancel(); } catch { /* bỏ qua */ }
+      throw new Error('gói bản lưu quá lớn');
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
 }
 
 /** Trả về {tag, data, encoded, json}; tag 'z' là deflate-raw, 'r' là JSON thô. */
@@ -95,7 +129,9 @@ export async function encodePayload(payload) {
 }
 
 export async function decodePayload(encoded) {
-  if (typeof encoded !== 'string' || encoded.length < 3 || encoded[1] !== '.') throw new Error('gói bản lưu sai định dạng');
+  if (typeof encoded !== 'string') throw new Error('gói bản lưu sai định dạng');
+  if (encoded.length > MAX_ENCODED_CHARS) throw new Error('gói bản lưu quá lớn');
+  if (encoded.length < 3 || encoded[1] !== '.') throw new Error('gói bản lưu sai định dạng');
   const tag = encoded[0];
   if (tag !== 'z' && tag !== 'r') throw new Error('gói bản lưu sai định dạng');
   let bytes = b64urlToBytes(encoded.slice(2));
