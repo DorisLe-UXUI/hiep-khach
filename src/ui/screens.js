@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { UI } from './ui.js';
 import { icon, itemIcon } from './icons.js';
 import { listProfiles, register, signIn, guest, saveProfile } from '../settings.js';
+import { importSaveFile } from '../move.js';
 import { CLASSES, LOOK_OPTIONS, defaultHero, WEAPON_SKINS, heroWeapon } from '../game/classes.js';
 import { CHIBI_MODELS, FOLK } from '../actors/chibi.js';
 import { MESHY_MODELS } from '../actors/meshy.js';
@@ -64,6 +65,20 @@ Object.assign(UI.prototype, {
       $('login-go').onclick = go;
       $('login-pass').onkeydown = $('login-pass2').onkeydown = (e) => { if (e.key === 'Enter') go(); };
       $('login-guest').onclick = () => done(guest());
+      const importBtn = $('login-import'), importFile = $('login-import-file');
+      if (importBtn && importFile) {
+        importBtn.onclick = () => importFile.click();
+        importFile.onchange = async () => {
+          const f = importFile.files?.[0];
+          importFile.value = '';
+          if (!f) return;
+          if (listProfiles().length && !window.confirm('Máy này đã có hồ sơ. Nhập bản lưu sẽ ghi đè lên dữ liệu hiện có. Tiếp tục?')) return;
+          const r = await importSaveFile(f, { force: true });
+          if (!r.ok) return err(r.error);
+          err('Đã nhập bản lưu. Đang tải lại...');
+          setTimeout(() => location.reload(), 700);
+        };
+      }
       setTimeout(() => $('login-acc').focus(), 300);
     });
   },

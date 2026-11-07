@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Thiên Kiếm Giang Hồ đã chuyển nhà</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: grid; place-items: center; padding: 20px; box-sizing: border-box; text-align: center;
+    background: radial-gradient(ellipse at center, #2a1d13, #0b0805 70%); color: #f0e2c8;
+    font: 16px/1.7 "Noto Serif", Georgia, serif; }
+  .card { width: min(520px, 100%); }
+  .han { font-size: 32px; letter-spacing: .18em; color: #d6b062; opacity: .9; }
+  h1 { margin: 12px 0 10px; font-size: clamp(22px, 5vw, 30px); font-weight: 700; color: #f6e6c0; }
+  p { margin: 8px 0; color: #cbbfa9; }
+  a { color: #f0c46a; }
+  button { margin-top: 14px; padding: 10px 20px; font: 600 15px "Noto Serif", Georgia, serif; color: #1b130c;
+    background: #d6b062; border: 0; border-radius: 4px; cursor: pointer; }
+  button:hover { filter: brightness(1.1); }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="han">天劍江湖</div>
+  <h1>Thiên Kiếm Giang Hồ đã chuyển nhà…</h1>
+  <p id="msg">Đang chuyển bản lưu sang địa chỉ mới.</p>
+  <p><a id="go" href="#">Đi tới trang mới</a></p>
+  <div id="big" hidden>
+    <p>Bản lưu quá lớn để chuyển tự động. Hãy tải tệp bên dưới rồi nhập lại ở màn đăng nhập của trang mới.</p>
+    <button id="dl" type="button">Tải bản lưu</button>
+  </div>
+</main>
+<script>
+(function () {
+  var TARGET = __TARGET__;
+  var PREFIX = __PREFIX__;
+  var KEY_RE = /^(dev_)?(hkgh_[A-Za-z0-9_]+|hk_bg|hk_pid)$/;
+  var SAVE_KEY_RE = /^(dev_)?hkgh_save_v1:[^\u0000-\u001f]{1,64}$/;
+  var MAX = 1.5 * 1024 * 1024;
+
+  var go = document.getElementById('go');
+  go.href = TARGET;
+
+  function allowed(k) {
+    if (typeof k !== 'string') return false;
+    if (!KEY_RE.test(k) && !SAVE_KEY_RE.test(k)) return false;
+    return PREFIX ? k.indexOf(PREFIX) === 0 : k.indexOf('dev_') !== 0;
+  }
+
+  var keys = {};
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (!allowed(k)) continue;
+      var v = localStorage.getItem(k);
+      if (typeof v === 'string') keys[k] = v;
+    }
+  } catch (e) { /* chế độ riêng tư */ }
+
+  var payload = { v: 1, at: Date.now(), keys: keys };
+  var json = JSON.stringify(payload);
+
+  function b64url(bytes) {
+    var bin = '';
+    for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function fallback() {
+    document.getElementById('msg').textContent = 'Bản lưu quá lớn để chuyển tự động.';
+    document.getElementById('big').hidden = false;
+    document.getElementById('dl').onclick = function () {
+      var url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'thien-kiem-giang-ho-ban-luu.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    };
+  }
+
+  if (!Object.keys(keys).length) {
+    location.replace(TARGET);
+    return;
+  }
+
+  var bytes = new TextEncoder().encode(json);
+  var write = function (tag, out) {
+    var encoded = tag + '.' + b64url(out);
+    if (encoded.length > MAX) return fallback();
+    location.replace(TARGET + '#hkmove=' + encoded);
+  };
+
+  if (typeof CompressionStream === 'undefined') {
+    write('r', bytes);
+    return;
+  }
+  try {
+    var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    new Response(stream).arrayBuffer().then(function (buf) {
+      write('z', new Uint8Array(buf));
+    }).catch(function () { write('r', bytes); });
+  } catch (e) {
+    write('r', bytes);
+  }
+})();
+</script>
+</body>
+</html>
