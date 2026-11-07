@@ -104,11 +104,15 @@ export class Store {
     this.tail = Promise.resolve();
     this.size = 0; // số việc đang chạy + đang chờ
     this.closed = false;
+    this.okAt = 0; // lần cuối một việc chạy xong trên cơ sở dữ liệu (cho /healthz); 0 khi mất kết nối
+    this.fullLog = 0; // lần cuối ghi nhật ký "hàng đợi đầy"
+    this.fullSkipped = 0;
+    this.onConnect = []; // hàm (client) chạy sau setup mỗi khi có kết nối mới (vd. tải tin kênh thế giới vào bộ nhớ)
   }
 
   /** Bỏ một kết nối (lỗi, quá hạn, đóng). */
   drop(c) {
-    if (this.client === c) this.client = null;
+    if (this.client === c) { this.client = null; this.okAt = 0; }
     c.end().catch(() => {});
   }
   async connect() {
@@ -117,10 +121,11 @@ export class Store {
     const c = new pg.Client(this.cfg);
     // mất kết nối khi đang rảnh: bỏ ngay để việc sau kết nối lại
     c.on('error', (e) => { this.log('db: mất kết nối:', e.message); this.drop(c); });
-    c.on('end', () => { if (this.client === c) this.client = null; });
+    c.on('end', () => { if (this.client === c) { this.client = null; this.okAt = 0; } });
     try {
       await c.connect();
       await this.setup(c);
+      for (const f of this.onConnect) await f(c);
     } catch (e) {
       this.log('db: không kết nối được:', e.message); // tối đa mỗi retryMs một lần
       this.failedAt = Date.now();
@@ -135,27 +140,46 @@ export class Store {
   /**
    * Xếp fn(client) vào hàng đợi. tx=true: bọc trong BEGIN/COMMIT, lỗi thì ROLLBACK và ném lại.
    * Lời hứa chỉ thành công khi COMMIT đã xong (sự kiện phát sau đó mới đúng).
+   * skip(): tới lượt mà trả true (vd. máy khách đã ngắt) thì không chạy, lỗi có e.skipped.
+   * Hàng đợi đầy: từ chối ngay (lỗi có e.busy), nhật ký tối đa mỗi 10 giây một dòng.
    */
-  run(fn, { tx = true } = {}) {
+  run(fn, { tx = true, skip = null } = {}) {
     if (this.closed) return Promise.reject(new Error('db: đã đóng'));
-    if (this.size >= this.max) return Promise.reject(new Error('db: hàng đợi đầy'));
+    if (this.full()) return Promise.reject(Object.assign(new Error('db: hàng đợi đầy'), { busy: true }));
     this.size++;
-    const p = this.tail.then(() => this.exec(fn, tx)).finally(() => { this.size--; });
+    const p = this.tail.then(() => {
+      if (skip?.()) throw Object.assign(new Error('db: máy khách đã ngắt'), { skipped: true });
+      return this.exec(fn, tx);
+    }).finally(() => { this.size--; });
     this.tail = p.catch(() => {});
     return p;
+  }
+  /** Hàng đợi đầy chưa; đầy thì ghi nhật ký, tối đa mỗi 10 giây một dòng (kèm số lần từ chối đã gộp). */
+  full() {
+    if (this.size < this.max) return false;
+    const now = Date.now();
+    if (now - this.fullLog >= 10000) {
+      this.log(`db: hàng đợi đầy (${this.max} việc), từ chối yêu cầu` + (this.fullSkipped ? ` (+${this.fullSkipped} lần từ lần ghi trước)` : ''));
+      this.fullLog = now; this.fullSkipped = 0;
+    } else this.fullSkipped++;
+    return true;
   }
   async exec(fn, tx) {
     const c = await this.connect();
     try {
-      if (!tx) return await fn(c);
+      if (!tx) { const out = await fn(c); this.okAt = Date.now(); return out; }
       await c.query('BEGIN');
     } catch (e) { this.drop(c); throw e; } // BEGIN/truy vấn đơn lẻ không chạy được: coi như kết nối hỏng
+    let committing = false;
     try {
       const out = await fn(c);
-      // COMMIT quá hạn phía máy khách: không biết đã ghi hay chưa (trả 500, không phát sự kiện); hiếm, chấp nhận
+      committing = true;
       await c.query('COMMIT');
+      this.okAt = Date.now();
       return out;
     } catch (e) {
+      // COMMIT quá hạn phía máy khách: không biết đã ghi hay chưa (trả 500, không phát sự kiện); hiếm, người gọi ghi nhật ký
+      if (committing && TIMEOUT.test(e?.message) && !e?.code) e.unknownCommit = true;
       // quá hạn phía máy khách: truy vấn cũ có thể vẫn đang chạy trên kết nối => bỏ hẳn kết nối
       if (this.client !== c || (TIMEOUT.test(e?.message) && !e?.code)) this.drop(c);
       else {
@@ -164,6 +188,8 @@ export class Store {
       throw e;
     }
   }
+  /** Có việc nào chạy xong trên cơ sở dữ liệu trong ms vừa qua (và chưa mất kết nối từ đó) không. */
+  fresh(ms) { return !!this.client && Date.now() - this.okAt < ms; }
   /** Cơ sở dữ liệu có trả lời không (cho /healthz). */
   ping() { return this.run((c) => c.query('SELECT 1'), { tx: false }).then(() => true, () => false); }
   /** Chờ các việc đang xếp hàng rồi đóng kết nối. */

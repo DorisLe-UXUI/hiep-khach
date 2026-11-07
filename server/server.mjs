@@ -1,7 +1,11 @@
 /**
  * Máy chủ trực tuyến tự chạy (Node + PostgreSQL + ws), thay cho Cloudflare Worker.
  * - HTTP: đúng các đường dẫn cũ của worker.js (/state, /chat, /arena/*, /market*), cùng hình dạng phản hồi.
- * - /healthz: kiểm tra sống; 503 khi cơ sở dữ liệu không trả lời (healthcheck của Docker thấy được).
+ * - /healthz: kiểm tra sống; 503 khi cơ sở dữ liệu không trả lời (healthcheck của Docker thấy được). Có việc chạy xong
+ *   trên cơ sở dữ liệu trong 10 giây qua thì trả 200 ngay, không xếp hàng sau các yêu cầu khác.
+ * - Bớt tải trước cơ sở dữ liệu (giới hạn trong cơ sở dữ liệu vẫn là giới hạn chính): mỗi IP một xô thẻ cho HTTP và tối
+ *   đa httpPerIp việc đang chờ (429 'slow'); hàng đợi đầy thì 503 'busy' ngay; yêu cầu mà máy khách đã ngắt thì không
+ *   chạy; GET /state đọc từ bộ nhớ; chat WS mỗi socket cách nhau 2 giây (ack 'slow' không chạm cơ sở dữ liệu).
  * - /ws: kênh thời gian thực. Trình duyệt gửi {t:'hello', pid, since} trước tiên (pid không bao giờ nằm trên URL),
  *   máy chủ trả {t:'state', chat, online}; sau đó đẩy {t:'chat', m}, {t:'online', n}, {t:'sold'} (chỉ cho người bán).
  *   Trình duyệt gửi được {t:'chat', text, name?, r?} (trả {t:'ack', r, ok|error}) và {t:'ping'} (trả {t:'pong'}).
@@ -10,7 +14,7 @@
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { World, ipPrefix, normIp, okId, logErr } from './world.mjs';
+import { World, ipPrefix, ipKey, normIp, okId, logErr, clip } from './world.mjs';
 import { Store, createSchema, pgConfig, describe } from './db.mjs';
 
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' };
@@ -30,6 +34,12 @@ export const DEFAULTS = {
   pingMs: 25000, // máy chủ ping, ai không đáp ở lượt sau bị ngắt
   onlineMs: 5000, // đẩy số người online tối đa mỗi 5 giây (chỉ khi đổi)
   dbRetryMs: 1000, // kết nối cơ sở dữ liệu thất bại: trong khoảng này mọi yêu cầu trả 500 ngay, sau đó thử lại
+  dbMax: 2000, // số việc chờ tối đa trong hàng đợi cơ sở dữ liệu; quá thì 503 'busy'
+  httpBurst: 60, // xô thẻ HTTP mỗi IP (IPv6 theo /64): rộng tay vì nhà mạng di động để nhiều người chung một IP
+  httpRate: 20, // thẻ nạp lại mỗi giây
+  httpPerIp: 20, // số yêu cầu HTTP của một IP đang chờ/chạy trong hàng đợi cơ sở dữ liệu
+  wsChatMs: 2000, // chat WS: mỗi socket cách nhau tối thiểu (trước khi hỏi cơ sở dữ liệu; luật 2 giây theo người vẫn ở đó)
+  healthOkMs: 10000, // /healthz: có việc chạy xong trong khoảng này thì khoẻ, khỏi ping
 };
 
 /** Mở kho dữ liệu: mỗi kết nối mới tạo bảng (nếu chưa có) và điền mã công khai còn thiếu. */
@@ -52,7 +62,7 @@ export function originOk(req, allowed) {
 /** pg: cấu hình kết nối (mặc định pgConfig() từ biến môi trường); db: Store có sẵn (bài kiểm tra). */
 export function createServer({ pg = null, db = null, allowedOrigins = [], ...opt } = {}) {
   const o = { ...DEFAULTS, ...opt };
-  db ??= openStore(pg ?? pgConfig(), { retryMs: o.dbRetryMs });
+  db ??= openStore(pg ?? pgConfig(), { retryMs: o.dbRetryMs, max: o.dbMax });
   const byPid = new Map(); // pid -> Set<ws> (để báo đã bán)
   const perIp = new Map(); // IPv4 hoặc tiền tố IPv6 (/64, /48) -> số kết nối
   let total = 0; // tổng số kết nối (kể cả đang nâng cấp)
@@ -79,23 +89,61 @@ export function createServer({ pg = null, db = null, allowedOrigins = [], ...opt
     res.end(data === null ? undefined : JSON.stringify(data));
   };
   let health = null;
+  // xô thẻ theo IP (IPv6 gộp /64): key -> {n: số thẻ, at: lần nạp}; dọn xô đã đầy lại định kỳ
+  const buckets = new Map();
+  const take = (k, now = Date.now()) => {
+    let b = buckets.get(k);
+    if (!b) buckets.set(k, (b = { n: o.httpBurst, at: now }));
+    else { b.n = Math.min(o.httpBurst, b.n + ((now - b.at) / 1000) * o.httpRate); b.at = now; }
+    if (b.n < 1) return false;
+    b.n--;
+    return true;
+  };
+  const queued = new Map(); // key IP -> số yêu cầu đang chờ/chạy trong hàng đợi cơ sở dữ liệu
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || '/', 'http://online.local');
     if (url.pathname === '/healthz') {
       req.resume();
-      // các lần kiểm tra cùng lúc dùng chung một truy vấn: /healthz dồn dập chỉ chiếm một chỗ trong hàng đợi
-      health ??= db.ping().finally(() => { health = null; });
-      return health.then((ok) => {
+      const reply = (ok) => {
         if (res.headersSent || res.destroyed) return;
         res.writeHead(ok ? 200 : 503, { 'content-type': 'text/plain' }); res.end(ok ? 'ok' : 'db');
-      });
+      };
+      // có việc vừa chạy xong: khoẻ, không xếp hàng sau (có thể tới hàng nghìn) yêu cầu khác
+      if (db.fresh(o.healthOkMs)) return reply(true);
+      // các lần kiểm tra cùng lúc dùng chung một truy vấn: /healthz dồn dập chỉ chiếm một chỗ trong hàng đợi
+      health ??= db.ping().finally(() => { health = null; });
+      return health.then(reply);
     }
     if (req.method === 'OPTIONS') return send(res, 200, null);
+    const ip = realIp(req), key = ipKey(ip);
+    // bỏ thân yêu cầu bị từ chối (đọc bỏ, có giới hạn) để kết nối giữ lại dùng tiếp được
+    const refuse = (status, error) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD' && +req.headers['content-length'] > o.maxBody) res.setHeader('connection', 'close');
+      send(res, status, { error });
+      let size = 0;
+      req.on('data', (c) => { size += c.length; if (size > o.maxBody) req.destroy(); });
+      req.on('error', () => {});
+      req.resume();
+    };
+    if (!take(key)) return refuse(429, 'slow');
+    const isState = url.pathname === '/state'; // không vào hàng đợi cơ sở dữ liệu
+    if (!isState && (queued.get(key) || 0) >= o.httpPerIp) return refuse(429, 'slow');
+    if (!isState && db.full()) return refuse(503, 'busy'); // từ chối trước khi đọc thân; nhật ký có giới hạn
+    let held = false;
+    const hold = () => { held = true; queued.set(key, (queued.get(key) || 0) + 1); };
+    const release = () => { if (!held) return; held = false; const n = queued.get(key) - 1; if (n > 0) queued.set(key, n); else queued.delete(key); };
+    // máy khách ngắt trước khi có trả lời: việc còn trong hàng đợi thì tới lượt bỏ qua
+    let gone = false, running = false;
+    res.on('close', () => { if (!res.writableFinished) gone = true; if (!running) release(); });
+    if (!isState) hold();
     const finish = async (raw) => {
       let body = null;
       if (req.method === 'POST') { try { body = JSON.parse(raw); } catch { body = null; } }
-      const [s, d] = await world.handle(req.method, url.pathname, url.searchParams, body, realIp(req));
-      send(res, s, d);
+      running = true;
+      try {
+        const [s, d] = await world.handle(req.method, url.pathname, url.searchParams, body, ip, { gone: () => gone });
+        send(res, s, d);
+      } finally { running = false; release(); }
     };
     if (req.method === 'GET' || req.method === 'HEAD') { req.resume(); return finish(''); }
     if (+req.headers['content-length'] > o.maxBody) { res.setHeader('connection', 'close'); send(res, 413, { error: 'too large' }); return req.destroy(); }
@@ -173,14 +221,17 @@ export function createServer({ pg = null, db = null, allowedOrigins = [], ...opt
           out({ t: 'state', chat, online: world.onlineCount() });
           hk.ready = true;
           if (hk.sold) { hk.sold = false; out({ t: 'sold' }); }
-        }, (e) => { logErr('online: ws hello', e); ws.close(1011, 'server'); }); // máy khách tự kết nối lại
+        }, (e) => { if (!e?.busy) logErr('online: ws hello', e); ws.close(1011, 'server'); }); // máy khách tự kết nối lại
         return;
       }
       world.seen(hk.pid);
       if (m.t === 'ping') return out({ t: 'pong' });
       if (m.t === 'chat') {
         const r = Number.isInteger(m.r) && m.r >= 0 && m.r < 1e9 ? m.r : undefined;
-        if (typeof m.text !== 'string' || (m.name != null && typeof m.name !== 'string')) return out({ t: 'ack', r, error: 'empty' });
+        if (typeof m.text !== 'string' || (m.name != null && typeof m.name !== 'string') || !clip(m.text, 140).trim()) return out({ t: 'ack', r, error: 'empty' });
+        // giãn cách theo socket trong bộ nhớ: gửi dồn không tốn lượt cơ sở dữ liệu nào
+        if (now - (hk.chatAt || 0) < o.wsChatMs) return out({ t: 'ack', r, error: 'slow' });
+        hk.chatAt = now;
         world.chatWs(hk.pid, m.name, m.text, rawIp).then(([s, d]) => out(s === 200 ? { t: 'ack', r, ok: true } : { t: 'ack', r, error: d.error }));
         return;
       }
@@ -204,12 +255,17 @@ export function createServer({ pg = null, db = null, allowedOrigins = [], ...opt
     const n = world.onlineCount();
     if (n !== lastOnline) { lastOnline = n; sendAll({ t: 'online', n }); }
   }, o.onlineMs);
-  pingT.unref(); onlineT.unref();
+  // xô đã nạp đầy lại thì như chưa từng có: bỏ đi để bảng không lớn mãi
+  const bucketT = setInterval(() => {
+    const now = Date.now(), full = (o.httpBurst / o.httpRate) * 1000;
+    for (const [k, b] of buckets) if (now - b.at >= full) buckets.delete(k);
+  }, 10000);
+  pingT.unref(); onlineT.unref(); bucketT.unref();
 
   let closing = null;
   /** Dừng êm: báo các socket, đóng HTTP, đóng cơ sở dữ liệu. */
   const close = () => (closing ??= new Promise((resolve) => {
-    clearInterval(pingT); clearInterval(onlineT);
+    clearInterval(pingT); clearInterval(onlineT); clearInterval(bucketT);
     for (const ws of wss.clients) ws.close(1001, 'restart');
     const force = setTimeout(() => { for (const ws of wss.clients) ws.terminate(); server.closeAllConnections(); }, 5000);
     force.unref();

@@ -9,8 +9,14 @@
  */
 import { createHash } from 'node:crypto';
 
+/**
+ * Cắt chuỗi còn n đơn vị UTF-16 mà vẫn hợp lệ: cắt trúng giữa một cặp thay thế (emoji…) thì bỏ nửa đầu còn sót, nửa lẻ
+ * khác (nếu có) thành U+FFFD. Không làm vậy thì PostgreSQL lưu U+FFFD, tin đẩy qua WS khác tin đã lưu và --verify báo sai.
+ * Máy chủ và công cụ nhập cùng dùng hàm này nên làm sạch giống hệt nhau.
+ */
+export const cut = (s, n) => s.slice(0, n).replace(/[\uD800-\uDBFF]$/, '').toWellFormed();
 // bỏ cả ký tự NUL: cột TEXT của PostgreSQL không nhận \0 (SQLite thì nhận), giữ lại thì yêu cầu lỗi 500
-export const clip = (s, n) => String(s ?? '').replace(/[<>\0]/g, '').slice(0, n);
+export const clip = (s, n) => cut(String(s ?? '').replace(/[<>\0]/g, ''), n);
 /** IPv6: một người thường có cả khối /64 => gộp theo /64 để giới hạn theo IP có tác dụng. */
 export const ipKey = (ip) => { ip = normIp(ip); return ip.includes(':') ? ipPrefix(ip, 64) : ip; };
 /** Tám nhóm hex của một địa chỉ IPv6 (bỏ zone %eth0; đuôi IPv4 dạng chấm đổi thành hai nhóm). */
@@ -43,7 +49,7 @@ export const okId = (s) => typeof s === 'string' && /^[a-z0-9-]{8,40}$/i.test(s)
 export const oidOf = (pid) => createHash('sha256').update('hk-oid:' + pid).digest('hex').slice(0, 16);
 // Trang bị rao bán: chỉ nhận đúng định dạng món của game
 const SLOTS = ['weapon', 'helm', 'armor', 'belt', 'boots', 'ring', 'trinket'], STATS = ['atk', 'hp', 'mp', 'def', 'crit', 'spd'];
-export const txt = (v, n) => String(v ?? '').replace(/[<>&"'`\\]/g, '').slice(0, n);
+export const txt = (v, n) => cut(String(v ?? '').replace(/[<>&"'`\\]/g, ''), n);
 export const int = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.trunc(Number(v)) || 0));
 const PATH = /^(?!.*\.\.)(?!.*\/\/)[\w:./-]{1,100}$/;
 export function cleanItem(r) {
@@ -82,6 +88,13 @@ export class World {
     this.c = null; // kết nối của giao dịch đang chạy (chỉ một giao dịch tại một thời điểm)
     this.pending = null;
     this.online = new Map();
+    // 50 tin gần nhất (cũ trước) để GET /state không chạm cơ sở dữ liệu; tải lại mỗi khi có kết nối mới
+    // (khởi động, sau mất kết nối), thêm tin sau mỗi COMMIT. null = chưa tải được.
+    this.recent = null;
+    this.warm = null;
+    this.pruned = 0;
+    this.pruning = null;
+    store.onConnect?.push((c) => this.loadChat(c));
   }
   async all(q, ...a) { return (await this.c.query(q, a)).rows; }
   async one(q, ...a) { return (await this.c.query(q, a)).rows[0]; }
@@ -109,10 +122,18 @@ export class World {
   static async fillOids(c) {
     for (const r of (await c.query('SELECT pid FROM arena WHERE oid IS NULL')).rows) await c.query('UPDATE arena SET oid=$1 WHERE pid=$2', [oidOf(r.pid), r.pid]);
   }
-  /** Dọn dữ liệu cũ (tối đa mỗi giờ một lần): giới hạn tần suất > 1 ngày, người Luận Kiếm chưa từng đấu và vắng > 60 ngày. */
+  /**
+   * Dọn dữ liệu cũ (tối đa mỗi giờ một lần), là một việc riêng trong hàng đợi, xếp trước yêu cầu đã gọi nó.
+   * Chỉ đánh dấu đã dọn khi giao dịch dọn đã COMMIT: lỗi thì yêu cầu sau thử lại (không bỏ dọn cả giờ).
+   */
+  maybePrune(now = Date.now()) {
+    if (this.pruning || now - this.pruned < 3600000) return;
+    this.pruning = this.tx(() => this.prune(Date.now()))
+      .then(() => { this.pruned = now; }, (e) => { if (!e?.busy) logErr('online: prune', e); })
+      .finally(() => { this.pruning = null; });
+  }
+  /** Giới hạn tần suất > 1 ngày, người Luận Kiếm chưa từng đấu và vắng > 60 ngày. */
   async prune(now) {
-    if (now - (this.pruned || 0) < 3600000) return;
-    this.pruned = now;
     await this.run('DELETE FROM rate WHERE t < $1', now - 86400000);
     await this.run('DELETE FROM ipr WHERE w < $1', Math.floor(now / 60000) - 2);
     await this.run('DELETE FROM arena WHERE t < $1 AND wins + losses = 0', now - 60 * 86400000); // chưa từng đấu
@@ -134,11 +155,33 @@ export class World {
   async chatSince(since) {
     return (await this.all('SELECT n,t,name,text,extra FROM chat WHERE n > $1::float8 ORDER BY n DESC LIMIT 50', Number(since) || 0)).reverse();
   }
+  /** Tải 50 tin gần nhất vào bộ nhớ (chạy khi có kết nối mới, ngoài giao dịch, trước mọi việc khác). */
+  async loadChat(c) {
+    const { rows } = await c.query('SELECT n,t,name,text,extra FROM chat ORDER BY n DESC LIMIT 50');
+    this.recent = rows.reverse();
+  }
+  /** Thêm tin đã COMMIT vào bản trong bộ nhớ (bỏ qua nếu bản vừa tải lại đã có). */
+  remember(m) {
+    if (!this.recent) return;
+    if (this.recent.length && this.recent[this.recent.length - 1].n >= m.n) return;
+    this.recent.push(m);
+    if (this.recent.length > 50) this.recent.splice(0, this.recent.length - 50);
+  }
+  /**
+   * GET /state từ bộ nhớ, giống hệt truy vấn chatSince: 50 tin có n lớn nhất trong số n > since đều nằm trong 50 tin
+   * mới nhất. Chưa tải được (chưa từng kết nối) thì chờ một lần kết nối dùng chung; vẫn không được thì lỗi.
+   */
+  async state(since) {
+    if (!this.recent) await (this.warm ??= this.db.run(async () => {}, { tx: false }).catch(() => {}).finally(() => { this.warm = null; }));
+    if (!this.recent) throw new Error('online: chưa tải được kênh thế giới');
+    const s = Number(since) || 0;
+    return [200, { chat: this.recent.filter((m) => m.n > s).slice(-50), online: this.online.size }];
+  }
   async addChat(now, pid, name, text, extra) {
     const { rows } = await this.run('INSERT INTO chat (t,pid,name,text,extra) VALUES ($1,$2,$3,$4,$5) RETURNING n', now, pid, name, text, extra);
     await this.run('DELETE FROM chat WHERE n <= (SELECT MAX(n) FROM chat) - 200');
     const m = { n: rows[0].n, t: now, name, text, extra };
-    this.emit(() => this.onChat(m));
+    this.emit(() => { this.remember(m); this.onChat(m); });
     return m;
   }
   /** Sự kiện chỉ phát sau khi giao dịch đã ghi xong (lỗi giữa chừng => huỷ cả sự kiện). */
@@ -148,12 +191,12 @@ export class World {
    * Chạy fn trong một giao dịch qua hàng đợi: mỗi yêu cầu ghi trọn vẹn hoặc không ghi gì, các yêu cầu chạy lần lượt.
    * Sự kiện chỉ phát khi COMMIT đã thành công.
    */
-  async tx(fn) {
+  async tx(fn, opt) {
     let ev;
     const out = await this.db.run(async (c) => {
       this.c = c; this.pending = [];
       try { const r = await fn(); ev = this.pending; return r; } finally { this.c = null; this.pending = null; }
-    });
+    }, opt);
     this.fire(ev);
     return out;
   }
@@ -163,7 +206,13 @@ export class World {
   async chatWs(pid, name, text, ip) {
     if (!okId(pid)) return [400, { error: 'pid' }];
     this.seen(pid);
-    try { return await this.tx(() => this.chat(pid, name, text, ipKey(ip || ''), Date.now())); } catch (e) { logErr('online: ws chat', e); return [500, { error: 'server' }]; }
+    this.maybePrune();
+    try { return await this.tx(() => this.chat(pid, name, text, ipKey(ip || ''), Date.now())); } catch (e) {
+      if (e?.busy) return [503, { error: 'busy' }];
+      if (e?.unknownCommit) console.error('online: COMMIT quá hạn, không rõ đã ghi chưa: ws chat');
+      else logErr('online: ws chat', e);
+      return [500, { error: 'server' }];
+    }
   }
   async chat(pid, name, text, ip, now) {
     text = clip(text, 140).trim();
@@ -176,27 +225,32 @@ export class World {
 
   /**
    * Xử lý một yêu cầu HTTP. path: đường dẫn (không tiền tố), query: URLSearchParams, body: object (POST) hoặc null,
-   * ip: địa chỉ thật (chưa gộp). Trả về lời hứa [status, dữ liệu JSON].
+   * ip: địa chỉ thật (chưa gộp). gone(): máy khách đã ngắt thì tới lượt không chạy nữa.
+   * Trả về lời hứa [status, dữ liệu JSON]. GET /state không chạm cơ sở dữ liệu (đọc bản trong bộ nhớ).
    */
-  async handle(method, path, query, body, rawIp) {
+  async handle(method, path, query, body, rawIp, { gone } = {}) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
     const p = path, pid = body.pid || query.get('pid');
     const ip = ipKey(rawIp || '');
     this.seen(pid);
     this.sweepOnline();
     try {
+      if (p === '/state') return await this.state(query.get('since') || 0);
+      this.maybePrune();
       // thời điểm lấy khi tới lượt (các yêu cầu chạy lần lượt nên mốc thời gian tăng dần)
-      return await this.tx(() => this.route(p, pid, query, body, ip, Date.now()));
+      return await this.tx(() => this.route(p, pid, query, body, ip, Date.now()), { skip: gone });
     } catch (e) {
-      logErr('online: ' + p, e); // chỉ ghi nhật ký máy chủ, không gửi cho người chơi
+      if (e?.busy) return [503, { error: 'busy' }]; // hàng đợi đầy (Store đã ghi nhật ký, có giới hạn)
+      if (e?.skipped) return [499, { error: 'gone' }]; // máy khách đã ngắt, không ai nhận
+      if (e?.unknownCommit) {
+        // COMMIT quá hạn: không biết món đã bán/bạc đã nhận hay chưa. Chỉ ghi đường dẫn và mã món, không bao giờ ghi pid.
+        const lid = p === '/market/buy' || p === '/market/cancel' ? ' lid=' + (+body.lid | 0) : '';
+        console.error(`online: COMMIT quá hạn, không rõ đã ghi chưa: ${p}${lid}`);
+      } else logErr('online: ' + p, e); // chỉ ghi nhật ký máy chủ, không gửi cho người chơi
       return [500, { error: 'server' }];
     }
   }
   async route(p, pid, query, body, ip, now) {
-    await this.prune(now);
-    if (p === '/state') {
-      return [200, { chat: await this.chatSince(query.get('since') || 0), online: this.online.size }];
-    }
     if (!okId(pid)) return [400, { error: 'pid' }];
     if (p === '/chat') return this.chat(pid, body.name, body.text, ip, now);
     if (p === '/arena/submit') {

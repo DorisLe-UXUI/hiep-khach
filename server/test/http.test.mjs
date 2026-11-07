@@ -189,11 +189,15 @@ test('cơ sở dữ liệu mất kết nối: /healthz 503, yêu cầu 500 serve
     h.db.run = runs;
     assert.equal((await h.post('/chat', { pid: A, name: 'Alpha', text: 'trước' })).s, 200);
     proxy.cut();
+    // /healthz tin vào việc vừa chạy xong cho tới khi máy chủ thấy mất kết nối
+    for (let i = 0; h.db.client && i < 200; i++) await sleep(10);
+    assert.equal(h.db.client, null, 'máy chủ thấy mất kết nối');
     const hz = await h.raw('/healthz');
     assert.equal(hz.status, 503); assert.equal(await hz.text(), 'db');
     assert.deepEqual(await h.post('/chat', { pid: B, name: 'Beta', text: 'trong lúc mất' }), { s: 500, d: { error: 'server' }, cors: '*' });
+    // /state đọc bản trong bộ nhớ: vẫn trả tin đã có, không chạm cơ sở dữ liệu
     const st = await h.get(`/state?pid=${A}`);
-    assert.equal(st.s, 500); assert.deepEqual(st.d, { error: 'server' });
+    assert.equal(st.s, 200); assert.deepEqual(st.d.chat.map((m) => m.text), ['trước']);
     const { connect } = await import('../testing.mjs');
     const w = connect(h); await w.opened; w.send({ t: 'hello', pid: A, since: 0 });
     assert.equal((await w.closed).code, 1011);
