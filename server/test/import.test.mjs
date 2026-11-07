@@ -170,6 +170,20 @@ test('nhập + --verify trên dữ liệu giống thật: khớp từng dòng; s
   await q.end();
 });
 
+test('bộ đếm SQLite trong bản xuất (seq): mã món đã bán trước khi xuất không bị dùng lại', async () => {
+  const pg = await freshDb();
+  const q = await sql(pg);
+  const data = { ...realistic(), seq: [{ name: 'market', seq: 500 }, { name: 'chat', seq: 100 }, { name: 'x', seq: 'bad' }] };
+  await importData(q.client, data);
+  const h = await start({ pg });
+  assert.equal((await h.post('/market/list', { pid: 'zzzzzzzz-9999', name: 'Z', item: { slot: 'ring', name: 'Nhẫn' }, price: 1 })).s, 200);
+  assert.equal((await h.q('SELECT MAX(lid) m FROM market'))[0].m, 501, 'lid tiếp sau bộ đếm cũ (500), không phải 65');
+  await h.post('/chat', { pid: data.arena[0].pid, name: 'Mới', text: 'tin mới' });
+  assert.deepEqual((await h.get('/state?since=260')).d.chat.map((m) => m.n), [261], 'chat: lớn nhất + 1 khi lớn hơn bộ đếm');
+  await h.close();
+  await q.end();
+});
+
 test('prepare: trùng khoá giữ dòng đầu, số quá lớn bị bỏ, oid trong tệp không được tin', () => {
   const { rows, counts } = prepare({
     chat: [{ n: 1, t: 1, pid: A, text: 'a' }, { n: 1, t: 2, pid: B, text: 'b' }, { n: 1e300, t: 1, pid: A, text: 'x' }, { n: 2, t: 1e300, pid: A, text: 'x' }],

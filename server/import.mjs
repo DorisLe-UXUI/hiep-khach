@@ -120,9 +120,16 @@ export async function importData(c, data) {
       if ((await c.query(`SELECT COUNT(*) c FROM ${t}`)).rows[0].c) throw new Error(`cơ sở dữ liệu không rỗng (bảng ${t})`);
     }
     for (const t of IMPORT_TABLES) for (const r of rows[t]) await c.query(INSERT[t], COLS[t].map((k) => r[k]));
-    // n/lid đã chỉ định tay: bộ đếm tự tăng tiếp nối từ lớn nhất + 1 (bảng rỗng thì từ 1)
-    await c.query("SELECT setval(pg_get_serial_sequence('chat', 'n'), COALESCE(MAX(n), 0) + 1, false) FROM chat");
-    await c.query("SELECT setval(pg_get_serial_sequence('market', 'lid'), COALESCE(MAX(lid), 0) + 1, false) FROM market");
+    // n/lid đã chỉ định tay: bộ đếm tự tăng tiếp nối từ lớn nhất + 1 (bảng rỗng thì từ 1). Bản xuất có thể kèm bộ đếm
+    // của SQLite (data.seq = sqlite_sequence): lấy số lớn hơn, để mã món đã bán/đã gỡ trước khi xuất không bị dùng lại.
+    const seqOf = (t) => {
+      const r = (Array.isArray(data.seq) ? data.seq : []).find((x) => x && x.name === t);
+      const v = Math.trunc(Number(r?.seq));
+      return Number.isSafeInteger(v) && v > 0 ? v : 0;
+    };
+    for (const [t, col] of [['chat', 'n'], ['market', 'lid']]) {
+      await c.query(`SELECT setval(pg_get_serial_sequence('${t}', '${col}'), GREATEST(COALESCE(MAX(${col}), 0), $1::bigint) + 1, false) FROM ${t}`, [seqOf(t)]);
+    }
     await c.query('COMMIT');
   } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
   return counts;
