@@ -74,8 +74,14 @@ Object.assign(UI.prototype, {
           if (!f) return;
           const hadProfiles = hasProfiles();
           if (hadProfiles && !window.confirm('Máy này đã có hồ sơ. Nhập bản lưu sẽ ghi đè lên dữ liệu hiện có. Tiếp tục?')) return;
-          const r = await importSaveFile(f, { force: hadProfiles });
-          if (!r.ok) return err(r.error);
+          const r = await importSaveFile(f, {
+            force: hadProfiles,
+            confirmPid: () => window.confirm('Chỉ nhập tệp bản lưu do chính bạn tải về từ trang cũ. Tệp do người khác gửi có thể chiếm bạc bán chợ của bạn. Tiếp tục?'),
+          });
+          if (!r.ok) {
+            if (!r.cancelled) err(r.error);
+            return;
+          }
           queueMovedNotice();
           err('Đã nhập bản lưu. Đang tải lại...');
           setTimeout(() => location.reload(), 700);

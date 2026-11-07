@@ -2,6 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8" />
+<meta name="referrer" content="no-referrer-when-downgrade" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Thiên Kiếm Giang Hồ đã chuyển nhà</title>
 <style>
@@ -28,7 +29,7 @@
   <p><a id="go" href="#">Đi tới trang mới</a></p>
   <p class="small"><a id="dl-mini" href="#">Tải bản lưu</a></p>
   <div id="big" hidden>
-    <p>Bản lưu quá lớn để chuyển tự động. Hãy tải tệp bên dưới rồi nhập lại ở màn đăng nhập của trang mới.</p>
+    <p id="big-msg">Bản lưu quá lớn để chuyển tự động. Hãy tải tệp bên dưới rồi nhập lại ở màn đăng nhập của trang mới.</p>
     <button id="dl" type="button">Tải bản lưu</button>
   </div>
 </main>
@@ -92,6 +93,20 @@
     download();
   };
 
+  function manualMode() {
+    try {
+      if (new URLSearchParams(location.search || '').has('stay')) return true;
+    } catch (e) { /* bỏ qua */ }
+    return /(?:^#|[&#])stay(?:$|[&#])/.test(location.hash || '');
+  }
+
+  function showManual() {
+    document.getElementById('msg').textContent = 'Bạn đang ở chế độ nhập thủ công.';
+    var bigMsg = document.getElementById('big-msg');
+    if (bigMsg) bigMsg.textContent = 'Hãy tải tệp bản lưu bên dưới, mở trang mới rồi chọn "Nhập bản lưu" ở màn đăng nhập.';
+    document.getElementById('big').hidden = false;
+  }
+
   function move(url) {
     try {
       location.replace(url);
@@ -100,6 +115,11 @@
       fallback('Không thể chuyển tự động. Hãy bấm "Tải bản lưu" bên dưới.');
       return false;
     }
+  }
+
+  if (manualMode()) {
+    showManual();
+    return;
   }
 
   if (!Object.keys(keys).length) {

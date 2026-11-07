@@ -12,6 +12,20 @@ const PID_KEY = STORE_PREFIX + 'hk_pid';
 const NOTICE_KEY = STORE_PREFIX + 'hk_moved_notice';
 const LOADING_BACKGROUNDS = ['town', 'bamboo', 'lake', 'valley', 'ice', 'fire'];
 
+/** Trang nhập thủ công của bản cũ (bản dev nằm trong thư mục con /dev/). */
+export function oldManualUrl(prefix = STORE_PREFIX) {
+  return OLD_ORIGIN + '/hiep-khach/' + (prefix === 'dev_' ? 'dev/' : '') + '#stay';
+}
+
+function manualLink(text) {
+  const a = document.createElement('a');
+  a.href = oldManualUrl();
+  a.textContent = text;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  return a;
+}
+
 export function hasProfiles() {
   try {
     const raw = localStorage.getItem(PROFILES_KEY);
@@ -72,7 +86,8 @@ function applyKeys(keys) {
 
 function fromOldSite() {
   try {
-    return new URL(document.referrer).origin === OLD_ORIGIN;
+    const ref = new URL(document.referrer);
+    return ref.origin === OLD_ORIGIN && ref.pathname.startsWith('/hiep-khach/');
   } catch {
     return false;
   }
@@ -103,8 +118,35 @@ export async function importMovedSave() {
   }
 }
 
+function profileList(raw) {
+  try {
+    const list = JSON.parse(raw || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeProfiles(deviceRaw, fileRaw) {
+  const merged = [];
+  const index = new Map();
+  const keyOf = (p) => String(p?.account ?? p?.name ?? '');
+  for (const p of profileList(deviceRaw)) {
+    const k = keyOf(p);
+    if (index.has(k)) continue;
+    index.set(k, merged.length);
+    merged.push(p);
+  }
+  for (const p of profileList(fileRaw)) {
+    const k = keyOf(p);
+    if (index.has(k)) merged[index.get(k)] = p;
+    else { index.set(k, merged.length); merged.push(p); }
+  }
+  return merged;
+}
+
 /** Nhập tệp JSON tải từ trang cũ (nút "Nhập bản lưu" ở màn đăng nhập). */
-export async function importSaveFile(file, { force = false } = {}) {
+export async function importSaveFile(file, { force = false, confirmPid = null } = {}) {
   try {
     if (!file || typeof file.text !== 'function') return { ok: false, error: 'Không đọc được tệp bản lưu.' };
     if (file.size > MAX_TOTAL_BYTES * 2) return { ok: false, error: 'Tệp bản lưu quá lớn.' };
@@ -115,8 +157,20 @@ export async function importSaveFile(file, { force = false } = {}) {
     if (!force && hadProfiles) return { ok: false, error: 'Máy này đã có hồ sơ. Cần xác nhận trước khi ghi đè.' };
     const data = filterPayload(payload, STORE_PREFIX);
     if (!data || !Object.keys(data.keys).length) return { ok: false, error: 'Bản lưu không có dữ liệu phù hợp.' };
-    // ghi đè máy đã có hồ sơ: giữ mã người chơi của máy, không lấy mã trong tệp của người khác
-    if (force && hadProfiles) delete data.keys[PID_KEY];
+    // tệp có mã người chơi mà máy chưa có hồ sơ: cảnh báo có thể là tệp người khác gửi
+    if (!hadProfiles && data.keys[PID_KEY] && typeof confirmPid === 'function') {
+      let yes = false;
+      try { yes = await confirmPid(); } catch { yes = false; }
+      if (!yes) return { ok: false, cancelled: true };
+    }
+    if (force && hadProfiles) {
+      // ghi đè máy đã có hồ sơ: giữ mã người chơi của máy, không lấy mã trong tệp của người khác
+      delete data.keys[PID_KEY];
+      // giữ hồ sơ chỉ có trên máy, cập nhật hồ sơ trùng tài khoản bằng bản trong tệp
+      if (data.keys[PROFILES_KEY] !== undefined) {
+        data.keys[PROFILES_KEY] = JSON.stringify(mergeProfiles(localStorage.getItem(PROFILES_KEY), data.keys[PROFILES_KEY]));
+      }
+    }
     if (!applyKeys(data.keys)) return { ok: false, error: 'Không ghi được bản lưu (bộ nhớ thiết bị có thể đã đầy).' };
     return { ok: true, count: Object.keys(data.keys).length };
   } catch {
@@ -161,7 +215,29 @@ export function showMoveFailedNotice() {
     const el = document.createElement('div');
     el.style.cssText = 'position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:99998;box-sizing:border-box;width:min(460px,92vw);padding:12px 16px;border-radius:8px;background:rgba(32,14,8,.95);color:#f3e6c8;border:1px solid #c96a4a;font:600 14px/1.5 "Noto Serif",serif;box-shadow:0 6px 24px rgba(0,0,0,.5)';
     const text = document.createElement('div');
-    text.textContent = 'Chuyển bản lưu tự động không thành công. Hãy quay lại trang cũ, bấm "Tải bản lưu", rồi vào đây chọn "Nhập bản lưu".';
+    text.appendChild(document.createTextNode('Chuyển bản lưu tự động không thành công. Hãy mở '));
+    text.appendChild(manualLink('trang nhập thủ công của trang cũ'));
+    text.appendChild(document.createTextNode(', bấm "Tải bản lưu", rồi vào đây chọn "Nhập bản lưu".'));
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = 'Đã hiểu';
+    close.style.cssText = 'margin-top:10px;padding:5px 14px;border:1px solid #c9a75a;border-radius:4px;background:transparent;color:#f0c46a;font:600 13px "Noto Serif",serif;cursor:pointer';
+    close.onclick = () => el.remove();
+    el.appendChild(text);
+    el.appendChild(close);
+    document.body.appendChild(el);
+  } catch { /* chỉ là thông báo */ }
+}
+
+/** Thông báo khi máy đã có bản lưu nên không tự nhập từ mảnh URL (không tự gộp). */
+export function showMovedSkippedNotice() {
+  try {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:99998;box-sizing:border-box;width:min(460px,92vw);padding:12px 16px;border-radius:8px;background:rgba(20,24,14,.95);color:#f3e6c8;border:1px solid #c9a75a;font:600 14px/1.5 "Noto Serif",serif;box-shadow:0 6px 24px rgba(0,0,0,.5)';
+    const text = document.createElement('div');
+    text.appendChild(document.createTextNode('Máy này đã có bản lưu tại đây. Để mang bản lưu từ trang cũ sang, hãy mở '));
+    text.appendChild(manualLink('trang nhập thủ công của trang cũ'));
+    text.appendChild(document.createTextNode(', bấm "Tải bản lưu", rồi chọn "Nhập bản lưu" ở màn đăng nhập.'));
     const close = document.createElement('button');
     close.type = 'button';
     close.textContent = 'Đã hiểu';

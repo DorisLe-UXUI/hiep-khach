@@ -6,6 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { registerHooks } from 'node:module';
+import vm from 'node:vm';
 import {
   MAX_ENCODED_CHARS,
   MAX_TOTAL_BYTES,
@@ -28,6 +29,7 @@ registerHooks({
 const move = await import('../../src/move.js');
 
 const pack = (keys, extra = {}) => ({ v: 1, at: 1700000000000, keys, ...extra });
+const OLD_REF = 'https://dorisle-uxui.github.io/hiep-khach/';
 
 function fakeStorage(entries) {
   const map = new Map(Object.entries(entries));
@@ -59,6 +61,20 @@ function localStore(entries = {}, fail = null) {
 function installDom({ hash = '', referrer = '', entries = {}, fail = null } = {}) {
   const storage = localStore(entries, fail);
   const style = {};
+  const created = [];
+  const bodyChildren = [];
+  const node = () => ({
+    style: {},
+    children: [],
+    textContent: '',
+    type: '',
+    href: '',
+    rel: '',
+    target: '',
+    appendChild(child) { this.children.push(child); return child; },
+    append(child) { this.children.push(child); return child; },
+    remove() {},
+  });
   globalThis.__replaced = null;
   globalThis.localStorage = storage;
   globalThis.location = { hash, pathname: '/game', search: '?x=1' };
@@ -66,11 +82,27 @@ function installDom({ hash = '', referrer = '', entries = {}, fail = null } = {}
   globalThis.document = {
     referrer,
     querySelector: (sel) => (sel === '#loading .brand-bg' ? { style } : null),
-    createElement: () => ({ style: {}, textContent: '', type: '', appendChild() {}, append() {}, remove() {}, set onclick(v) {} }),
-    body: { appendChild() {} },
+    createElement: () => { const el = node(); created.push(el); return el; },
+    createTextNode: (text) => ({ nodeType: 3, textContent: String(text) }),
+    body: { appendChild: (el) => { bodyChildren.push(el); return el; } },
   };
   globalThis.requestAnimationFrame = (fn) => fn();
-  return { storage, style };
+  return { storage, style, created, bodyChildren };
+}
+
+function noticeText(el) {
+  if (!el) return '';
+  return (el.textContent || '') + (el.children || []).map(noticeText).join('');
+}
+
+function noticeLink(el) {
+  if (!el) return null;
+  if (el.href) return el;
+  for (const child of el.children || []) {
+    const found = noticeLink(child);
+    if (found) return found;
+  }
+  return null;
 }
 
 
@@ -191,7 +223,7 @@ test('tự nhập bản lưu từ mảnh #hkmove và áp lại nền trang tải
     hkgh_current_v1: 'Khách_ab12',
   });
   const encoded = (await encodePayload(payload)).encoded;
-  const { storage, style } = installDom({ hash: '#hkmove=' + encoded, referrer: 'https://dorisle-uxui.github.io' });
+  const { storage, style } = installDom({ hash: '#hkmove=' + encoded, referrer: OLD_REF });
 
   const r = await move.importMovedSave();
   assert.equal(r.status, 'imported');
@@ -220,7 +252,7 @@ test('không tự nhập lại khi đã có hk_moved hoặc đã có hồ sơ', 
   }))).encoded;
   let { storage } = installDom({
     hash: '#hkmove=' + encoded,
-    referrer: 'https://dorisle-uxui.github.io',
+    referrer: OLD_REF,
     entries: { hk_moved: '1' },
   });
   assert.deepEqual(await move.importMovedSave(), { status: 'skipped' });
@@ -228,7 +260,7 @@ test('không tự nhập lại khi đã có hk_moved hoặc đã có hồ sơ', 
 
   ({ storage } = installDom({
     hash: '#hkmove=' + encoded,
-    referrer: 'https://dorisle-uxui.github.io',
+    referrer: OLD_REF,
     entries: { hkgh_profiles_v1: '[{"account":"old"}]' },
   }));
   assert.deepEqual(await move.importMovedSave(), { status: 'skipped' });
@@ -236,7 +268,7 @@ test('không tự nhập lại khi đã có hk_moved hoặc đã có hồ sơ', 
 });
 
 test('mảnh lỗi hoặc sai nguồn: báo thất bại nhưng vẫn xoá mảnh URL', async () => {
-  let { storage } = installDom({ hash: '#hkmove=bad', referrer: 'https://dorisle-uxui.github.io' });
+  let { storage } = installDom({ hash: '#hkmove=bad', referrer: OLD_REF });
   assert.deepEqual(await move.importMovedSave(), { status: 'failed' });
   assert.deepEqual(storage.dump(), {});
   assert.deepEqual(globalThis.__replaced, [null, '', '/game?x=1']);
@@ -248,14 +280,32 @@ test('mảnh lỗi hoặc sai nguồn: báo thất bại nhưng vẫn xoá mản
   assert.deepEqual(globalThis.__replaced, [null, '', '/game?x=1']);
 });
 
-test('nhập tệp khi máy đã có hồ sơ: giữ hk_pid của máy', async () => {
+test('chỉ nhận referrer từ đúng thư mục /hiep-khach/ của trang cũ', async () => {
+  const encoded = (await encodePayload(pack({ hk_bg: 'lake' }))).encoded;
+  for (const referrer of ['https://dorisle-uxui.github.io/', 'https://dorisle-uxui.github.io/other-repo/']) {
+    const { storage } = installDom({ hash: '#hkmove=' + encoded, referrer });
+    assert.deepEqual(await move.importMovedSave(), { status: 'failed' });
+    assert.equal(storage.dump().hk_bg, undefined);
+    assert.deepEqual(globalThis.__replaced, [null, '', '/game?x=1']);
+  }
+});
+
+test('nhập tệp khi máy đã có hồ sơ: giữ hk_pid của máy và gộp danh sách hồ sơ', async () => {
   const oldPid = '11111111-1111-1111-1111-111111111111';
   const newPid = '22222222-2222-2222-2222-222222222222';
+  const deviceProfiles = [
+    { account: 'old-only', name: 'Old' },
+    { account: 'same', name: 'device' },
+  ];
+  const fileProfiles = [
+    { account: 'same', name: 'file' },
+    { account: 'new', name: 'New' },
+  ];
   const { storage } = installDom({
-    entries: { hkgh_profiles_v1: '[{"account":"old"}]', hkgh_current_v1: 'old', hk_pid: oldPid },
+    entries: { hkgh_profiles_v1: JSON.stringify(deviceProfiles), hkgh_current_v1: 'same', hk_pid: oldPid },
   });
   const payload = pack({
-    hkgh_profiles_v1: '[{"account":"new"}]',
+    hkgh_profiles_v1: JSON.stringify(fileProfiles),
     hkgh_current_v1: 'new',
     hk_pid: newPid,
     'hkgh_save_v1:new': '{}',
@@ -265,9 +315,45 @@ test('nhập tệp khi máy đã có hồ sơ: giữ hk_pid của máy', async (
   assert.equal(r.ok, true);
   const dump = storage.dump();
   assert.equal(dump.hk_pid, oldPid);
-  assert.equal(dump.hkgh_profiles_v1, '[{"account":"new"}]');
   assert.equal(dump.hkgh_current_v1, 'new');
   assert.equal(dump['hkgh_save_v1:new'], '{}');
+  const merged = JSON.parse(dump.hkgh_profiles_v1);
+  assert.deepEqual(merged.map((p) => p.account).sort(), ['new', 'old-only', 'same']);
+  assert.equal(merged.find((p) => p.account === 'old-only').name, 'Old');
+  assert.equal(merged.find((p) => p.account === 'same').name, 'file');
+  assert.equal(merged.find((p) => p.account === 'new').name, 'New');
+});
+
+test('tệp có hk_pid khi máy chưa có hồ sơ: chỉ nhập sau khi xác nhận', async () => {
+  const pid = '33333333-3333-3333-3333-333333333333';
+  const payload = pack({ hk_pid: pid, 'hkgh_save_v1:x': '{}' });
+  const file = { size: 1000, text: async () => JSON.stringify(payload) };
+
+  let { storage } = installDom();
+  let asked = 0;
+  let r = await move.importSaveFile(file, { confirmPid: () => { asked++; return false; } });
+  assert.equal(r.ok, false);
+  assert.equal(r.cancelled, true);
+  assert.equal(asked, 1);
+  assert.deepEqual(storage.dump(), {});
+
+  ({ storage } = installDom());
+  r = await move.importSaveFile(file, { confirmPid: () => { asked++; return true; } });
+  assert.equal(r.ok, true);
+  assert.equal(storage.dump().hk_pid, pid);
+});
+
+test('máy đã có hồ sơ thì không hỏi lại về hk_pid trong tệp', async () => {
+  const { storage } = installDom({ entries: { hkgh_profiles_v1: '[{"account":"old"}]' } });
+  const payload = pack({ hk_pid: '44444444-4444-4444-4444-444444444444' });
+  let asked = false;
+  const r = await move.importSaveFile(
+    { size: 1000, text: async () => JSON.stringify(payload) },
+    { force: true, confirmPid: () => { asked = true; return false; } },
+  );
+  assert.equal(r.ok, true);
+  assert.equal(asked, false);
+  assert.equal(storage.dump().hk_pid, undefined);
 });
 
 test('không ghi đè khi chưa xác nhận', async () => {
@@ -342,4 +428,68 @@ test('make_redirect không thay placeholder nằm trong địa chỉ đích (m�
   const html = fs.readFileSync(out, 'utf8');
   assert.ok(html.includes('var TARGET = "https://example.com/__PREFIX__?x=1";'));
   assert.ok(html.includes('var PREFIX = "dev_";'));
+});
+
+test('thông báo thất bại và bỏ qua có link nhập thủ công đúng bản', () => {
+  assert.equal(move.oldManualUrl(''), 'https://dorisle-uxui.github.io/hiep-khach/#stay');
+  assert.equal(move.oldManualUrl('dev_'), 'https://dorisle-uxui.github.io/hiep-khach/dev/#stay');
+
+  let { created } = installDom();
+  move.showMoveFailedNotice();
+  let link = noticeLink(created[0]);
+  assert.equal(link.href, move.oldManualUrl());
+  assert.match(noticeText(created[0]), /trang nhập thủ công/);
+  assert.match(noticeText(created[0]), /Tải bản lưu/);
+
+  ({ created } = installDom());
+  move.showMovedSkippedNotice();
+  link = noticeLink(created[0]);
+  assert.equal(link.href, move.oldManualUrl());
+  assert.match(noticeText(created[0]), /đã có bản lưu/);
+  assert.match(noticeText(created[0]), /Nhập bản lưu/);
+});
+
+function runRedirect(search, hash) {
+  const out = tmpOut();
+  execFileSync(process.execPath, [SCRIPT, 'https://example.com/', '', out]);
+  const html = fs.readFileSync(out, 'utf8');
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const els = {
+    go: {},
+    msg: { textContent: '' },
+    big: { hidden: true },
+    'big-msg': { textContent: '' },
+    dl: {},
+    'dl-mini': {},
+  };
+  const replaced = [];
+  const sandbox = {
+    document: {
+      getElementById: (id) => els[id],
+      createElement: () => ({ style: {}, click() {}, remove() {} }),
+      body: { appendChild() {} },
+    },
+    localStorage: { length: 0, key: () => null, getItem: () => null },
+    location: { search, hash, replace: (url) => replaced.push(url) },
+    URLSearchParams,
+    setTimeout,
+  };
+  vm.runInNewContext(script, sandbox);
+  return { els, replaced };
+}
+
+test('redirect.html ở #stay hoặc ?stay hiện tải bản lưu, không chuyển hướng', () => {
+  for (const [search, hash] of [['', '#stay'], ['?stay', '']]) {
+    const { els, replaced } = runRedirect(search, hash);
+    assert.deepEqual(replaced, []);
+    assert.equal(els.big.hidden, false);
+    assert.match(els.msg.textContent, /nhập thủ công/);
+    assert.equal(els.go.href, 'https://example.com/');
+  }
+});
+
+test('redirect.html không có #stay/?stay thì vẫn chuyển hướng tự động', () => {
+  const { els, replaced } = runRedirect('', '');
+  assert.deepEqual(replaced, ['https://example.com/']);
+  assert.equal(els.big.hidden, true);
 });
