@@ -3,12 +3,41 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { after } from 'node:test';
+import net from 'node:net';
+import { randomBytes } from 'node:crypto';
 import { start, connect, frames, sleep, tmpDb, closeAll } from '../testing.mjs';
+import { DEFAULTS } from '../server.mjs';
 
 after(closeAll);
 
 const A = 'aaaaaaaa-1111', B = 'bbbbbbbb-2222', C = 'cccccccc-3333';
 const ALL_PIDS = [A, B, C];
+
+/** Máy khách WS thô: bắt tay, gửi được khung văn bản (có mặt nạ) nhưng KHÔNG BAO GIỜ đọc gì từ socket. */
+function rawClient(h, ip) {
+  const sock = net.connect(h.port, '127.0.0.1');
+  sock.on('error', () => {});
+  sock.pause(); // không đọc: dữ liệu máy chủ gửi dồn lại trong bộ đệm
+  sock.write(`GET /ws HTTP/1.1\r\nHost: 127.0.0.1:${h.port}\r\nOrigin: ${h.url}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n`
+    + `Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ${randomBytes(16).toString('base64')}\r\ncf-connecting-ip: ${ip}\r\n\r\n`);
+  const send = (m) => {
+    const p = Buffer.from(JSON.stringify(m)), mask = randomBytes(4);
+    assert.ok(p.length < 126);
+    const f = Buffer.alloc(6 + p.length);
+    f[0] = 0x81; f[1] = 0x80 | p.length; mask.copy(f, 2);
+    for (let i = 0; i < p.length; i++) f[6 + i] = p[i] ^ mask[i & 3];
+    if (!sock.destroyed) sock.write(f);
+  };
+  return { sock, send };
+}
+/** Socket phía máy chủ của người chơi pid còn mở không. */
+const serverHas = (h, pid) => [...h.wss.clients].some((w) => w.hk?.pid === pid && w.readyState === 1);
+/** Mã đóng phía máy chủ của socket người chơi pid. */
+const closeCode = (h, pid) => new Promise((res) => [...h.wss.clients].find((w) => w.hk?.pid === pid).once('close', res));
+const until = async (cond, ms = 5000, what = 'điều kiện') => {
+  const end = Date.now() + ms;
+  while (!cond()) { if (Date.now() > end) throw new Error('quá hạn chờ ' + what); await sleep(20); }
+};
 
 test('hello: trả tin bỏ lỡ + số online; pid sai hoặc chưa chào thì bị ngắt', async () => {
   const h = await start({ dbPath: tmpDb(), helloMs: 300 });
@@ -140,8 +169,38 @@ test('khung quá lớn và gửi dồn dập bị ngắt', async () => {
   await h.close();
 });
 
+test('giới hạn kết nối: mặc định IPv4 64, IPv6 /64 20 và /48 60, tổng 3000', () => {
+  assert.equal(DEFAULTS.wsPerIp, 64); assert.equal(DEFAULTS.wsPer64, 20); assert.equal(DEFAULTS.wsPer48, 60); assert.equal(DEFAULTS.wsMax, 3000);
+  assert.equal(DEFAULTS.wsMaxBuf, 64 * 1024);
+});
+
+test('giới hạn kết nối mỗi khối IPv6 /48 (đổi /64 không vượt được)', async () => {
+  const h = await start({ dbPath: tmpDb(), wsPer64: 2, wsPer48: 3, wsPerIp: 50 });
+  const cs = [];
+  for (const ip of ['2001:db8:5:1::1', '2001:db8:5:1::2', '2001:db8:5:2::1']) { const c = connect(h, { ip }); await c.opened; cs.push(c); }
+  await assert.rejects(connect(h, { ip: '2001:db8:5:1::3' }).opened, { status: 429 }, 'đầy /64');
+  await assert.rejects(connect(h, { ip: '2001:db8:5:3::1' }).opened, { status: 429 }, 'đầy /48 dù /64 mới');
+  await connect(h, { ip: '2001:db8:6:1::1' }).opened; // /48 khác
+  // IPv4 dùng giới hạn riêng (cao hơn, cho NAT nhà mạng)
+  for (let i = 0; i < 6; i++) await connect(h, { ip: i % 2 ? '::FFFF:203.0.113.7' : '203.0.113.7' }).opened; // dạng ::ffff: cũng là IPv4
+  // đóng một kết nối trong /48 thì có chỗ cho /64 khác
+  cs[0].ws.close(); await cs[0].closed; await sleep(50);
+  await connect(h, { ip: '2001:db8:5:3::1' }).opened;
+  await h.close();
+});
+
+test('mọi cách viết của cùng một IPv4 chung một giới hạn', async () => {
+  const h = await start({ dbPath: tmpDb(), wsPerIp: 1, wsPer64: 50, wsPer48: 50 });
+  await connect(h, { ip: '203.0.113.7' }).opened;
+  for (const ip of ['::ffff:cb00:7107', '0:0:0:0:0:ffff:cb00:7107', '::FFFF:203.0.113.7%eth0', '203.0.113.007']) {
+    await assert.rejects(connect(h, { ip }).opened, { status: 429 }, ip);
+  }
+  await connect(h, { ip: '203.0.113.8' }).opened; // IPv4 khác vẫn vào được
+  await h.close();
+});
+
 test('giới hạn kết nối mỗi IP (IPv6 gộp /64) và tổng số', async () => {
-  const h = await start({ dbPath: tmpDb(), wsPerIp: 3, wsMax: 8 });
+  const h = await start({ dbPath: tmpDb(), wsPerIp: 3, wsPer64: 3, wsMax: 8 });
   const ip4 = [];
   for (let i = 0; i < 3; i++) { const c = connect(h, { ip: '203.0.113.5' }); await c.opened; ip4.push(c); }
   await assert.rejects(connect(h, { ip: '203.0.113.5' }).opened, { status: 429 });
@@ -173,6 +232,54 @@ test('ping: socket không đáp bị ngắt; người còn kết nối vẫn đ�
   await sleep(300);
   assert.equal(live.msgs.filter((m) => m.t === 'online').length, after);
   live.ws.close(); late.ws.close();
+  await h.close();
+});
+
+test('máy khách không đọc: dữ liệu chờ gửi vượt 64 KB thì bị ngắt, người đọc bình thường không sao', async () => {
+  // ping thưa, không giới hạn tần suất: chỉ giới hạn bộ đệm mới ngắt được
+  const h = await start({ dbPath: tmpDb(), pingMs: 60000, wsRate: 1e6 });
+  const D = 'dddddddd-4444';
+  const live = connect(h); await live.hello(A);
+  const r = rawClient(h, '198.51.100.20');
+  r.sock.once('connect', () => r.send({ t: 'hello', pid: D, since: 0 }));
+  await until(() => serverHas(h, D), 3000, 'chào');
+  const code = closeCode(h, D);
+  const pinger = setInterval(() => r.send({ t: 'ping' }), 200);
+  try {
+    let n = 0, max = 0;
+    const text = 'x'.repeat(130);
+    // phát tin thế giới theo từng đợt nhỏ (người đọc bình thường kịp đọc giữa các đợt)
+    while (serverHas(h, D) && n < 200000) {
+      for (let i = 0; i < 100; i++, n++) h.world.addChat(Date.now(), B, 'Beta', text + n, '');
+      for (const w of h.wss.clients) if (w.hk?.pid === D) max = Math.max(max, w.bufferedAmount);
+      await sleep(2);
+    }
+    assert.ok(!serverHas(h, D), `máy khách không đọc vẫn mở sau ${n} tin`);
+    assert.equal(await code, 1006, 'bị ngắt thẳng (terminate)');
+    assert.ok(max <= 64 * 1024 + 1024, 'bộ đệm không vượt giới hạn quá một tin: ' + max);
+    // người đọc bình thường vẫn mở và nhận đủ tin cuối
+    await live.next((m) => m.t === 'chat' && m.m.text === text + (n - 1), 5000);
+    assert.equal(live.ws.readyState, 1);
+  } finally { clearInterval(pinger); r.sock.destroy(); }
+  live.ws.close();
+  await h.close();
+});
+
+test('sống chỉ tính theo pong: gửi tin ping đều nhưng không đáp ping giao thức thì vẫn bị ngắt', async () => {
+  const h = await start({ dbPath: tmpDb(), pingMs: 400, wsRate: 1e6 });
+  const D = 'dddddddd-5555';
+  const live = connect(h); await live.hello(A);
+  const r = rawClient(h, '198.51.100.21');
+  r.sock.once('connect', () => r.send({ t: 'hello', pid: D, since: 0 }));
+  await until(() => serverHas(h, D), 3000, 'chào');
+  const code = closeCode(h, D);
+  const pinger = setInterval(() => r.send({ t: 'ping' }), 30);
+  try {
+    await until(() => !serverHas(h, D), 3000, 'ngắt socket không đáp pong');
+    assert.equal(await code, 1006, 'bị ngắt thẳng (terminate)');
+  } finally { clearInterval(pinger); r.sock.destroy(); }
+  assert.equal(live.ws.readyState, 1, 'socket đáp pong vẫn mở');
+  live.ws.close();
   await h.close();
 });
 

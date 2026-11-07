@@ -11,13 +11,30 @@ import { createHash } from 'node:crypto';
 
 export const clip = (s, n) => String(s ?? '').replace(/[<>]/g, '').slice(0, n);
 /** IPv6: một người thường có cả khối /64 => gộp theo /64 để giới hạn theo IP có tác dụng. */
-export const ipKey = (ip) => {
-  if (!ip || !ip.includes(':')) return ip || '';
-  let [head, tail = ''] = ip.toLowerCase().split('::');
+export const ipKey = (ip) => { ip = normIp(ip); return ip.includes(':') ? ipPrefix(ip, 64) : ip; };
+/** Tám nhóm hex của một địa chỉ IPv6 (bỏ zone %eth0; đuôi IPv4 dạng chấm đổi thành hai nhóm). */
+const v6groups = (ip) => {
+  ip = ip.toLowerCase().split('%')[0].replace(/(\d+)\.(\d+)\.(\d+)\.(\d+)$/, (_, a, b, c, d) => ((a << 8) | b).toString(16) + ':' + ((c << 8) | d).toString(16));
+  const [head, tail = ''] = ip.split('::');
   const h = head ? head.split(':') : [], t = tail ? tail.split(':') : [];
   const full = ip.includes('::') ? [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t] : h;
-  return full.slice(0, 4).map((x) => (parseInt(x, 16) || 0).toString(16)).join(':') + '::/64';
+  return full.slice(0, 8).map((x) => parseInt(x, 16) || 0);
 };
+/**
+ * Chuẩn hoá địa chỉ để đếm giới hạn: IPv4 viết dạng IPv6 (::ffff:1.2.3.4, ::ffff:102:304, 0:0:0:0:0:ffff:…) về
+ * IPv4 dạng chấm; IPv4 bỏ số 0 đứng đầu (001.002.003.004 = 1.2.3.4). Không như vậy thì một IPv4 có nhiều cách viết
+ * và vượt được giới hạn theo IP.
+ */
+export const normIp = (ip) => {
+  ip = String(ip || '').trim();
+  if (!ip) return '';
+  if (!ip.includes(':')) return /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) ? ip.split('.').map((x) => +x).join('.') : ip;
+  const g = v6groups(ip);
+  if (g.length === 8 && g.slice(0, 5).every((x) => x === 0) && g[5] === 0xffff) return [g[6] >> 8, g[6] & 255, g[7] >> 8, g[7] & 255].join('.');
+  return ip.toLowerCase().split('%')[0];
+};
+/** Tiền tố IPv6 dài bits (bội của 16), dạng 'a:b:c::/48'. */
+export const ipPrefix = (ip, bits) => v6groups(ip).slice(0, bits / 16).map((x) => x.toString(16)).join(':') + '::/' + bits;
 export const okId = (s) => typeof s === 'string' && /^[a-z0-9-]{8,40}$/i.test(s);
 // Mã người chơi (pid) là bí mật duy nhất chứng minh "đây là tôi" (nhận bạc bán chợ, gỡ món, bảng Luận Kiếm), nên không
 // bao giờ gửi pid của người khác ra ngoài. Người khác chỉ thấy mã công khai oid = băm một chiều của pid
@@ -152,9 +169,12 @@ export class World {
   /** Chạy fn trong một giao dịch: mỗi yêu cầu ghi trọn vẹn hoặc không ghi gì. */
   tx(fn) {
     this.pending = [];
-    this.db.exec('BEGIN IMMEDIATE');
     let out, ev;
-    try { out = fn(); this.db.exec('COMMIT'); ev = this.pending; } catch (e) { try { this.db.exec('ROLLBACK'); } catch { /* đã huỷ */ } throw e; } finally { this.pending = null; }
+    try {
+      // BEGIN nằm trong try: mở giao dịch thất bại (bận, lỗi đĩa) vẫn trả pending về null
+      this.db.exec('BEGIN IMMEDIATE');
+      try { out = fn(); this.db.exec('COMMIT'); ev = this.pending; } catch (e) { try { this.db.exec('ROLLBACK'); } catch { /* đã huỷ */ } throw e; }
+    } finally { this.pending = null; }
     this.fire(ev);
     return out;
   }

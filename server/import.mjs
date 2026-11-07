@@ -1,6 +1,7 @@
 /**
  * Nhập một lần dữ liệu xuất từ Durable Object vào cơ sở dữ liệu MỚI (rỗng).
- *   node import.mjs <export.json> [đường dẫn db]   (mặc định DB_PATH hoặc /data/world.sqlite)
+ *   node import.mjs --i-stopped-the-server <export.json> [đường dẫn db]   (mặc định DB_PATH hoặc /data/world.sqlite)
+ * PHẢI dừng máy chủ (container) trước: không phát hiện được tiến trình khác đang mở cùng tệp, nên bắt buộc có cờ xác nhận.
  * export.json: {arena:[...], chat:[...], market:[...], wallet:[...]}, mỗi dòng là SELECT * của bảng tương ứng.
  * Mọi dòng được kiểm tra/làm sạch theo đúng luật của máy chủ; dòng hỏng bị bỏ và được đếm. Tất cả trong một giao dịch.
  */
@@ -80,8 +81,17 @@ export function importData(db, data) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [file, dbArg] = process.argv.slice(2);
-  if (!file) { console.error('dùng: node import.mjs <export.json> [db]'); process.exit(2); }
+  const FLAG = '--i-stopped-the-server';
+  const argv = process.argv.slice(2);
+  const [file, dbArg] = argv.filter((a) => a !== FLAG);
+  if (!file || !argv.includes(FLAG)) {
+    console.error([
+      'dùng: node import.mjs --i-stopped-the-server <export.json> [db]',
+      'CẢNH BÁO: dừng máy chủ trực tuyến (container) trước khi nhập. Nhập trong lúc máy chủ đang mở cùng tệp cơ sở dữ liệu',
+      'có thể ghi đè hoặc trộn lẫn dữ liệu. Chỉ nhập vào cơ sở dữ liệu rỗng; cờ --i-stopped-the-server xác nhận đã dừng máy chủ.',
+    ].join('\n'));
+    process.exit(2);
+  }
   const dbPath = dbArg || process.env.DB_PATH || '/data/world.sqlite';
   const db = openDb(dbPath);
   try {

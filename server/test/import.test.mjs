@@ -92,8 +92,15 @@ test('import.mjs dòng lệnh: in số đếm, mã lỗi khi db không rỗng', 
   const dbPath = tmpDb();
   const file = path.join(path.dirname(dbPath), 'export.json');
   fs.writeFileSync(file, JSON.stringify(exportData()));
-  const run = () => execFileSync(process.execPath, ['--disable-warning=ExperimentalWarning', path.join(dir, '..', 'import.mjs'), file, dbPath], { encoding: 'utf8', stdio: 'pipe' });
-  const out = JSON.parse(run());
+  const run = (...flags) => execFileSync(process.execPath, ['--disable-warning=ExperimentalWarning', path.join(dir, '..', 'import.mjs'), ...flags, file, dbPath], { encoding: 'utf8', stdio: 'pipe' });
+  // thiếu cờ xác nhận đã dừng máy chủ: in cảnh báo, mã 2, không chạm vào cơ sở dữ liệu
+  assert.throws(() => run(), (e) => e.status === 2 && /dừng máy chủ/.test(e.stderr) && /--i-stopped-the-server/.test(e.stderr));
+  assert.ok(!fs.existsSync(dbPath), 'không tạo cơ sở dữ liệu khi thiếu cờ');
+  const ok = () => run('--i-stopped-the-server');
+  const out = JSON.parse(ok());
   assert.equal(out.arena.ok, 2); assert.equal(out.chat.skipped, 4); assert.equal(out.db, dbPath);
-  assert.throws(run, (e) => e.status === 1 && /không rỗng/.test(e.stderr));
+  assert.throws(ok, (e) => e.status === 1 && /không rỗng/.test(e.stderr));
+  // cờ đặt sau tên tệp cũng nhận
+  assert.throws(() => execFileSync(process.execPath, ['--disable-warning=ExperimentalWarning', path.join(dir, '..', 'import.mjs'), file, dbPath, '--i-stopped-the-server'], { encoding: 'utf8', stdio: 'pipe' }),
+    (e) => e.status === 1 && /không rỗng/.test(e.stderr));
 });

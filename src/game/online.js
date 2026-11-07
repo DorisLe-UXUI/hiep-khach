@@ -1,18 +1,20 @@
 import { LOOKS } from './game.js';
 import { STORE_PREFIX } from '../settings.js';
+import { WsRetry } from './ws_retry.js';
 
 /**
  * Giang hồ trực tuyến: kênh thế giới, Luận Kiếm Đài (đấu với bản chụp nhân vật của người chơi khác), chợ giao dịch.
  * Máy chủ: server/server.mjs (máy chủ riêng, cùng tên miền) hoặc server/worker.js (Cloudflare, bản cũ).
  * Chưa cấu hình địa chỉ thì mọi tính năng báo "máy chủ chưa mở".
  * Máy chủ riêng (base là đường dẫn tương đối như '/online'): kênh thời gian thực WebSocket base + '/ws'
- * (tin thế giới, số người online, báo món chợ đã bán); socket đóng thì quay về hỏi định kỳ /state mỗi 6 giây.
+ * (tin thế giới, số người online, báo món chợ đã bán); socket đóng thì quay về hỏi định kỳ /state mỗi 6 giây
+ * (lần đầu sau 1–6 giây ngẫu nhiên).
  */
 // VITE_ONLINE_URL: bản trên máy chủ riêng dùng '/online' (cùng tên miền với game)
 export const ONLINE_URL = import.meta.env.VITE_ONLINE_URL || 'https://hiep-khach-online.vankhanh-le.workers.dev';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-// kết nối lại: chờ tăng dần 1, 2, 4… giây (tối đa 60) có nhiễu; ẩn trang quá 60 giây thì tạm ngắt
-const WS_MAX_WAIT = 60, HIDDEN_PAUSE = 60000;
+// kết nối lại: xem ws_retry.js; ẩn trang quá 60 giây thì tạm ngắt
+const HIDDEN_PAUSE = 60000;
 const CLS_FOE = { kiem: ['mguard', 'sword'], thuong: ['boss', 'saber'], cung: ['bandit2', 'machete'], phap: ['situ', 'staff'], dao: ['hanxue', 'dagger'] };
 
 export class Online {
@@ -29,7 +31,7 @@ export class Online {
     this.pid = id;
     this.ws = null; // socket thời gian thực (đã chào xong thì this.live = true)
     this.live = false;
-    this.wsTry = 0; // số lần kết nối lại liên tiếp
+    this.retry = new WsRetry();
     this.wsT = 0; // còn bao lâu (giây) mới thử kết nối lại
     this.paused = false;
     this.acks = new Map();
@@ -39,7 +41,7 @@ export class Online {
         clearTimeout(this.hideT);
         if (document.hidden) {
           this.hideT = setTimeout(() => { this.paused = true; this.closeWs(); }, HIDDEN_PAUSE);
-        } else if (this.paused) { this.paused = false; this.wsTry = 0; this.wsT = 0; this.pollT = Math.min(this.pollT, 0.5); }
+        } else if (this.paused) { this.paused = false; this.retry.reset(); this.wsT = 0; this.pollT = Math.min(this.pollT, 0.5); }
       });
     }
   }
@@ -67,25 +69,22 @@ export class Online {
       this.ws = null; this.live = false;
       for (const [, a] of this.acks) { clearTimeout(a.t); a.reject(Object.assign(new Error('closed'), { code: 'closed' })); }
       this.acks.clear();
-      this.pollT = Math.min(this.pollT, 1); // quay về hỏi định kỳ ngay
+      this.pollT = this.retry.pollAfterDrop(this.pollT); // quay về hỏi định kỳ sau 1–6 giây ngẫu nhiên
       this.retryWs();
       try { ws.close(); } catch { /* đã đóng */ }
     };
     const connT = setTimeout(() => { if (!this.live) drop(); }, 15000);
+    this.connT = connT; // xoá khi máy chủ chào lại (onWs 'state')
     ws.onclose = drop;
     ws.onerror = drop;
     this.dropWs = drop;
   }
-  retryWs() {
-    const wait = Math.min(WS_MAX_WAIT, 2 ** this.wsTry);
-    this.wsTry = Math.min(this.wsTry + 1, 10);
-    this.wsT = wait * (0.5 + Math.random() * 0.5);
-  }
+  retryWs() { this.wsT = this.retry.drop(); }
   closeWs() { if (this.ws) this.dropWs?.(); }
   onWs(m) {
     if (!m || typeof m !== 'object') return;
     if (m.t === 'state') {
-      this.live = true; this.wsTry = 0; this.ok = true;
+      clearTimeout(this.connT); this.live = true; this.ok = true; // số lần thử chỉ về 0 khi socket sống đủ lâu (update)
       this.users = +m.online | 0;
       this.addChat(Array.isArray(m.chat) ? m.chat : []);
     } else if (m.t === 'chat' && m.m) this.addChat([m.m]);
@@ -146,6 +145,7 @@ export class Online {
     if (!this.base || this.paused) return;
     if (!this.ws && this.wsUrl && (this.wsT -= dt) <= 0) this.openWs();
     if (this.live) {
+      this.retry.live(dt);
       // socket im lặng quá lâu (mạng rớt mà không báo đóng): hỏi thử, vẫn im thì bỏ và kết nối lại
       this.wsIdle += dt;
       if (this.wsIdle > 30 && !this.wsPinged) { this.wsPinged = true; try { this.ws.send('{"t":"ping"}'); } catch { /* đang đóng */ } }
