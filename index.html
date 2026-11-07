@@ -1,229 +1,153 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Thiên Kiếm Giang Hồ · Thanh Phong Kiếm Ký</title>
-  <link rel="icon" href="./brand/icon.png" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="./brand/apple-touch-icon.png" />
-  <meta name="theme-color" content="#1a120c" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Thiên Kiếm" />
-  <link rel="preload" as="image" href="./brand/logo.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Noto+Serif:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-ZoyyzUiG.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-D5g9LwIg.css">
+<meta charset="utf-8" />
+<meta name="referrer" content="no-referrer-when-downgrade" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Thiên Kiếm Giang Hồ đã chuyển nhà</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: grid; place-items: center; padding: 20px; box-sizing: border-box; text-align: center;
+    background: radial-gradient(ellipse at center, #2a1d13, #0b0805 70%); color: #f0e2c8;
+    font: 16px/1.7 "Noto Serif", Georgia, serif; }
+  .card { width: min(520px, 100%); }
+  .han { font-size: 32px; letter-spacing: .18em; color: #d6b062; opacity: .9; }
+  h1 { margin: 12px 0 10px; font-size: clamp(22px, 5vw, 30px); font-weight: 700; color: #f6e6c0; }
+  p { margin: 8px 0; color: #cbbfa9; }
+  a { color: #f0c46a; }
+  button { margin-top: 14px; padding: 10px 20px; font: 600 15px "Noto Serif", Georgia, serif; color: #1b130c;
+    background: #d6b062; border: 0; border-radius: 4px; cursor: pointer; }
+  button:hover { filter: brightness(1.1); }
+  .small { margin-top: 4px; font-size: 13px; opacity: .85; }
+</style>
 </head>
 <body>
-  <canvas id="game"></canvas>
-  <div id="vignette"></div>
+<main class="card">
+  <div class="han">天劍江湖</div>
+  <h1>Thiên Kiếm Giang Hồ đã chuyển nhà…</h1>
+  <p id="msg">Đang chuyển bản lưu sang địa chỉ mới.</p>
+  <p><a id="go" href="#">Đi tới trang mới</a></p>
+  <p class="small"><a id="dl-mini" href="#">Tải bản lưu</a></p>
+  <div id="big" hidden>
+    <p id="big-msg">Bản lưu quá lớn để chuyển tự động. Hãy tải tệp bên dưới rồi nhập lại ở màn đăng nhập của trang mới.</p>
+    <button id="dl" type="button">Tải bản lưu</button>
+  </div>
+</main>
+<script>
+(function () {
+  var TARGET = "https://hiepkhach.sentrystrategy.com/";
+  var PREFIX = "";
+  var PREFIX_RE = PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var KEY_RE = new RegExp('^' + PREFIX_RE + '(hkgh_[A-Za-z0-9_]+|hk_bg|hk_pid)$');
+  var SAVE_KEY_RE = new RegExp('^' + PREFIX_RE + 'hkgh_save_v1:[^\\u0000-\\u001f]{1,64}$');
+  var MAX_URL = 32000;
+  var MAX = 1.5 * 1024 * 1024;
 
-  <!-- ───────── MÀN TẢI ───────── -->
-  <section id="loading" class="screen">
-    <div class="brand-bg"></div>
-    <script>
-      // tranh vùng lần trước dừng chân (lần đầu: ngẫu nhiên)
-      (function () {
-        var B = ['town', 'bamboo', 'lake', 'valley', 'ice', 'fire'], bg = null;
-        try { bg = localStorage.getItem('hk_bg'); } catch (e) {}
-        if (B.indexOf(bg) < 0) bg = B[Math.floor(Math.random() * B.length)];
-        document.querySelector('#loading .brand-bg').style.backgroundImage = 'url(' + './brand/bg_' + bg + '.jpg)';
-      })();
-    </script>
-    <div class="petals"></div>
-    <div class="load-center">
-      <img class="brand-logo" src="./brand/logo.png" alt="Thiên Kiếm Giang Hồ" />
-      <div class="load-sub"><span class="han">天劍江湖 · 清風劍記</span>Thanh Phong Kiếm Ký</div>
-      <div class="sword-bar"><div class="sword-track"><div id="load-fill"></div></div><div id="load-pct">0%</div></div>
-      <div id="load-text">Đang mài kiếm...</div>
-    </div>
-    <div class="load-tip"><span class="tip-tag">Giang hồ truyền ngôn</span><span id="load-lore"></span></div>
-  </section>
+  var go = document.getElementById('go');
+  go.href = TARGET;
 
-  <!-- ───────── ĐĂNG NHẬP ───────── -->
-  <section id="login" class="screen hidden">
-    <div class="brand-bg"></div>
-    <div class="petals"></div>
-    <img class="login-logo" src="./brand/logo.png" alt="Thiên Kiếm Giang Hồ" />
-    <div class="login-card">
-      <div class="tabs"><button class="tab on" data-tab="in">Đăng nhập</button><button class="tab" data-tab="up">Đăng ký</button></div>
-      <label class="field icon-field"><i data-ico="user"></i><input id="login-acc" maxlength="16" placeholder="Tài khoản" autocomplete="username" /></label>
-      <label class="field icon-field"><i data-ico="lock"></i><input id="login-pass" type="password" maxlength="32" placeholder="Mật khẩu" autocomplete="current-password" /></label>
-      <label class="field icon-field up-only hidden"><i data-ico="lock"></i><input id="login-pass2" type="password" maxlength="32" placeholder="Nhập lại mật khẩu" autocomplete="new-password" /></label>
-      <div class="login-row"><label class="remember"><input type="checkbox" id="login-remember" checked /> Lưu tài khoản</label><span class="muted sm">Lưu trên máy này</span></div>
-      <div id="login-err"></div>
-      <button id="login-go" class="primary">ĐĂNG NHẬP</button>
-      <div class="login-alt">
-        <button id="login-guest" class="alt"><i data-ico="play"></i>Chơi ngay</button>
-        <button class="alt" disabled title="Cần máy chủ đăng nhập"><i data-ico="user"></i>Google</button>
-        <button class="alt" disabled title="Cần máy chủ đăng nhập"><i data-ico="user"></i>Apple</button>
-      </div>
-      <div id="login-profiles"></div>
-    </div>
-  </section>
+  function allowed(k) {
+    if (typeof k !== 'string') return false;
+    if (!KEY_RE.test(k) && !SAVE_KEY_RE.test(k)) return false;
+    return PREFIX ? k.indexOf(PREFIX) === 0 : k.indexOf('dev_') !== 0;
+  }
 
-  <!-- ───────── TẠO / CHỌN NHÂN VẬT ───────── -->
-  <section id="create" class="screen hidden">
-    <div class="cr-head"><span class="han">創角</span><h2 id="cr-title">Chọn môn phái</h2></div>
-    <div class="cr-classes" id="cr-classes"></div>
-    <div class="cr-info" id="cr-info"></div>
-    <div class="cr-custom" id="cr-custom"></div>
-    <div class="cr-bottom">
-      <div class="seg big" id="cr-gender"><button data-g="male" class="on">Nam</button><button data-g="female">Nữ</button></div>
-      <input id="cr-name" maxlength="12" placeholder="Hiệp danh" />
-      <button id="cr-go" class="primary">Tạo nhân vật</button>
-    </div>
-  </section>
+  var keys = {};
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (!allowed(k)) continue;
+      var v = localStorage.getItem(k);
+      if (typeof v === 'string') keys[k] = v;
+    }
+  } catch (e) { /* chế độ riêng tư */ }
 
-  <!-- ───────── MENU CHÍNH ───────── -->
-  <section id="menu" class="screen hidden">
-    <div class="menu-left">
-      <img class="menu-logo" src="./brand/logo.png" alt="Thiên Kiếm Giang Hồ" />
-      <div class="logo-sub"><span class="han">清風劍記</span> Thanh Phong Kiếm Ký</div>
-      <div class="brush"></div>
-      <nav id="menu-buttons">
-        <button data-act="continue" class="mbtn" disabled><span>Tiếp tục</span><small id="continue-info"></small></button>
-        <button data-act="new" class="mbtn" disabled><span>Hành trình mới</span></button>
-        <button data-act="chapters" class="mbtn" disabled><span>Chọn chương</span></button>
-        <button data-act="hero" class="mbtn" disabled><span>Nhân vật</span></button>
-        <button data-act="settings" class="mbtn"><span>Cài đặt</span></button>
-        <button data-act="controls" class="mbtn"><span>Điều khiển</span></button>
-        <button data-act="credits" class="mbtn"><span>Ghi công</span></button>
-      </nav>
-      <div id="menu-profile"></div>
-    </div>
-    <div class="menu-han">天<br />劍<br />江<br />湖<i class="seal">俠客</i></div>
-    <div id="menu-top">
-      <button data-mt="friends" title="Giang hồ bảng"><img src="./assets/ui/friends.png" alt="" /></button>
-      <button data-mt="mail" title="Thư"><img src="./assets/ui/mail.png" alt="" /><i class="dot"></i></button>
-      <button data-mt="gift" title="Phúc lợi"><img src="./assets/ui/gift.png" alt="" /><i class="dot"></i></button>
-      <button data-mt="settings" title="Cài đặt"><img src="./assets/ui/settings.png" alt="" /></button>
-    </div>
-    <div class="menu-quote"><span class="han">劍在人心</span><br />“Kiếm tại nhân tâm.<br />Tâm chính, kiếm chính.”</div>
-  </section>
+  var payload = { v: 1, at: Date.now(), keys: keys };
+  var json = JSON.stringify(payload);
 
-  <!-- ───────── BẢNG PHỤ (dùng chung) ───────── -->
-  <section id="panel" class="modal hidden">
-    <div class="sheet">
-      <header><h2 id="panel-title"></h2><button class="x" data-close>✕</button></header>
-      <div id="panel-body"></div>
-      <footer><button class="ghost" data-close>Quay lại <kbd>Esc</kbd></button></footer>
-    </div>
-  </section>
+  function b64url(bytes) {
+    var bin = '';
+    for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
 
-  <!-- ───────── CHUYỂN CẢNH / DẪN TRUYỆN / THẺ CHƯƠNG ───────── -->
-  <div id="fade"></div>
-  <section id="narration" class="hidden">
-    <div id="narr-text"></div>
-    <div class="hint">Space / Click để tiếp · <kbd>Esc</kbd> bỏ qua</div>
-  </section>
-  <section id="chapter-card" class="hidden">
-    <div class="cc-han" id="cc-han"></div>
-    <div class="cc-title" id="cc-title"></div>
-    <div class="cc-line"></div>
-    <div class="cc-sub" id="cc-sub"></div>
-    <div class="cc-han-sub" id="cc-han-sub"></div>
-  </section>
+  function fallback(msg) {
+    if (msg) document.getElementById('msg').textContent = msg;
+    document.getElementById('big').hidden = false;
+  }
 
-  <!-- ───────── HUD ───────── -->
-  <section id="hud" class="hidden">
-    <div id="hero-frame">
-      <div class="portrait"><img id="hero-portrait" alt="" /></div>
-      <div class="hero-info">
-        <div class="hero-name"><span id="hero-name">Tiêu Vân</span> <span id="hero-title">Bạch Vân đệ tử</span></div>
-        <div class="bar hp"><div class="fill" id="hp"></div><span id="hp-t"></span></div>
-        <div class="bar mp"><div class="fill" id="mp"></div><span id="mp-t"></span></div>
-        <div class="bar st"><div class="fill" id="st"></div></div>
-      </div>
-    </div>
+  function download() {
+    var url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'thien-kiem-giang-ho-ban-luu.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  }
 
-    <div id="skills"></div>
-    <div id="topbar"></div>
-    <div id="rail"></div>
-    <div id="cursor-hint"><kbd>Alt</kbd> hiện chuột để bấm biểu tượng</div>
+  document.getElementById('dl').onclick = download;
+  document.getElementById('dl-mini').onclick = function (e) {
+    e.preventDefault();
+    download();
+  };
 
-    <div id="nav">
-      <canvas id="minimap" width="200" height="200"></canvas>
-      <div id="compass-n">B</div>
-      <div id="objective">
-        <div id="obj-chapter"></div>
-        <div id="obj-text"></div>
-        <div id="obj-dist"></div>
-        <div id="obj-hint"></div>
-      </div>
-    </div>
+  function manualMode() {
+    try {
+      if (new URLSearchParams(location.search || '').has('stay')) return true;
+    } catch (e) { /* bỏ qua */ }
+    return /(?:^#|[&#])stay(?:$|[&#])/.test(location.hash || '');
+  }
 
-    <div id="boss" class="hidden">
-      <div id="boss-name"></div>
-      <div class="boss-track"><div id="boss-lag"></div><div id="boss-hp"></div></div>
-    </div>
+  function showManual() {
+    document.getElementById('msg').textContent = 'Bạn đang ở chế độ nhập thủ công.';
+    var bigMsg = document.getElementById('big-msg');
+    if (bigMsg) bigMsg.textContent = 'Hãy tải tệp bản lưu bên dưới, mở trang mới rồi chọn "Nhập bản lưu" ở màn đăng nhập.';
+    document.getElementById('big').hidden = false;
+  }
 
-    <div id="toasts"></div>
-    <div id="tip" class="hidden"></div>
-    <div id="marker"><div class="arr" id="marker-arr"></div><div class="dia"></div><div class="dist" id="marker-dist"></div></div>
-    <div id="plates"></div>
-    <div id="dmg-layer"></div>
-    <div id="prompt" class="hidden"><kbd>E</kbd><span id="prompt-text"></span></div>
-    <div id="bark" class="hidden"><img id="bark-img" alt="" /><div><b id="bark-name"></b><span id="bark-text"></span></div></div>
-    <div id="crosshair"></div>
-  </section>
+  function move(url) {
+    try {
+      location.replace(url);
+      return true;
+    } catch (e) {
+      fallback('Không thể chuyển tự động. Hãy bấm "Tải bản lưu" bên dưới.');
+      return false;
+    }
+  }
 
-  <!-- ───────── HỘI THOẠI ───────── -->
-  <section id="dialog" class="hidden">
-    <div class="dlg-portrait"><img id="dlg-img" alt="" /></div>
-    <div class="dlg-body">
-      <div id="dlg-name"></div><div id="dlg-han"></div>
-      <div id="dlg-text"></div>
-      <div id="dlg-choices"></div>
-      <div id="dlg-hint">Space / E / Click để tiếp</div>
-    </div>
-  </section>
+  if (manualMode()) {
+    showManual();
+    return;
+  }
 
-  <!-- ───────── BẢN ĐỒ GIANG HỒ ───────── -->
-  <section id="worldmap" class="modal hidden">
-    <div class="map-frame">
-      <div class="map-head"><span class="han">江湖輿圖</span><h2>Bản đồ giang hồ</h2><button class="x" id="map-close">✕</button></div>
-      <div class="map-body">
-        <div class="map-wrap" id="map-wrap">
-          <div id="map-stage"><canvas id="map-canvas" width="1024" height="1024"></canvas><div id="map-labels" class="no-i18n"></div></div>
-          <div class="map-tools"><button id="map-zin" title="Phóng to">＋</button><button id="map-zout" title="Thu nhỏ">－</button><button id="map-me" title="Về vị trí của ta">◎</button><button id="map-all" title="Toàn cảnh">⤢</button></div>
-          <div class="map-info hidden" id="map-info"></div>
-        </div>
-        <aside class="map-side no-i18n" id="map-side"></aside>
-      </div>
-      <div class="map-legend" id="map-legend"></div>
-    </div>
-  </section>
+  if (!Object.keys(keys).length) {
+    move(TARGET);
+    return;
+  }
 
-  <!-- ───────── TẠM DỪNG ───────── -->
-  <section id="pause" class="modal hidden">
-    <div class="pause-box">
-      <div class="seal small">停</div>
-      <div class="han">暫停</div><h2>Tạm dừng</h2>
-      <div id="pause-chapter"></div>
-      <button data-act="resume" class="mbtn"><span>Tiếp tục</span></button>
-      <button data-act="journal" class="mbtn"><span>Nhật ký giang hồ</span></button>
-      <button data-act="map" class="mbtn"><span>Bản đồ giang hồ</span></button>
-      <button data-act="inventory" class="mbtn"><span>Hành trang &amp; võ học</span></button>
-      <button data-act="settings" class="mbtn"><span>Cài đặt</span></button>
-      <button data-act="controls" class="mbtn"><span>Điều khiển</span></button>
-      <button data-act="quit" class="mbtn"><span>Về menu chính</span></button>
-    </div>
-  </section>
+  var bytes = new TextEncoder().encode(json);
+  var write = function (tag, out) {
+    var encoded = tag + '.' + b64url(out);
+    var url = TARGET + '#hkmove=' + encoded;
+    if (encoded.length > MAX || url.length > MAX_URL) return fallback('Bản lưu quá lớn để chuyển tự động.');
+    move(url);
+  };
 
-  <!-- ───────── TỬ TRẬN ───────── -->
-  <section id="death" class="modal hidden">
-    <div class="pause-box">
-      <div class="seal">傷</div><h2 class="red">Trọng thương</h2>
-      <p class="muted">Máu nhuộm áo, nhưng hơi thở vẫn còn...</p>
-      <button data-act="retry" class="mbtn"><span>Vận công tỉnh lại</span></button>
-      <button data-act="quit" class="mbtn"><span>Về menu chính</span></button>
-    </div>
-  </section>
-
+  if (typeof CompressionStream === 'undefined') {
+    write('r', bytes);
+    return;
+  }
+  try {
+    var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    new Response(stream).arrayBuffer().then(function (buf) {
+      write('z', new Uint8Array(buf));
+    }).catch(function () { write('r', bytes); });
+  } catch (e) {
+    write('r', bytes);
+  }
+})();
+</script>
 </body>
 </html>
