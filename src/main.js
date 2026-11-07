@@ -20,7 +20,7 @@ import { CLASSES, defaultHero, heroLook } from './game/classes.js';
 import { CHAPTERS } from './story/chapters.js';
 import { PLACES } from './world/layout.js';
 import { loadSettings, currentProfile, loadSave, saveProfile, logout } from './settings.js';
-import { importMovedSave, showMovedNotice } from './move.js';
+import { importMovedSave, consumeMovedNotice, showMovedNotice, showMoveFailedNotice, showMovedSkippedNotice } from './move.js';
 
 // Bản claude.ai không phục vụ file .glb/.fbx: model được lưu dạng base64 (.b64.txt) và giải mã khi tải.
 if (import.meta.env.VITE_LITE) {
@@ -219,7 +219,10 @@ async function flow() {
   ui.heroName = profile.name;
   showMenu(profile);
   await ui.fade(false);
-  if (movedSave) showMovedNotice();
+  if (movedSave?.status === 'imported') showMovedNotice();
+  else if (movedSave?.status === 'failed') showMoveFailedNotice();
+  else if (movedSave?.status === 'skipped') showMovedSkippedNotice();
+  else if (consumeMovedNotice()) showMovedNotice();
 }
 
 let stage = null; // sân khấu tạo nhân vật (cảnh riêng)
