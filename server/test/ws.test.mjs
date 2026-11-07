@@ -189,6 +189,16 @@ test('giới hạn kết nối mỗi khối IPv6 /48 (đổi /64 không vượt 
   await h.close();
 });
 
+test('mọi cách viết của cùng một IPv4 chung một giới hạn', async () => {
+  const h = await start({ dbPath: tmpDb(), wsPerIp: 1, wsPer64: 50, wsPer48: 50 });
+  await connect(h, { ip: '203.0.113.7' }).opened;
+  for (const ip of ['::ffff:cb00:7107', '0:0:0:0:0:ffff:cb00:7107', '::FFFF:203.0.113.7%eth0', '203.0.113.007']) {
+    await assert.rejects(connect(h, { ip }).opened, { status: 429 }, ip);
+  }
+  await connect(h, { ip: '203.0.113.8' }).opened; // IPv4 khác vẫn vào được
+  await h.close();
+});
+
 test('giới hạn kết nối mỗi IP (IPv6 gộp /64) và tổng số', async () => {
   const h = await start({ dbPath: tmpDb(), wsPerIp: 3, wsPer64: 3, wsMax: 8 });
   const ip4 = [];

@@ -74,6 +74,7 @@ export class Online {
       try { ws.close(); } catch { /* đã đóng */ }
     };
     const connT = setTimeout(() => { if (!this.live) drop(); }, 15000);
+    this.connT = connT; // xoá khi máy chủ chào lại (onWs 'state')
     ws.onclose = drop;
     ws.onerror = drop;
     this.dropWs = drop;
@@ -83,7 +84,7 @@ export class Online {
   onWs(m) {
     if (!m || typeof m !== 'object') return;
     if (m.t === 'state') {
-      this.live = true; this.ok = true; // số lần thử chỉ về 0 khi socket sống đủ lâu (update)
+      clearTimeout(this.connT); this.live = true; this.ok = true; // số lần thử chỉ về 0 khi socket sống đủ lâu (update)
       this.users = +m.online | 0;
       this.addChat(Array.isArray(m.chat) ? m.chat : []);
     } else if (m.t === 'chat' && m.m) this.addChat([m.m]);

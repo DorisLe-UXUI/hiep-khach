@@ -11,7 +11,7 @@ import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { World, ipPrefix, okId } from './world.mjs';
+import { World, ipPrefix, normIp, okId } from './world.mjs';
 
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' };
 const JSON_HEAD = { 'content-type': 'application/json; charset=utf-8', ...CORS };
@@ -41,8 +41,7 @@ export function openDb(dbPath) {
 /** IP thật: Caddy luôn ghi đè Cf-Connecting-Ip; không có (gọi thẳng) thì dùng địa chỉ kết nối. */
 const realIp = (req) => {
   const h = req.headers['cf-connecting-ip'];
-  const ip = (typeof h === 'string' && h.trim()) || req.socket.remoteAddress || '';
-  return /^::ffff:\d+\.\d+\.\d+\.\d+$/i.test(ip) ? ip.slice(7) : ip; // IPv4 viết dạng IPv6
+  return normIp((typeof h === 'string' && h.trim()) || req.socket.remoteAddress || ''); // mọi cách viết của một IPv4 về một dạng
 };
 
 /** Kiểm tra Origin khi nâng cấp WS: có danh sách thì phải khớp đúng; không có thì chỉ nhận cùng máy (Origin khớp Host). */
@@ -62,7 +61,8 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
   // mọi lần gửi đều qua đây: máy khách chậm/không đọc làm dữ liệu dồn lại thì ngắt thay vì đệm mãi
   const put = (ws, s) => {
     if (ws.readyState !== 1) return;
-    if (ws.bufferedAmount > o.wsMaxBuf) return ws.terminate();
+    // tính cả tin sắp gửi: không cho vượt rồi nằm lì tới lượt ping sau
+    if (ws.bufferedAmount + Buffer.byteLength(s) > o.wsMaxBuf) return ws.terminate();
     ws.send(s);
   };
   const sendAll = (msg) => { const s = JSON.stringify(msg); for (const ws of wss.clients) if (ws.hk?.pid) put(ws, s); };
