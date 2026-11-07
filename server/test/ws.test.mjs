@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { after } from 'node:test';
 import net from 'node:net';
 import { randomBytes } from 'node:crypto';
-import { start, connect, frames, sleep, tmpDb, closeAll } from '../testing.mjs';
+import { start, connect, frames, sleep, closeAll } from '../testing.mjs';
 import { DEFAULTS } from '../server.mjs';
 
 after(closeAll);
@@ -40,7 +40,7 @@ const until = async (cond, ms = 5000, what = 'điều kiện') => {
 };
 
 test('hello: trả tin bỏ lỡ + số online; pid sai hoặc chưa chào thì bị ngắt', async () => {
-  const h = await start({ dbPath: tmpDb(), helloMs: 300 });
+  const h = await start({ helloMs: 300 });
   await h.post('/chat', { pid: B, name: 'Beta', text: 'trước' });
   await h.post('/chat', { pid: C, name: 'Gamma', text: 'sau' });
   const a = connect(h);
@@ -73,7 +73,7 @@ test('hello: trả tin bỏ lỡ + số online; pid sai hoặc chưa chào thì 
 });
 
 test('đẩy tin: chat qua WS và qua HTTP tới mọi người, cùng giới hạn như POST /chat', async () => {
-  const h = await start({ dbPath: tmpDb() });
+  const h = await start();
   const a = connect(h), b = connect(h);
   await a.hello(A); await b.hello(B);
   a.send({ t: 'chat', text: 'chào <b>mọi người</b>', name: 'Alpha<', r: 7 });
@@ -97,7 +97,7 @@ test('đẩy tin: chat qua WS và qua HTTP tới mọi người, cùng giới h�
   assert.equal((await a.next((m) => m.t === 'chat' && m.m.text === 'từ http')).m.name, 'Gamma');
   await b.next((m) => m.t === 'chat' && m.m.text === 'từ http');
   // giới hạn theo IP của chat cũng áp cho WS: 60 tin/phút mỗi IP
-  h.db.prepare("INSERT OR REPLACE INTO ipr (ip,k,w,n) VALUES ('198.51.100.9','chat',?,60)").run(Math.floor(Date.now() / 60000));
+  await h.q("INSERT INTO ipr (ip,k,w,n) VALUES ('198.51.100.9','chat',$1,60) ON CONFLICT (ip,k) DO UPDATE SET w=EXCLUDED.w, n=EXCLUDED.n", Math.floor(Date.now() / 60000));
   const d = connect(h, { ip: '198.51.100.9' }); await d.hello('dddddddd-4444');
   d.send({ t: 'chat', text: 'bị chặn', r: 1 });
   assert.equal((await d.next((m) => m.t === 'ack')).error, 'slow');
@@ -105,8 +105,22 @@ test('đẩy tin: chat qua WS và qua HTTP tới mọi người, cùng giới h�
   await h.close();
 });
 
+test('chào rồi gửi tin ngay: trạng thái đầu tới trước, rồi ack, không nhận tin đẩy trước trạng thái đầu', async () => {
+  const h = await start();
+  const a = connect(h); await a.opened;
+  a.send({ t: 'hello', pid: A, since: 0 });
+  a.send({ t: 'chat', text: 'ngay', r: 1 });
+  await a.next((m) => m.t === 'ack');
+  const types = a.msgs.map((m) => m.t);
+  assert.equal(types[0], 'state', JSON.stringify(a.msgs));
+  assert.ok(types.indexOf('ack') > 0);
+  await a.next((m) => m.t === 'chat' && m.m.text === 'ngay');
+  a.ws.close();
+  await h.close();
+});
+
 test('tin Luận Kiếm được đẩy với extra=arena', async () => {
-  const h = await start({ dbPath: tmpDb() });
+  const h = await start();
   const w = connect(h); await w.hello(C);
   for (const [pid, name] of [[A, 'Alpha'], [B, 'Beta']]) await h.post('/arena/submit', { pid, name, cls: 'kiem', level: 10, power: 500, snap: { hp: 100, atk: 10 } });
   const beta = (await h.get(`/arena/opponents?pid=${A}`)).d.list.find((o) => o.name === 'Beta');
@@ -118,7 +132,7 @@ test('tin Luận Kiếm được đẩy với extra=arena', async () => {
 });
 
 test('sold chỉ gửi tới các socket của người bán', async () => {
-  const h = await start({ dbPath: tmpDb() });
+  const h = await start();
   const s1 = connect(h), s2 = connect(h), buyer = connect(h), other = connect(h);
   await s1.hello(A); await s2.hello(A); await buyer.hello(B); await other.hello(C);
   assert.equal((await h.post('/market/list', { pid: A, name: 'Alpha', item: { slot: 'ring', name: 'Nhẫn' }, price: 100 })).s, 200);
@@ -129,7 +143,7 @@ test('sold chỉ gửi tới các socket của người bán', async () => {
   await sleep(200);
   assert.ok(!buyer.msgs.some((m) => m.t === 'sold')); assert.ok(!other.msgs.some((m) => m.t === 'sold'));
   // huỷ rao thì không báo bán
-  h.db.prepare('DELETE FROM rate').run(); // qua giãn cách rao bán
+  await h.q('DELETE FROM rate'); // qua giãn cách rao bán
   assert.equal((await h.post('/market/list', { pid: A, name: 'Alpha', item: { slot: 'ring', name: 'Nhẫn 2' }, price: 100 })).s, 200);
   const lid2 = (await h.get(`/market?pid=${A}`)).d.list[0].lid;
   assert.equal((await h.post('/market/cancel', { pid: A, lid: lid2 })).s, 200);
@@ -140,13 +154,13 @@ test('sold chỉ gửi tới các socket của người bán', async () => {
 });
 
 test('Origin: mặc định chỉ cùng máy; ALLOWED_ORIGINS thì phải khớp đúng', async () => {
-  const h = await start({ dbPath: tmpDb() });
+  const h = await start();
   await connect(h).opened; // Origin = http://127.0.0.1:<port>, khớp Host
   await assert.rejects(connect(h, { origin: 'https://evil.example' }).opened, { status: 403 });
   await assert.rejects(connect(h, { origin: '' }).opened, { status: 403 });
   await assert.rejects(connect(h, { origin: 'null' }).opened, { status: 403 });
   await h.close();
-  const h2 = await start({ dbPath: tmpDb(), allowedOrigins: ['https://game.example'] });
+  const h2 = await start({ allowedOrigins: ['https://game.example'] });
   await connect(h2, { origin: 'https://game.example' }).opened;
   await assert.rejects(connect(h2).opened, { status: 403 }); // cùng máy nhưng không trong danh sách
   await assert.rejects(connect(h2, { origin: 'https://game.example.evil' }).opened, { status: 403 });
@@ -157,7 +171,7 @@ test('Origin: mặc định chỉ cùng máy; ALLOWED_ORIGINS thì phải khớp
 });
 
 test('khung quá lớn và gửi dồn dập bị ngắt', async () => {
-  const h = await start({ dbPath: tmpDb(), wsRate: 10, wsRateWindow: 10000 });
+  const h = await start({ wsRate: 10, wsRateWindow: 10000 });
   const big = connect(h); await big.hello(A);
   big.send(JSON.stringify({ t: 'chat', text: 'x'.repeat(5000) }));
   assert.equal((await big.closed).code, 1009);
@@ -175,7 +189,7 @@ test('giới hạn kết nối: mặc định IPv4 64, IPv6 /64 20 và /48 60, t
 });
 
 test('giới hạn kết nối mỗi khối IPv6 /48 (đổi /64 không vượt được)', async () => {
-  const h = await start({ dbPath: tmpDb(), wsPer64: 2, wsPer48: 3, wsPerIp: 50 });
+  const h = await start({ wsPer64: 2, wsPer48: 3, wsPerIp: 50 });
   const cs = [];
   for (const ip of ['2001:db8:5:1::1', '2001:db8:5:1::2', '2001:db8:5:2::1']) { const c = connect(h, { ip }); await c.opened; cs.push(c); }
   await assert.rejects(connect(h, { ip: '2001:db8:5:1::3' }).opened, { status: 429 }, 'đầy /64');
@@ -190,7 +204,7 @@ test('giới hạn kết nối mỗi khối IPv6 /48 (đổi /64 không vượt 
 });
 
 test('mọi cách viết của cùng một IPv4 chung một giới hạn', async () => {
-  const h = await start({ dbPath: tmpDb(), wsPerIp: 1, wsPer64: 50, wsPer48: 50 });
+  const h = await start({ wsPerIp: 1, wsPer64: 50, wsPer48: 50 });
   await connect(h, { ip: '203.0.113.7' }).opened;
   for (const ip of ['::ffff:cb00:7107', '0:0:0:0:0:ffff:cb00:7107', '::FFFF:203.0.113.7%eth0', '203.0.113.007']) {
     await assert.rejects(connect(h, { ip }).opened, { status: 429 }, ip);
@@ -200,7 +214,7 @@ test('mọi cách viết của cùng một IPv4 chung một giới hạn', async
 });
 
 test('giới hạn kết nối mỗi IP (IPv6 gộp /64) và tổng số', async () => {
-  const h = await start({ dbPath: tmpDb(), wsPerIp: 3, wsPer64: 3, wsMax: 8 });
+  const h = await start({ wsPerIp: 3, wsPer64: 3, wsMax: 8 });
   const ip4 = [];
   for (let i = 0; i < 3; i++) { const c = connect(h, { ip: '203.0.113.5' }); await c.opened; ip4.push(c); }
   await assert.rejects(connect(h, { ip: '203.0.113.5' }).opened, { status: 429 });
@@ -217,7 +231,7 @@ test('giới hạn kết nối mỗi IP (IPv6 gộp /64) và tổng số', async
 });
 
 test('ping: socket không đáp bị ngắt; người còn kết nối vẫn được tính online; số online được đẩy khi đổi', async () => {
-  const h = await start({ dbPath: tmpDb(), pingMs: 100, onlineMs: 60 });
+  const h = await start({ pingMs: 100, onlineMs: 60 });
   const live = connect(h); await live.hello(A);
   const dead = connect(h, { autoPong: false }); await dead.hello(B);
   const code = (await dead.closed).code;
@@ -237,7 +251,7 @@ test('ping: socket không đáp bị ngắt; người còn kết nối vẫn đ�
 
 test('máy khách không đọc: dữ liệu chờ gửi vượt 64 KB thì bị ngắt, người đọc bình thường không sao', async () => {
   // ping thưa, không giới hạn tần suất: chỉ giới hạn bộ đệm mới ngắt được
-  const h = await start({ dbPath: tmpDb(), pingMs: 60000, wsRate: 1e6 });
+  const h = await start({ pingMs: 60000, wsRate: 1e6 });
   const D = 'dddddddd-4444';
   const live = connect(h); await live.hello(A);
   const r = rawClient(h, '198.51.100.20');
@@ -248,9 +262,10 @@ test('máy khách không đọc: dữ liệu chờ gửi vượt 64 KB thì bị
   try {
     let n = 0, max = 0;
     const text = 'x'.repeat(130);
-    // phát tin thế giới theo từng đợt nhỏ (người đọc bình thường kịp đọc giữa các đợt)
+    // phát tin thế giới theo từng đợt nhỏ (người đọc bình thường kịp đọc giữa các đợt); gọi thẳng đường phát tin
+    // (onChat, như sau COMMIT của addChat) để không phải ghi hàng chục nghìn dòng vào cơ sở dữ liệu
     while (serverHas(h, D) && n < 200000) {
-      for (let i = 0; i < 100; i++, n++) h.world.addChat(Date.now(), B, 'Beta', text + n, '');
+      for (let i = 0; i < 100; i++, n++) h.world.onChat({ n: n + 1, t: Date.now(), name: 'Beta', text: text + n, extra: '' });
       for (const w of h.wss.clients) if (w.hk?.pid === D) max = Math.max(max, w.bufferedAmount);
       await sleep(2);
     }
@@ -266,7 +281,7 @@ test('máy khách không đọc: dữ liệu chờ gửi vượt 64 KB thì bị
 });
 
 test('sống chỉ tính theo pong: gửi tin ping đều nhưng không đáp ping giao thức thì vẫn bị ngắt', async () => {
-  const h = await start({ dbPath: tmpDb(), pingMs: 400, wsRate: 1e6 });
+  const h = await start({ pingMs: 400, wsRate: 1e6 });
   const D = 'dddddddd-5555';
   const live = connect(h); await live.hello(A);
   const r = rawClient(h, '198.51.100.21');
@@ -284,7 +299,7 @@ test('sống chỉ tính theo pong: gửi tin ping đều nhưng không đáp pi
 });
 
 test('dừng êm: socket nhận mã 1001', async () => {
-  const h = await start({ dbPath: tmpDb() });
+  const h = await start();
   const a = connect(h); await a.hello(A);
   await h.close();
   assert.equal((await a.closed).code, 1001);
