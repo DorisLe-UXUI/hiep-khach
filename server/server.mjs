@@ -1,17 +1,21 @@
 /**
- * Máy chủ trực tuyến tự chạy (Node + node:sqlite + ws), thay cho Cloudflare Worker.
+ * Máy chủ trực tuyến tự chạy (Node + PostgreSQL + ws), thay cho Cloudflare Worker.
  * - HTTP: đúng các đường dẫn cũ của worker.js (/state, /chat, /arena/*, /market*), cùng hình dạng phản hồi.
- * - /healthz: kiểm tra sống.
+ * - /healthz: kiểm tra sống; 503 khi cơ sở dữ liệu không trả lời (healthcheck của Docker thấy được). Có việc chạy xong
+ *   trên cơ sở dữ liệu trong 10 giây qua thì trả 200 ngay, không xếp hàng sau các yêu cầu khác.
+ * - Bớt tải trước cơ sở dữ liệu (giới hạn trong cơ sở dữ liệu vẫn là giới hạn chính): mỗi IP một xô thẻ cho HTTP và tối
+ *   đa httpPerIp việc đang chờ (429 'slow'); hàng đợi đầy thì 503 'busy' ngay; yêu cầu mà máy khách đã ngắt thì không
+ *   chạy; GET /state đọc từ bộ nhớ; chat WS mỗi socket cách nhau 2 giây (ack 'slow' không chạm cơ sở dữ liệu).
  * - /ws: kênh thời gian thực. Trình duyệt gửi {t:'hello', pid, since} trước tiên (pid không bao giờ nằm trên URL),
  *   máy chủ trả {t:'state', chat, online}; sau đó đẩy {t:'chat', m}, {t:'online', n}, {t:'sold'} (chỉ cho người bán).
  *   Trình duyệt gửi được {t:'chat', text, name?, r?} (trả {t:'ack', r, ok|error}) và {t:'ping'} (trả {t:'pong'}).
  * Đứng sau Caddy: Caddy ghi đè Cf-Connecting-Ip bằng IP thật, chặn POST khác nguồn, giới hạn thân 16 KB.
  */
 import http from 'node:http';
-import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { World, ipPrefix, normIp, okId } from './world.mjs';
+import { World, ipPrefix, ipKey, normIp, okId, logErr, clip } from './world.mjs';
+import { Store, createSchema, pgConfig, describe } from './db.mjs';
 
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' };
 const JSON_HEAD = { 'content-type': 'application/json; charset=utf-8', ...CORS };
@@ -29,14 +33,17 @@ export const DEFAULTS = {
   helloMs: 10000, // phải chào trong thời gian này
   pingMs: 25000, // máy chủ ping, ai không đáp ở lượt sau bị ngắt
   onlineMs: 5000, // đẩy số người online tối đa mỗi 5 giây (chỉ khi đổi)
+  dbRetryMs: 1000, // kết nối cơ sở dữ liệu thất bại: trong khoảng này mọi yêu cầu trả 500 ngay, sau đó thử lại
+  dbMax: 2000, // số việc chờ tối đa trong hàng đợi cơ sở dữ liệu; quá thì 503 'busy'
+  httpBurst: 60, // xô thẻ HTTP mỗi IP (IPv6 theo /64): rộng tay vì nhà mạng di động để nhiều người chung một IP
+  httpRate: 20, // thẻ nạp lại mỗi giây
+  httpPerIp: 20, // số yêu cầu HTTP của một IP đang chờ/chạy trong hàng đợi cơ sở dữ liệu
+  wsChatMs: 2000, // chat WS: mỗi socket cách nhau tối thiểu (trước khi hỏi cơ sở dữ liệu; luật 2 giây theo người vẫn ở đó)
+  healthOkMs: 10000, // /healthz: có việc chạy xong trong khoảng này thì khoẻ, khỏi ping
 };
 
-/** Mở cơ sở dữ liệu với chế độ ghi phù hợp cho một tiến trình. */
-export function openDb(dbPath) {
-  const db = new DatabaseSync(dbPath);
-  db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=2000;');
-  return db;
-}
+/** Mở kho dữ liệu: mỗi kết nối mới tạo bảng (nếu chưa có) và điền mã công khai còn thiếu. */
+export const openStore = (cfg, opt = {}) => new Store(cfg, { ...opt, setup: async (c) => { await createSchema(c); await World.fillOids(c); } });
 
 /** IP thật: Caddy luôn ghi đè Cf-Connecting-Ip; không có (gọi thẳng) thì dùng địa chỉ kết nối. */
 const realIp = (req) => {
@@ -52,9 +59,10 @@ export function originOk(req, allowed) {
   try { return new URL(o).host === String(req.headers.host || '').toLowerCase(); } catch { return false; }
 }
 
-export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = [], ...opt } = {}) {
+/** pg: cấu hình kết nối (mặc định pgConfig() từ biến môi trường); db: Store có sẵn (bài kiểm tra). */
+export function createServer({ pg = null, db = null, allowedOrigins = [], ...opt } = {}) {
   const o = { ...DEFAULTS, ...opt };
-  db ??= openDb(dbPath);
+  db ??= openStore(pg ?? pgConfig(), { retryMs: o.dbRetryMs, max: o.dbMax });
   const byPid = new Map(); // pid -> Set<ws> (để báo đã bán)
   const perIp = new Map(); // IPv4 hoặc tiền tố IPv6 (/64, /48) -> số kết nối
   let total = 0; // tổng số kết nối (kể cả đang nâng cấp)
@@ -65,10 +73,12 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
     if (ws.bufferedAmount + Buffer.byteLength(s) > o.wsMaxBuf) return ws.terminate();
     ws.send(s);
   };
-  const sendAll = (msg) => { const s = JSON.stringify(msg); for (const ws of wss.clients) if (ws.hk?.pid) put(ws, s); };
+  // chỉ gửi cho socket đã nhận trạng thái đầu (tin đến trước đó đã nằm trong trạng thái đầu)
+  const sendAll = (msg) => { const s = JSON.stringify(msg); for (const ws of wss.clients) if (ws.hk?.ready) put(ws, s); };
   const world = new World(db, {
     onChat: (m) => sendAll({ t: 'chat', m }),
-    onSold: (pid) => { for (const ws of byPid.get(pid) || []) put(ws, '{"t":"sold"}'); },
+    // socket chưa nhận trạng thái đầu: giữ lại báo bán, gửi ngay sau 'state' (trạng thái đầu luôn là tin đầu tiên)
+    onSold: (pid) => { for (const ws of byPid.get(pid) || []) { if (ws.hk.ready) put(ws, '{"t":"sold"}'); else ws.hk.sold = true; } },
   });
   const wss = new WebSocketServer({ noServer: true, maxPayload: o.wsMaxMsg, perMessageDeflate: false, clientTracking: true });
 
@@ -78,15 +88,62 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
     res.writeHead(status, data === null ? CORS : JSON_HEAD);
     res.end(data === null ? undefined : JSON.stringify(data));
   };
+  let health = null;
+  // xô thẻ theo IP (IPv6 gộp /64): key -> {n: số thẻ, at: lần nạp}; dọn xô đã đầy lại định kỳ
+  const buckets = new Map();
+  const take = (k, now = Date.now()) => {
+    let b = buckets.get(k);
+    if (!b) buckets.set(k, (b = { n: o.httpBurst, at: now }));
+    else { b.n = Math.min(o.httpBurst, b.n + ((now - b.at) / 1000) * o.httpRate); b.at = now; }
+    if (b.n < 1) return false;
+    b.n--;
+    return true;
+  };
+  const queued = new Map(); // key IP -> số yêu cầu đang chờ/chạy trong hàng đợi cơ sở dữ liệu
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || '/', 'http://online.local');
-    if (url.pathname === '/healthz') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('ok'); }
+    if (url.pathname === '/healthz') {
+      req.resume();
+      const reply = (ok) => {
+        if (res.headersSent || res.destroyed) return;
+        res.writeHead(ok ? 200 : 503, { 'content-type': 'text/plain' }); res.end(ok ? 'ok' : 'db');
+      };
+      // có việc vừa chạy xong: khoẻ, không xếp hàng sau (có thể tới hàng nghìn) yêu cầu khác
+      if (db.fresh(o.healthOkMs)) return reply(true);
+      // các lần kiểm tra cùng lúc dùng chung một truy vấn: /healthz dồn dập chỉ chiếm một chỗ trong hàng đợi
+      health ??= db.ping().finally(() => { health = null; });
+      return health.then(reply);
+    }
     if (req.method === 'OPTIONS') return send(res, 200, null);
-    const finish = (raw) => {
+    const ip = realIp(req), key = ipKey(ip);
+    // bỏ thân yêu cầu bị từ chối (đọc bỏ, có giới hạn) để kết nối giữ lại dùng tiếp được
+    const refuse = (status, error) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD' && +req.headers['content-length'] > o.maxBody) res.setHeader('connection', 'close');
+      send(res, status, { error });
+      let size = 0;
+      req.on('data', (c) => { size += c.length; if (size > o.maxBody) req.destroy(); });
+      req.on('error', () => {});
+      req.resume();
+    };
+    if (!take(key)) return refuse(429, 'slow');
+    const isState = url.pathname === '/state'; // không vào hàng đợi cơ sở dữ liệu
+    if (!isState && (queued.get(key) || 0) >= o.httpPerIp) return refuse(429, 'slow');
+    if (!isState && db.full()) return refuse(503, 'busy'); // từ chối trước khi đọc thân; nhật ký có giới hạn
+    let held = false;
+    const hold = () => { held = true; queued.set(key, (queued.get(key) || 0) + 1); };
+    const release = () => { if (!held) return; held = false; const n = queued.get(key) - 1; if (n > 0) queued.set(key, n); else queued.delete(key); };
+    // máy khách ngắt trước khi có trả lời: việc còn trong hàng đợi thì tới lượt bỏ qua
+    let gone = false, running = false;
+    res.on('close', () => { if (!res.writableFinished) gone = true; if (!running) release(); });
+    if (!isState) hold();
+    const finish = async (raw) => {
       let body = null;
       if (req.method === 'POST') { try { body = JSON.parse(raw); } catch { body = null; } }
-      const [s, d] = world.handle(req.method, url.pathname, url.searchParams, body, realIp(req));
-      send(res, s, d);
+      running = true;
+      try {
+        const [s, d] = await world.handle(req.method, url.pathname, url.searchParams, body, ip, { gone: () => gone });
+        send(res, s, d);
+      } finally { running = false; release(); }
     };
     if (req.method === 'GET' || req.method === 'HEAD') { req.resume(); return finish(''); }
     if (+req.headers['content-length'] > o.maxBody) { res.setHeader('connection', 'close'); send(res, 413, { error: 'too large' }); return req.destroy(); }
@@ -133,7 +190,7 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
   });
 
   function onConn(ws, rawIp) {
-    const hk = (ws.hk = { pid: null, alive: true, n: 0, w: Date.now() });
+    const hk = (ws.hk = { pid: null, ready: false, alive: true, n: 0, w: Date.now() });
     const helloT = setTimeout(() => { if (!hk.pid) ws.close(4001, 'hello'); }, o.helloMs);
     const out = (m) => put(ws, JSON.stringify(m));
     // sống = có đáp ping của giao thức; tin nhắn đến không tính (gửi được mà không đọc thì vẫn là chết)
@@ -159,15 +216,24 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
         let set = byPid.get(hk.pid); if (!set) byPid.set(hk.pid, (set = new Set()));
         set.add(ws);
         world.seen(hk.pid);
-        return out({ t: 'state', chat: world.chatSince(m.since), online: world.onlineCount() });
+        // đọc qua hàng đợi; tin gửi sau lời chào xếp hàng phía sau nên luôn trả lời sau trạng thái đầu
+        world.hello(m.since).then((chat) => {
+          out({ t: 'state', chat, online: world.onlineCount() });
+          hk.ready = true;
+          if (hk.sold) { hk.sold = false; out({ t: 'sold' }); }
+        }, (e) => { if (!e?.busy) logErr('online: ws hello', e); ws.close(1011, 'server'); }); // máy khách tự kết nối lại
+        return;
       }
       world.seen(hk.pid);
       if (m.t === 'ping') return out({ t: 'pong' });
       if (m.t === 'chat') {
         const r = Number.isInteger(m.r) && m.r >= 0 && m.r < 1e9 ? m.r : undefined;
-        if (typeof m.text !== 'string' || (m.name != null && typeof m.name !== 'string')) return out({ t: 'ack', r, error: 'empty' });
-        const [s, d] = world.chatWs(hk.pid, m.name, m.text, rawIp);
-        return out(s === 200 ? { t: 'ack', r, ok: true } : { t: 'ack', r, error: d.error });
+        if (typeof m.text !== 'string' || (m.name != null && typeof m.name !== 'string') || !clip(m.text, 140).trim()) return out({ t: 'ack', r, error: 'empty' });
+        // giãn cách theo socket trong bộ nhớ: gửi dồn không tốn lượt cơ sở dữ liệu nào
+        if (now - (hk.chatAt || 0) < o.wsChatMs) return out({ t: 'ack', r, error: 'slow' });
+        hk.chatAt = now;
+        world.chatWs(hk.pid, m.name, m.text, rawIp).then(([s, d]) => out(s === 200 ? { t: 'ack', r, ok: true } : { t: 'ack', r, error: d.error }));
+        return;
       }
       if (m.t === 'hello') return; // chào lại: bỏ qua
       ws.close(4002, 'type');
@@ -189,16 +255,22 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
     const n = world.onlineCount();
     if (n !== lastOnline) { lastOnline = n; sendAll({ t: 'online', n }); }
   }, o.onlineMs);
-  pingT.unref(); onlineT.unref();
+  // xô đã nạp đầy lại thì như chưa từng có: bỏ đi để bảng không lớn mãi
+  const bucketT = setInterval(() => {
+    const now = Date.now(), full = (o.httpBurst / o.httpRate) * 1000;
+    for (const [k, b] of buckets) if (now - b.at >= full) buckets.delete(k);
+  }, 10000);
+  pingT.unref(); onlineT.unref(); bucketT.unref();
 
   let closing = null;
   /** Dừng êm: báo các socket, đóng HTTP, đóng cơ sở dữ liệu. */
   const close = () => (closing ??= new Promise((resolve) => {
-    clearInterval(pingT); clearInterval(onlineT);
+    clearInterval(pingT); clearInterval(onlineT); clearInterval(bucketT);
     for (const ws of wss.clients) ws.close(1001, 'restart');
     const force = setTimeout(() => { for (const ws of wss.clients) ws.terminate(); server.closeAllConnections(); }, 5000);
     force.unref();
-    server.close(() => { clearTimeout(force); wss.close(); try { db.close(); } catch { /* đã đóng */ } resolve(); });
+    // HTTP đóng xong (mọi yêu cầu đã trả lời) mới đóng cơ sở dữ liệu; db.close() chờ hàng đợi chạy hết
+    server.close(() => { clearTimeout(force); wss.close(); db.close().catch(() => {}).then(resolve); });
     server.closeIdleConnections();
   }));
   return { server, wss, world, db, close };
@@ -206,10 +278,14 @@ export function createServer({ dbPath = ':memory:', db = null, allowedOrigins = 
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const PORT = Number(process.env.PORT || 8787);
-  const DB_PATH = process.env.DB_PATH || '/data/world.sqlite';
   const allowedOrigins = String(process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const h = createServer({ dbPath: DB_PATH, allowedOrigins });
-  h.server.listen(PORT, '0.0.0.0', () => console.log(`online: :${PORT} db=${DB_PATH} origins=${allowedOrigins.join(',') || '(cùng máy)'}`));
+  let pg;
+  try { pg = pgConfig(); } catch (e) { console.error('online:', e.message); process.exit(1); }
+  if (process.env.PGPASSWORD) console.error('online: bỏ qua biến PGPASSWORD, mật khẩu chỉ đọc từ PGPASSWORD_FILE');
+  const h = createServer({ pg, allowedOrigins });
+  h.server.listen(PORT, '0.0.0.0', () => console.log(`online: :${PORT} db=${describe(pg)} origins=${allowedOrigins.join(',') || '(cùng máy)'}`));
+  // kết nối sớm để nhật ký báo ngay nếu cơ sở dữ liệu chưa sẵn sàng (máy chủ vẫn chạy, /healthz trả 503 tới khi kết nối được)
+  h.db.ping().then((ok) => console.log(ok ? 'online: cơ sở dữ liệu sẵn sàng' : 'online: chưa kết nối được cơ sở dữ liệu, sẽ thử lại'));
   const stop = () => { console.log('online: dừng'); h.close().then(() => process.exit(0)); setTimeout(() => process.exit(0), 10000).unref(); };
   process.on('SIGTERM', stop); process.on('SIGINT', stop);
 }

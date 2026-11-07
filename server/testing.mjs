@@ -1,21 +1,78 @@
 // Tiện ích chung cho các bài kiểm tra (test/*.test.mjs): dựng máy chủ thật trên cổng ngẫu nhiên, gọi HTTP và WS.
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+// Cần PostgreSQL thật (test/run.sh dựng một container tạm): PGHOST, PGPORT, PGUSER, PGDATABASE, PGPASSWORD_FILE.
+// Mỗi bài kiểm tra dùng một cơ sở dữ liệu mới, rỗng (CREATE DATABASE hk_t_<ngẫu nhiên>).
+import net from 'node:net';
+import { randomBytes } from 'node:crypto';
 import WebSocket from 'ws';
 import { createServer } from './server.mjs';
+import { connectClient, readPassword } from './db.mjs';
 
-export const tmpDb = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hk-online-')), 'w.sqlite');
+/** Cấu hình tới cơ sở dữ liệu quản trị (biến môi trường của run.sh). */
+export const baseCfg = () => ({
+  host: process.env.PGHOST || '127.0.0.1',
+  port: Number(process.env.PGPORT || 5432),
+  user: process.env.PGUSER || 'postgres',
+  database: process.env.PGDATABASE || 'postgres',
+  password: () => readPassword(process.env.PGPASSWORD_FILE || '/run/secrets/pg_password'),
+});
+
+/** Tạo một cơ sở dữ liệu rỗng mới; trả về cấu hình kết nối tới nó. Tên chỉ gồm chữ hex ngẫu nhiên. */
+export async function freshDb() {
+  const database = 'hk_t_' + randomBytes(6).toString('hex');
+  const admin = await connectClient(baseCfg());
+  try { await admin.query(`CREATE DATABASE ${database}`); } finally { await admin.end(); }
+  return { ...baseCfg(), database };
+}
+
+const clients = new Set();
+/** Kết nối phụ để bài kiểm tra đọc/sửa thẳng cơ sở dữ liệu: q(sql, ...tham số) => rows. */
+export async function sql(cfg) {
+  const c = await connectClient(cfg);
+  const q = async (text, ...a) => (await c.query(text, a)).rows;
+  clients.add(c);
+  q.end = () => { clients.delete(c); return c.end().catch(() => {}); };
+  q.client = c;
+  return q;
+}
+
+/**
+ * Proxy TCP giữa máy chủ và PostgreSQL để giả lập mất cơ sở dữ liệu: cut() cắt mọi kết nối và từ chối kết nối mới,
+ * restore() cho kết nối lại.
+ */
+export async function pgProxy(cfg) {
+  const socks = new Set();
+  let down = false;
+  const srv = net.createServer((s) => {
+    if (down) return s.destroy();
+    const u = net.connect(cfg.port, cfg.host);
+    socks.add(s); socks.add(u);
+    const kill = () => { s.destroy(); u.destroy(); socks.delete(s); socks.delete(u); };
+    s.on('error', kill); u.on('error', kill); s.on('close', kill); u.on('close', kill);
+    s.pipe(u); u.pipe(s);
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  return {
+    cfg: { ...cfg, host: '127.0.0.1', port: srv.address().port },
+    cut() { down = true; for (const s of socks) s.destroy(); socks.clear(); },
+    restore() { down = false; },
+    close() { this.cut(); return new Promise((r) => srv.close(r)); },
+  };
+}
 
 const open = new Set();
-/** Dọn mọi máy chủ còn mở (kể cả khi bài kiểm tra hỏng giữa chừng). */
-export const closeAll = () => Promise.all([...open].map((h) => h.close()));
+/** Dọn mọi máy chủ và kết nối phụ còn mở (kể cả khi bài kiểm tra hỏng giữa chừng, nếu không tiến trình không thoát). */
+export const closeAll = () => Promise.all([...[...open].map((h) => h.close()), ...[...clients].map((c) => c.end().catch(() => {}))]);
 
+/** opt.pg: cấu hình cơ sở dữ liệu (mặc định một cơ sở dữ liệu mới). h.q(sql, ...): truy vấn thẳng cơ sở dữ liệu đó. */
 export async function start(opt = {}) {
+  if (!opt.pg && !opt.db) opt = { ...opt, pg: await freshDb() };
   const h = createServer(opt);
   open.add(h);
+  h.pg = opt.pg;
+  let q = null;
+  h.q = async (text, ...a) => { q ??= await sql(opt.pg); return q(text, ...a); };
   const close = h.close;
-  h.close = () => { open.delete(h); return close(); };
+  h.close = async () => { open.delete(h); await close(); await q?.end(); };
   await new Promise((r) => h.server.listen(0, '127.0.0.1', r));
   h.port = h.server.address().port;
   h.url = `http://127.0.0.1:${h.port}`;

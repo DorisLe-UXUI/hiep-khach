@@ -1,15 +1,22 @@
 /**
- * Logic máy chủ trực tuyến của Thiên Kiếm Giang Hồ trên Node (node:sqlite), chuyển từ server/worker.js
+ * Logic máy chủ trực tuyến của Thiên Kiếm Giang Hồ trên Node + PostgreSQL, chuyển từ server/worker.js
  * (Cloudflare Worker + Durable Object) và giữ nguyên hành vi, bảng dữ liệu, hình dạng phản hồi của mọi đường dẫn.
  * - Kênh thế giới: 100 tin gần nhất.
  * - Luận Kiếm Đài (PvP bất đồng bộ): bản chụp nhân vật, điểm Elo.
  * - Chợ giao dịch: rao bán trang bị, bạc chờ người bán nhận.
- * Mọi thao tác chạy đồng bộ (SQLite đồng bộ, Node đơn luồng) nên mỗi yêu cầu là trọn vẹn, giống Durable Object.
+ * Mỗi yêu cầu chạy trọn trong một giao dịch, các yêu cầu chạy lần lượt trên một kết nối (db.mjs), giống Durable Object.
  * Sự kiện cho kênh thời gian thực: onChat(m) khi có tin mới, onSold(pid) khi món của người bán được mua.
  */
 import { createHash } from 'node:crypto';
 
-export const clip = (s, n) => String(s ?? '').replace(/[<>]/g, '').slice(0, n);
+/**
+ * Cắt chuỗi còn n đơn vị UTF-16 mà vẫn hợp lệ: cắt trúng giữa một cặp thay thế (emoji…) thì bỏ nửa đầu còn sót, nửa lẻ
+ * khác (nếu có) thành U+FFFD. Không làm vậy thì PostgreSQL lưu U+FFFD, tin đẩy qua WS khác tin đã lưu và --verify báo sai.
+ * Máy chủ và công cụ nhập cùng dùng hàm này nên làm sạch giống hệt nhau.
+ */
+export const cut = (s, n) => s.slice(0, n).replace(/[\uD800-\uDBFF]$/, '').toWellFormed();
+// bỏ cả ký tự NUL: cột TEXT của PostgreSQL không nhận \0 (SQLite thì nhận), giữ lại thì yêu cầu lỗi 500
+export const clip = (s, n) => cut(String(s ?? '').replace(/[<>\0]/g, ''), n);
 /** IPv6: một người thường có cả khối /64 => gộp theo /64 để giới hạn theo IP có tác dụng. */
 export const ipKey = (ip) => { ip = normIp(ip); return ip.includes(':') ? ipPrefix(ip, 64) : ip; };
 /** Tám nhóm hex của một địa chỉ IPv6 (bỏ zone %eth0; đuôi IPv4 dạng chấm đổi thành hai nhóm). */
@@ -42,7 +49,7 @@ export const okId = (s) => typeof s === 'string' && /^[a-z0-9-]{8,40}$/i.test(s)
 export const oidOf = (pid) => createHash('sha256').update('hk-oid:' + pid).digest('hex').slice(0, 16);
 // Trang bị rao bán: chỉ nhận đúng định dạng món của game
 const SLOTS = ['weapon', 'helm', 'armor', 'belt', 'boots', 'ring', 'trinket'], STATS = ['atk', 'hp', 'mp', 'def', 'crit', 'spd'];
-export const txt = (v, n) => String(v ?? '').replace(/[<>&"'`\\]/g, '').slice(0, n);
+export const txt = (v, n) => cut(String(v ?? '').replace(/[<>&"'`\\]/g, ''), n);
 export const int = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.trunc(Number(v)) || 0));
 const PATH = /^(?!.*\.\.)(?!.*\/\/)[\w:./-]{1,100}$/;
 export function cleanItem(r) {
@@ -66,78 +73,71 @@ export const cleanSnap = (s) => {
   return JSON.stringify({ hp: +s.hp | 0, atk: +s.atk | 0, def: Math.min(0.7, +s.def || 0), crit: Math.min(0.8, +s.crit || 0), adv: +s.adv | 0, faction: clip(s.faction, 8), title: clip(s.title, 20), weapon: clip(s.weapon, 30) });
 };
 
-const SCHEMA = `CREATE TABLE IF NOT EXISTS chat (n INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER, pid TEXT, name TEXT, text TEXT, extra TEXT);
-  CREATE TABLE IF NOT EXISTS arena (pid TEXT PRIMARY KEY, name TEXT, cls TEXT, level INTEGER, power INTEGER, rating INTEGER, wins INTEGER, losses INTEGER, snap TEXT, t INTEGER);
-  CREATE TABLE IF NOT EXISTS market (lid INTEGER PRIMARY KEY AUTOINCREMENT, pid TEXT, name TEXT, item TEXT, price INTEGER, t INTEGER);
-  CREATE TABLE IF NOT EXISTS wallet (pid TEXT PRIMARY KEY, gold INTEGER, sold TEXT);
-  CREATE TABLE IF NOT EXISTS rate (pid TEXT, k TEXT, t INTEGER, PRIMARY KEY (pid, k));
-  CREATE TABLE IF NOT EXISTS ipr (ip TEXT, k TEXT, w INTEGER, n INTEGER, PRIMARY KEY (ip, k));`;
 const ONLINE_MAX = 5000, ONLINE_TTL = 60000;
+/** Ghi lỗi gọn: chỉ mã và thông điệp (lỗi pg còn có detail chứa giá trị dữ liệu, không ghi ra nhật ký). */
+export const logErr = (where, e) => console.error(where, e?.code ? `[${e.code}]` : '', e?.message ?? String(e));
+/** Mã công khai hợp lệ (do oidOf tạo). Chuỗi khác không thể khớp, khỏi hỏi cơ sở dữ liệu. */
+const okOid = (s) => /^[0-9a-f]{16}$/.test(s);
 
 export class World {
-  /** db: DatabaseSync đã mở. */
-  constructor(db, { onChat = () => {}, onSold = () => {} } = {}) {
-    this.db = db;
+  /** store: Store của db.mjs (một kết nối, hàng đợi lần lượt). */
+  constructor(store, { onChat = () => {}, onSold = () => {} } = {}) {
+    this.db = store;
     this.onChat = onChat;
     this.onSold = onSold;
-    this.st = new Map();
-    db.exec(SCHEMA);
-    // cột mã công khai cho bảng Luận Kiếm (dữ liệu cũ được điền ở lần khởi động)
-    if (!this.all('PRAGMA table_info(arena)').some((c) => c.name === 'oid')) {
-      // một lần, cùng lúc thêm cột: làm sạch dữ liệu do máy chủ cũ lưu nguyên (món chợ, tên trong danh sách đã bán,
-      // tin nhắn tự gắn cờ hệ thống) để không còn gửi lại nội dung độc cho người chơi dùng bản game cũ
-      for (const r of this.all('SELECT lid,item,name FROM market')) {
-        const c = safeItem(r.item);
-        if (c) this.run('UPDATE market SET item=?, name=? WHERE lid=?', JSON.stringify(c), clip(r.name, 16), r.lid);
-        else this.run('DELETE FROM market WHERE lid=?', r.lid);
-      }
-      for (const w of this.all('SELECT pid,sold FROM wallet')) {
-        let sold = []; try { sold = JSON.parse(w.sold || '[]'); } catch { /* hỏng */ }
-        this.run('UPDATE wallet SET sold=? WHERE pid=?', JSON.stringify(cleanSold(sold)), w.pid);
-      }
-      this.run("UPDATE chat SET extra='' WHERE pid<>'system'");
-      // thêm cột SAU CÙNG: nếu bị ngắt giữa chừng thì lần khởi động sau dọn lại (dọn lại nhiều lần vẫn an toàn)
-      this.run('ALTER TABLE arena ADD COLUMN oid TEXT');
-    }
-    db.exec(`CREATE INDEX IF NOT EXISTS arena_oid ON arena (oid);
-      CREATE INDEX IF NOT EXISTS arena_rating ON arena (rating);`);
-    this.fillOids();
+    this.c = null; // kết nối của giao dịch đang chạy (chỉ một giao dịch tại một thời điểm)
+    this.pending = null;
     this.online = new Map();
+    // 50 tin gần nhất (cũ trước) để GET /state không chạm cơ sở dữ liệu; tải lại mỗi khi có kết nối mới
+    // (khởi động, sau mất kết nối), thêm tin sau mỗi COMMIT. null = chưa tải được.
+    this.recent = null;
+    this.warm = null;
+    this.pruned = 0;
+    this.pruning = null;
+    store.onConnect?.push((c) => this.loadChat(c));
   }
-  stmt(q) { let s = this.st.get(q); if (!s) this.st.set(q, (s = this.db.prepare(q))); return s; }
-  all(q, ...a) { return this.stmt(q).all(...a); }
-  one(q, ...a) { return this.stmt(q).get(...a); }
-  run(q, ...a) { return this.stmt(q).run(...a); }
+  async all(q, ...a) { return (await this.c.query(q, a)).rows; }
+  async one(q, ...a) { return (await this.c.query(q, a)).rows[0]; }
+  run(q, ...a) { return this.c.query(q, a); }
 
   /** Chặn gửi quá nhanh: mỗi loại thao tác cách nhau ms. */
-  slow(pid, k, ms) {
-    const now = Date.now(), r = this.one('SELECT t FROM rate WHERE pid=? AND k=?', pid, k);
+  async slow(pid, k, ms) {
+    const now = Date.now(), r = await this.one('SELECT t FROM rate WHERE pid=$1 AND k=$2', pid, k);
     if (r && now - r.t < ms) return true;
-    this.run('INSERT OR REPLACE INTO rate (pid,k,t) VALUES (?,?,?)', pid, k, now);
+    await this.run('INSERT INTO rate (pid,k,t) VALUES ($1,$2,$3) ON CONFLICT (pid,k) DO UPDATE SET t=EXCLUDED.t', pid, k, now);
     return false;
   }
   /** Giới hạn theo địa chỉ IP: tối đa n lần mỗi phút (đếm theo phút vì nhà mạng di động để nhiều người chung một IP). */
-  ipLimit(ip, k, n) {
+  async ipLimit(ip, k, n) {
     if (!ip) return false;
-    const now = Date.now(), w = Math.floor(now / 60000), r = this.one('SELECT w,n FROM ipr WHERE ip=? AND k=?', ip, k);
+    const now = Date.now(), w = Math.floor(now / 60000), r = await this.one('SELECT w,n FROM ipr WHERE ip=$1 AND k=$2', ip, k);
     const used = r && r.w === w ? r.n : 0;
     if (used >= n) return true;
-    this.run('INSERT OR REPLACE INTO ipr (ip,k,w,n) VALUES (?,?,?,?)', ip, k, w, used + 1);
+    await this.run('INSERT INTO ipr (ip,k,w,n) VALUES ($1,$2,$3,$4) ON CONFLICT (ip,k) DO UPDATE SET w=EXCLUDED.w, n=EXCLUDED.n', ip, k, w, used + 1);
     return false;
   }
   /** Giãn cách theo IP cho một việc cụ thể (vd. cùng một IP dìm điểm cùng một người). */
-  slowIp(ip, k, ms) { return !!ip && this.slow('ip:' + ip, k, ms); }
-  /** Điền mã công khai cho dòng cũ / dòng nhập vào (băm đồng bộ nên không cần chờ). */
-  fillOids() {
-    for (const r of this.all('SELECT pid FROM arena WHERE oid IS NULL')) this.run('UPDATE arena SET oid=? WHERE pid=?', oidOf(r.pid), r.pid);
+  async slowIp(ip, k, ms) { return !!ip && this.slow('ip:' + ip, k, ms); }
+  /** Điền mã công khai cho dòng thiếu (dòng ghi tay / dữ liệu cũ); chạy mỗi khi có kết nối mới. */
+  static async fillOids(c) {
+    for (const r of (await c.query('SELECT pid FROM arena WHERE oid IS NULL')).rows) await c.query('UPDATE arena SET oid=$1 WHERE pid=$2', [oidOf(r.pid), r.pid]);
   }
-  /** Dọn dữ liệu cũ (tối đa mỗi giờ một lần): giới hạn tần suất > 1 ngày, người Luận Kiếm chưa từng đấu và vắng > 60 ngày. */
-  prune(now) {
-    if (now - (this.pruned || 0) < 3600000) return;
-    this.pruned = now;
-    this.run('DELETE FROM rate WHERE t < ?', now - 86400000);
-    this.run('DELETE FROM ipr WHERE w < ?', Math.floor(now / 60000) - 2);
-    this.run('DELETE FROM arena WHERE t < ? AND wins + losses = 0', now - 60 * 86400000); // chưa từng đấu
+  /**
+   * Dọn dữ liệu cũ (tối đa mỗi giờ một lần), là một việc riêng trong hàng đợi, xếp trước yêu cầu đã gọi nó.
+   * Chỉ đánh dấu đã dọn khi giao dịch dọn đã COMMIT: lỗi thì yêu cầu sau thử lại (không bỏ dọn cả giờ).
+   */
+  maybePrune(now = Date.now()) {
+    if (this.pruning || now - this.pruned < 3600000) return;
+    this.pruning = this.tx(() => this.prune(Date.now()))
+      // lỗi: thử lại sau 60 giây (không phải ngay yêu cầu sau), để lỗi lặp lại không chiếm hàng đợi liên tục
+      .then(() => { this.pruned = now; }, (e) => { this.pruned = now - 3600000 + 60000; if (!e?.busy) logErr('online: prune', e); })
+      .finally(() => { this.pruning = null; });
+  }
+  /** Giới hạn tần suất > 1 ngày, người Luận Kiếm chưa từng đấu và vắng > 60 ngày. */
+  async prune(now) {
+    await this.run('DELETE FROM rate WHERE t < $1', now - 86400000);
+    await this.run('DELETE FROM ipr WHERE w < $1', Math.floor(now / 60000) - 2);
+    await this.run('DELETE FROM arena WHERE t < $1 AND wins + losses = 0', now - 60 * 86400000); // chưa từng đấu
   }
 
   /** Ghi nhận một người đang online (qua HTTP hoặc WS); giới hạn kích thước vì mã tự đặt được. */
@@ -152,109 +152,148 @@ export class World {
   /** Số người khác nhau thấy trong 60 giây qua. */
   onlineCount(now = Date.now()) { this.sweepOnline(now, true); return this.online.size; }
 
-  /** Tin gần nhất sau mốc since (tối đa 50, cũ trước). Không có pid. */
-  chatSince(since) {
-    return this.all('SELECT n,t,name,text,extra FROM chat WHERE n>? ORDER BY n DESC LIMIT 50', Number(since) || 0).reverse().map((r) => ({ ...r }));
+  /** Tin gần nhất sau mốc since (tối đa 50, cũ trước). Không có pid. since so sánh dạng số thực (như SQLite). */
+  async chatSince(since) {
+    return (await this.all('SELECT n,t,name,text,extra FROM chat WHERE n > $1::float8 ORDER BY n DESC LIMIT 50', Number(since) || 0)).reverse();
   }
-  addChat(now, pid, name, text, extra) {
-    const { lastInsertRowid } = this.run('INSERT INTO chat (t,pid,name,text,extra) VALUES (?,?,?,?,?)', now, pid, name, text, extra);
-    this.run('DELETE FROM chat WHERE n <= (SELECT MAX(n) FROM chat) - 200');
-    const m = { n: Number(lastInsertRowid), t: now, name, text, extra };
-    this.emit(() => this.onChat(m));
+  /** Tải 50 tin gần nhất vào bộ nhớ (chạy khi có kết nối mới, ngoài giao dịch, trước mọi việc khác). */
+  async loadChat(c) {
+    const { rows } = await c.query('SELECT n,t,name,text,extra FROM chat ORDER BY n DESC LIMIT 50');
+    this.recent = rows.reverse();
+  }
+  /** Thêm tin đã COMMIT vào bản trong bộ nhớ (bỏ qua nếu bản vừa tải lại đã có). */
+  remember(m) {
+    if (!this.recent) return;
+    if (this.recent.length && this.recent[this.recent.length - 1].n >= m.n) return;
+    this.recent.push(m);
+    if (this.recent.length > 50) this.recent.splice(0, this.recent.length - 50);
+  }
+  /**
+   * GET /state từ bộ nhớ, giống hệt truy vấn chatSince: 50 tin có n lớn nhất trong số n > since đều nằm trong 50 tin
+   * mới nhất. Chưa tải được (chưa từng kết nối) thì chờ một lần kết nối dùng chung; vẫn không được thì lỗi.
+   */
+  async state(since) {
+    if (!this.recent) await (this.warm ??= this.db.run(async () => {}, { tx: false }).catch(() => {}).finally(() => { this.warm = null; }));
+    if (!this.recent) throw new Error('online: chưa tải được kênh thế giới');
+    const s = Number(since) || 0;
+    return [200, { chat: this.recent.filter((m) => m.n > s).slice(-50), online: this.online.size }];
+  }
+  async addChat(now, pid, name, text, extra) {
+    const { rows } = await this.run('INSERT INTO chat (t,pid,name,text,extra) VALUES ($1,$2,$3,$4,$5) RETURNING n', now, pid, name, text, extra);
+    await this.run('DELETE FROM chat WHERE n <= (SELECT MAX(n) FROM chat) - 200');
+    const m = { n: rows[0].n, t: now, name, text, extra };
+    this.emit(() => { this.remember(m); this.onChat(m); });
     return m;
   }
   /** Sự kiện chỉ phát sau khi giao dịch đã ghi xong (lỗi giữa chừng => huỷ cả sự kiện). */
   emit(fn) { if (this.pending) this.pending.push(fn); else this.fire([fn]); }
   fire(list) { for (const fn of list) { try { fn(); } catch (e) { console.error('online: event', e); } } }
-  /** Chạy fn trong một giao dịch: mỗi yêu cầu ghi trọn vẹn hoặc không ghi gì. */
-  tx(fn) {
-    this.pending = [];
-    let out, ev;
-    try {
-      // BEGIN nằm trong try: mở giao dịch thất bại (bận, lỗi đĩa) vẫn trả pending về null
-      this.db.exec('BEGIN IMMEDIATE');
-      try { out = fn(); this.db.exec('COMMIT'); ev = this.pending; } catch (e) { try { this.db.exec('ROLLBACK'); } catch { /* đã huỷ */ } throw e; }
-    } finally { this.pending = null; }
+  /**
+   * Chạy fn trong một giao dịch qua hàng đợi: mỗi yêu cầu ghi trọn vẹn hoặc không ghi gì, các yêu cầu chạy lần lượt.
+   * Sự kiện chỉ phát khi COMMIT đã thành công.
+   */
+  async tx(fn, opt) {
+    let ev;
+    const out = await this.db.run(async (c) => {
+      this.c = c; this.pending = [];
+      try { const r = await fn(); ev = this.pending; return r; } finally { this.c = null; this.pending = null; }
+    }, opt);
     this.fire(ev);
     return out;
   }
+  /** Trạng thái đầu cho WS (tin bỏ lỡ). */
+  hello(since) { return this.tx(() => this.chatSince(since)); }
   /** Gửi tin kênh thế giới qua WS (cùng kiểm tra và giới hạn với POST /chat). */
-  chatWs(pid, name, text, ip) {
+  async chatWs(pid, name, text, ip) {
     if (!okId(pid)) return [400, { error: 'pid' }];
     this.seen(pid);
-    try { return this.tx(() => this.chat(pid, name, text, ipKey(ip || ''))); } catch (e) { console.error('online: ws chat', e); return [500, { error: 'server' }]; }
+    this.maybePrune();
+    try { return await this.tx(() => this.chat(pid, name, text, ipKey(ip || ''), Date.now())); } catch (e) {
+      if (e?.busy) return [503, { error: 'busy' }];
+      if (e?.unknownCommit) console.error('online: COMMIT quá hạn, không rõ đã ghi chưa: ws chat');
+      else logErr('online: ws chat', e);
+      return [500, { error: 'server' }];
+    }
   }
-  chat(pid, name, text, ip, now = Date.now()) {
+  async chat(pid, name, text, ip, now) {
     text = clip(text, 140).trim();
     if (!text) return [400, { error: 'empty' }];
-    if (this.slow(pid, 'chat', 2000) || this.ipLimit(ip, 'chat', 60)) return [429, { error: 'slow' }];
+    if ((await this.slow(pid, 'chat', 2000)) || (await this.ipLimit(ip, 'chat', 60))) return [429, { error: 'slow' }];
     // extra chỉ do máy chủ đặt (vd. 'arena' cho tin Luận Kiếm): người chơi không giả được tin hệ thống
-    this.addChat(now, pid, clip(name, 16), text, '');
+    await this.addChat(now, pid, clip(name, 16), text, '');
     return [200, { ok: true }];
   }
 
   /**
    * Xử lý một yêu cầu HTTP. path: đường dẫn (không tiền tố), query: URLSearchParams, body: object (POST) hoặc null,
-   * ip: địa chỉ thật (chưa gộp). Trả về [status, dữ liệu JSON].
+   * ip: địa chỉ thật (chưa gộp). gone(): máy khách đã ngắt thì tới lượt không chạy nữa.
+   * Trả về lời hứa [status, dữ liệu JSON]. GET /state không chạm cơ sở dữ liệu (đọc bản trong bộ nhớ).
    */
-  handle(method, path, query, body, rawIp) {
+  async handle(method, path, query, body, rawIp, { gone } = {}) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
     const p = path, pid = body.pid || query.get('pid');
     const ip = ipKey(rawIp || '');
-    const now = Date.now();
-    this.seen(pid, now);
-    this.sweepOnline(now);
+    this.seen(pid);
+    this.sweepOnline();
     try {
-      return this.tx(() => this.route(p, pid, query, body, ip, now));
+      if (p === '/state') return await this.state(query.get('since') || 0);
+      this.maybePrune();
+      // thời điểm lấy khi tới lượt (các yêu cầu chạy lần lượt nên mốc thời gian tăng dần)
+      return await this.tx(() => this.route(p, pid, query, body, ip, Date.now()), { skip: gone });
     } catch (e) {
-      console.error('online:', p, e); // chi tiết chỉ ghi nhật ký máy chủ, không gửi cho người chơi
+      if (e?.busy) return [503, { error: 'busy' }]; // hàng đợi đầy (Store đã ghi nhật ký, có giới hạn)
+      if (e?.skipped) return [499, { error: 'gone' }]; // máy khách đã ngắt, không ai nhận
+      if (e?.unknownCommit) {
+        // COMMIT quá hạn: không biết món đã bán/bạc đã nhận hay chưa. Chỉ ghi đường dẫn và mã món, không bao giờ ghi pid.
+        const lid = p === '/market/buy' || p === '/market/cancel' ? ' lid=' + (+body.lid | 0) : '';
+        console.error(`online: COMMIT quá hạn, không rõ đã ghi chưa: ${p}${lid}`);
+      } else logErr('online: ' + p, e); // chỉ ghi nhật ký máy chủ, không gửi cho người chơi
       return [500, { error: 'server' }];
     }
   }
-  route(p, pid, query, body, ip, now) {
-    this.prune(now);
-    if (p === '/state') {
-      return [200, { chat: this.chatSince(query.get('since') || 0), online: this.online.size }];
-    }
+  async route(p, pid, query, body, ip, now) {
     if (!okId(pid)) return [400, { error: 'pid' }];
     if (p === '/chat') return this.chat(pid, body.name, body.text, ip, now);
     if (p === '/arena/submit') {
-      if (this.ipLimit(ip, 'submit', 60)) return [429, { error: 'slow' }];
+      if (await this.ipLimit(ip, 'submit', 60)) return [429, { error: 'slow' }];
       const snap = cleanSnap(body.snap);
       if (snap.length > 600) return [400, { error: 'big' }];
-      const old = this.one('SELECT rating,wins,losses FROM arena WHERE pid=?', pid);
-      this.run('INSERT OR REPLACE INTO arena (pid,oid,name,cls,level,power,rating,wins,losses,snap,t) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-        pid, oidOf(pid), clip(body.name, 16), clip(body.cls, 10), +body.level | 0, +body.power | 0, old?.rating ?? 1000, old?.wins ?? 0, old?.losses ?? 0, snap, now);
+      const old = await this.one('SELECT rating,wins,losses FROM arena WHERE pid=$1', pid);
+      // INSERT OR REPLACE của SQLite: ghi đè cả dòng
+      await this.run(`INSERT INTO arena (pid,oid,name,cls,level,power,rating,wins,losses,snap,t) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        ON CONFLICT (pid) DO UPDATE SET oid=EXCLUDED.oid, name=EXCLUDED.name, cls=EXCLUDED.cls, level=EXCLUDED.level, power=EXCLUDED.power,
+        rating=EXCLUDED.rating, wins=EXCLUDED.wins, losses=EXCLUDED.losses, snap=EXCLUDED.snap, t=EXCLUDED.t`,
+      pid, oidOf(pid), clip(body.name, 16), clip(body.cls, 10), +body.level | 0, +body.power | 0, old?.rating ?? 1000, old?.wins ?? 0, old?.losses ?? 0, snap, now);
       return [200, { ok: true, rating: old?.rating ?? 1000 }];
     }
     if (p === '/arena/opponents') {
-      if (this.ipLimit(ip, 'opp', 120)) return [429, { error: 'slow' }];
-      const me = this.one('SELECT rating FROM arena WHERE pid=?', pid);
+      if (await this.ipLimit(ip, 'opp', 120)) return [429, { error: 'slow' }];
+      const me = await this.one('SELECT rating FROM arena WHERE pid=$1', pid);
       const r = me?.rating ?? 1000;
-      const list = this.all('SELECT oid,name,cls,level,power,rating,wins,losses,snap FROM arena WHERE pid<>? ORDER BY ABS(rating-?) LIMIT 8', pid, r);
-      const top = this.all('SELECT name,cls,level,power,rating,wins,losses FROM arena ORDER BY rating DESC LIMIT 20').map((o) => ({ ...o }));
+      const list = await this.all('SELECT oid,name,cls,level,power,rating,wins,losses,snap FROM arena WHERE pid<>$1 ORDER BY ABS(rating-$2) LIMIT 8', pid, r);
+      const top = await this.all('SELECT name,cls,level,power,rating,wins,losses FROM arena ORDER BY rating DESC LIMIT 20');
       // 'pid' = mã công khai: bản game cũ đọc o.pid để gửi kết quả đấu (không phải mã người chơi thật)
       return [200, { me: me ? r : null, list: list.map((o) => ({ ...o, pid: o.oid, snap: JSON.parse(o.snap) })), top }];
     }
     if (p === '/arena/result') {
-      if (this.slow(pid, 'duel', 15000)) return [429, { error: 'slow' }];
-      if (this.ipLimit(ip, 'duel', 30)) return [429, { error: 'slow' }];
+      if (await this.slow(pid, 'duel', 15000)) return [429, { error: 'slow' }];
+      if (await this.ipLimit(ip, 'duel', 30)) return [429, { error: 'slow' }];
       const opp = String(body.opp ?? '');
-      const a = this.one('SELECT rating,name,t FROM arena WHERE pid=?', pid);
-      const b = this.one('SELECT pid,rating,name FROM arena WHERE oid=?', opp);
+      const a = await this.one('SELECT rating,name,t FROM arena WHERE pid=$1', pid);
+      const b = okOid(opp) ? await this.one('SELECT pid,rating,name FROM arena WHERE oid=$1', opp) : undefined;
       if (!a || !b || b.pid === pid) return [404, { error: 'none' }];
       // cùng một IP chỉ làm một người tụt điểm mỗi 10 phút (chặn tạo mã mới liên tục để dìm điểm người khác)
-      const hurt = !this.slowIp(ip, 'hit:' + b.pid, 600000);
+      const hurt = !(await this.slowIp(ip, 'hit:' + b.pid, 600000));
       const ea = 1 / (1 + 10 ** ((b.rating - a.rating) / 400)), sa = body.win ? 1 : 0, k = 32;
       const da = Math.round(k * (sa - ea));
-      this.run('UPDATE arena SET rating=rating+?, wins=wins+?, losses=losses+? WHERE pid=?', da, sa, 1 - sa, pid);
-      if (hurt) this.run('UPDATE arena SET rating=rating-? WHERE pid=?', Math.round(da / 2), b.pid);
-      if (body.win && hurt) this.addChat(now, 'system', 'Luận Kiếm', `${a.name} đánh bại ${b.name} trên Luận Kiếm Đài!`, 'arena');
+      await this.run('UPDATE arena SET rating=rating+$1, wins=wins+$2, losses=losses+$3 WHERE pid=$4', da, sa, 1 - sa, pid);
+      if (hurt) await this.run('UPDATE arena SET rating=rating-$1 WHERE pid=$2', Math.round(da / 2), b.pid);
+      if (body.win && hurt) await this.addChat(now, 'system', 'Luận Kiếm', `${a.name} đánh bại ${b.name} trên Luận Kiếm Đài!`, 'arena');
       return [200, { ok: true, delta: da, rating: a.rating + da }];
     }
     if (p === '/market') {
-      const list = this.all('SELECT lid,pid,name,item,price,t FROM market ORDER BY lid DESC LIMIT 120');
-      const w = this.one('SELECT gold,sold FROM wallet WHERE pid=?', pid);
+      const list = await this.all('SELECT lid,pid,name,item,price,t FROM market ORDER BY lid DESC LIMIT 120');
+      const w = await this.one('SELECT gold,sold FROM wallet WHERE pid=$1', pid);
       return [200, { list: list.map((o) => ({ ...o, name: clip(o.name, 16), item: safeItem(o.item), mine: o.pid === pid, pid: undefined })).filter((o) => o.item), owed: w?.gold || 0, sold: w ? JSON.parse(w.sold || '[]') : [] }];
     }
     if (p === '/market/list') {
@@ -262,29 +301,30 @@ export class World {
       if (!clean) return [400, { error: 'item' }];
       const item = JSON.stringify(clean), price = Math.max(1, Math.min(9999999, +body.price | 0));
       if (item.length > 800) return [400, { error: 'big' }];
-      if (this.slow(pid, 'list', 3000) || this.ipLimit(ip, 'list', 30)) return [429, { error: 'slow' }];
-      if (this.one('SELECT COUNT(*) c FROM market WHERE pid=?', pid).c >= 10) return [400, { error: 'limit' }];
-      this.run('INSERT INTO market (pid,name,item,price,t) VALUES (?,?,?,?,?)', pid, clip(body.name, 16), item, price, now);
+      if ((await this.slow(pid, 'list', 3000)) || (await this.ipLimit(ip, 'list', 30))) return [429, { error: 'slow' }];
+      if ((await this.one('SELECT COUNT(*) c FROM market WHERE pid=$1', pid)).c >= 10) return [400, { error: 'limit' }];
+      await this.run('INSERT INTO market (pid,name,item,price,t) VALUES ($1,$2,$3,$4,$5)', pid, clip(body.name, 16), item, price, now);
       return [200, { ok: true }];
     }
     if (p === '/market/buy' || p === '/market/cancel') {
-      const row = this.one('SELECT * FROM market WHERE lid=?', +body.lid | 0);
+      const row = await this.one('SELECT * FROM market WHERE lid=$1', +body.lid | 0);
       if (!row) return [404, { error: 'gone' }];
       if (p === '/market/cancel' && row.pid !== pid) return [403, { error: 'owner' }];
       if (p === '/market/buy' && row.pid === pid) return [400, { error: 'self' }];
-      this.run('DELETE FROM market WHERE lid=?', row.lid);
+      await this.run('DELETE FROM market WHERE lid=$1', row.lid);
       if (p === '/market/buy') {
-        const w = this.one('SELECT gold,sold FROM wallet WHERE pid=?', row.pid);
+        const w = await this.one('SELECT gold,sold FROM wallet WHERE pid=$1', row.pid);
         const sold = JSON.parse(w?.sold || '[]'); sold.push({ name: txt(safeItem(row.item)?.name, 40), price: row.price, buyer: clip(body.name, 16) });
-        this.run('INSERT OR REPLACE INTO wallet (pid,gold,sold) VALUES (?,?,?)', row.pid, (w?.gold || 0) + Math.floor(row.price * 0.95), JSON.stringify(sold.slice(-20)));
+        await this.run('INSERT INTO wallet (pid,gold,sold) VALUES ($1,$2,$3) ON CONFLICT (pid) DO UPDATE SET gold=EXCLUDED.gold, sold=EXCLUDED.sold',
+          row.pid, (w?.gold || 0) + Math.floor(row.price * 0.95), JSON.stringify(sold.slice(-20)));
         const seller = row.pid;
         this.emit(() => this.onSold(seller));
       }
       return [200, { ok: true, item: safeItem(row.item), price: row.price }];
     }
     if (p === '/market/claim') {
-      const w = this.one('SELECT gold,sold FROM wallet WHERE pid=?', pid);
-      this.run('DELETE FROM wallet WHERE pid=?', pid);
+      const w = await this.one('SELECT gold,sold FROM wallet WHERE pid=$1', pid);
+      await this.run('DELETE FROM wallet WHERE pid=$1', pid);
       return [200, { gold: w?.gold || 0, sold: JSON.parse(w?.sold || '[]') }];
     }
     return [404, { error: 'not found' }];
