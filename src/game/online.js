@@ -3,11 +3,16 @@ import { STORE_PREFIX } from '../settings.js';
 
 /**
  * Giang hồ trực tuyến: kênh thế giới, Luận Kiếm Đài (đấu với bản chụp nhân vật của người chơi khác), chợ giao dịch.
- * Máy chủ: server/worker.js (Cloudflare). Chưa cấu hình địa chỉ thì mọi tính năng báo "máy chủ chưa mở".
+ * Máy chủ: server/server.mjs (máy chủ riêng, cùng tên miền) hoặc server/worker.js (Cloudflare, bản cũ).
+ * Chưa cấu hình địa chỉ thì mọi tính năng báo "máy chủ chưa mở".
+ * Máy chủ riêng (base là đường dẫn tương đối như '/online'): kênh thời gian thực WebSocket base + '/ws'
+ * (tin thế giới, số người online, báo món chợ đã bán); socket đóng thì quay về hỏi định kỳ /state mỗi 6 giây.
  */
 // VITE_ONLINE_URL: bản trên máy chủ riêng dùng '/online' (cùng tên miền với game)
 export const ONLINE_URL = import.meta.env.VITE_ONLINE_URL || 'https://hiep-khach-online.vankhanh-le.workers.dev';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// kết nối lại: chờ tăng dần 1, 2, 4… giây (tối đa 60) có nhiễu; ẩn trang quá 60 giây thì tạm ngắt
+const WS_MAX_WAIT = 60, HIDDEN_PAUSE = 60000;
 const CLS_FOE = { kiem: ['mguard', 'sword'], thuong: ['boss', 'saber'], cung: ['bandit2', 'machete'], phap: ['situ', 'staff'], dao: ['hanxue', 'dagger'] };
 
 export class Online {
@@ -22,6 +27,98 @@ export class Online {
     const key = STORE_PREFIX + 'hk_pid';
     try { id = localStorage.getItem(key); if (!id) { id = crypto.randomUUID(); localStorage.setItem(key, id); } } catch { id = crypto.randomUUID(); }
     this.pid = id;
+    this.ws = null; // socket thời gian thực (đã chào xong thì this.live = true)
+    this.live = false;
+    this.wsTry = 0; // số lần kết nối lại liên tiếp
+    this.wsT = 0; // còn bao lâu (giây) mới thử kết nối lại
+    this.paused = false;
+    this.acks = new Map();
+    this.ackN = 0;
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        clearTimeout(this.hideT);
+        if (document.hidden) {
+          this.hideT = setTimeout(() => { this.paused = true; this.closeWs(); }, HIDDEN_PAUSE);
+        } else if (this.paused) { this.paused = false; this.wsTry = 0; this.wsT = 0; this.pollT = Math.min(this.pollT, 0.5); }
+      });
+    }
+  }
+  /** Địa chỉ WebSocket: chỉ khi máy chủ là đường dẫn cùng tên miền (máy chủ Cloudflare cũ không có /ws). */
+  get wsUrl() {
+    const b = this.base;
+    if (!b || !b.startsWith('/') || b.startsWith('//') || typeof WebSocket === 'undefined') return null;
+    return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + b.replace(/\/$/, '') + '/ws';
+  }
+
+  /** Mở socket và chào (pid gửi trong tin đầu, không nằm trên URL). */
+  openWs() {
+    const url = this.wsUrl;
+    if (!url || this.ws || this.paused) return;
+    let ws;
+    try { ws = new WebSocket(url); } catch { this.retryWs(); return; }
+    this.ws = ws;
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', pid: this.pid, since: this.since }));
+    this.wsIdle = 0;
+    ws.onmessage = (e) => { this.wsIdle = 0; let m; try { m = JSON.parse(e.data); } catch { return; } this.onWs(m); };
+    // đóng/lỗi/quá hạn kết nối đều dọn như nhau (có trình duyệt chỉ báo error mà không báo close khi bị từ chối)
+    const drop = () => {
+      clearTimeout(connT);
+      if (this.ws !== ws) return;
+      this.ws = null; this.live = false;
+      for (const [, a] of this.acks) { clearTimeout(a.t); a.reject(Object.assign(new Error('closed'), { code: 'closed' })); }
+      this.acks.clear();
+      this.pollT = Math.min(this.pollT, 1); // quay về hỏi định kỳ ngay
+      this.retryWs();
+      try { ws.close(); } catch { /* đã đóng */ }
+    };
+    const connT = setTimeout(() => { if (!this.live) drop(); }, 15000);
+    ws.onclose = drop;
+    ws.onerror = drop;
+    this.dropWs = drop;
+  }
+  retryWs() {
+    const wait = Math.min(WS_MAX_WAIT, 2 ** this.wsTry);
+    this.wsTry = Math.min(this.wsTry + 1, 10);
+    this.wsT = wait * (0.5 + Math.random() * 0.5);
+  }
+  closeWs() { if (this.ws) this.dropWs?.(); }
+  onWs(m) {
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'state') {
+      this.live = true; this.wsTry = 0; this.ok = true;
+      this.users = +m.online | 0;
+      this.addChat(Array.isArray(m.chat) ? m.chat : []);
+    } else if (m.t === 'chat' && m.m) this.addChat([m.m]);
+    else if (m.t === 'online') this.users = +m.n | 0;
+    else if (m.t === 'ack') {
+      const a = this.acks.get(m.r);
+      if (!a) return;
+      this.acks.delete(m.r); clearTimeout(a.t);
+      if (m.ok) a.resolve({ ok: true }); else a.reject(Object.assign(new Error(m.error || 'error'), { code: m.error }));
+    } else if (m.t === 'sold') this.claimSold();
+  }
+  /** Tin thế giới mới (từ /state hoặc socket): bỏ tin đã có, lần đầu chỉ lấy mốc chứ không in lại tin cũ. */
+  addChat(list) {
+    for (const m of list) {
+      if (!m || !(+m.n > this.since)) continue;
+      this.since = +m.n;
+      if (this.firstDone) this.g.mhud?.log('world', m.extra === 'arena' ? `<b class="cy">${esc(m.text)}</b>` : `<b>${esc(m.name)}</b>: ${esc(m.text)}`);
+    }
+    this.firstDone = true;
+  }
+  /** Món rao ở chợ vừa có người mua: nhận bạc ngay. */
+  async claimSold() {
+    if (this.claiming) return;
+    this.claiming = true;
+    try {
+      const c = await this.call('/market/claim');
+      const gold = +c.gold | 0, sold = Array.isArray(c.sold) ? c.sold : [];
+      if (gold > 0) {
+        this.g.rpg.addGold(gold);
+        this.g.toast(`Bán được ${sold.map((x) => `<b>${esc(x?.name)}</b>`).join(', ')} · nhận <b>${gold}</b> lượng (đã trừ 5% thuế chợ)`, 5);
+      }
+    } catch { /* lần mở Chợ sau sẽ nhận */ }
+    this.claiming = false;
   }
   // đổi máy chủ qua localStorage chỉ cho bản dev (bản chính: trang khác cùng tên miền không chuyển hướng được mã người chơi)
   get base() { try { return ((import.meta.env.DEV || import.meta.env.VITE_DEV_BUILD) && localStorage.getItem('hk_online')) || ONLINE_URL; } catch { return ONLINE_URL; } }
@@ -46,20 +143,34 @@ export class Online {
 
   update(dt) {
     this.tick(dt);
-    if (!this.base || (this.pollT -= dt) > 0) return;
+    if (!this.base || this.paused) return;
+    if (!this.ws && this.wsUrl && (this.wsT -= dt) <= 0) this.openWs();
+    if (this.live) {
+      // socket im lặng quá lâu (mạng rớt mà không báo đóng): hỏi thử, vẫn im thì bỏ và kết nối lại
+      this.wsIdle += dt;
+      if (this.wsIdle > 30 && !this.wsPinged) { this.wsPinged = true; try { this.ws.send('{"t":"ping"}'); } catch { /* đang đóng */ } }
+      if (this.wsIdle <= 30) this.wsPinged = false;
+      if (this.wsIdle > 45) this.closeWs();
+    }
+    if (this.live || (this.pollT -= dt) > 0) return; // socket đang chạy thì không cần hỏi định kỳ
     this.pollT = 6;
     this.call('/state?since=' + this.since).then((d) => {
       this.ok = true;
       this.users = +d.online | 0;
-      for (const m of d.chat) {
-        this.since = Math.max(this.since, m.n);
-        if (this.firstDone) this.g.mhud?.log('world', m.extra === 'arena' ? `<b class="cy">${esc(m.text)}</b>` : `<b>${esc(m.name)}</b>: ${esc(m.text)}`);
-      }
-      this.firstDone = true;
+      this.addChat(Array.isArray(d.chat) ? d.chat : []);
     }).catch(() => { this.ok = false; this.pollT = 30; });
   }
 
-  say(text) { return this.call('/chat', { text }); }
+  say(text) {
+    const ws = this.ws;
+    if (!this.live || !ws || ws.readyState !== 1) return this.call('/chat', { text });
+    const r = (this.ackN = (this.ackN + 1) % 1e6);
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => { this.acks.delete(r); reject(Object.assign(new Error('timeout'), { code: 'timeout' })); }, 8000);
+      this.acks.set(r, { resolve, reject, t });
+      ws.send(JSON.stringify({ t: 'chat', text: String(text ?? '').slice(0, 1000), name: String(this.g.profile.name ?? '').slice(0, 64), r }));
+    });
+  }
 
   /** Đấu với bản chụp của người chơi khác ngay tại chỗ. */
   async duel(o) {

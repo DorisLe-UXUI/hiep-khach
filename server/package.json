@@ -1,0 +1,17 @@
+{
+  "name": "hiep-khach-online",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Máy chủ trực tuyến của Thiên Kiếm Giang Hồ (Node + node:sqlite + ws)",
+  "type": "module",
+  "main": "server.mjs",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.mjs",
+    "test": "node --test",
+    "import": "node --disable-warning=ExperimentalWarning import.mjs"
+  },
+  "dependencies": {
+    "ws": "8.22.1"
+  }
+}
